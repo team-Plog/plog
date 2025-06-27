@@ -13,7 +13,3 @@ def register_exception_handler(app: FastAPI):
         tb_str = ''.join(traceback.format_exception(type(exc), exc, exc.__traceback__))
         logger.error(f"Unhandled exception occurred: {exc}\nStack trace:\n{tb_str}", exc_info=True)
         return JSONResponse(status_code=500, content={"message": "Internal Server Error"})
-
-
-
-

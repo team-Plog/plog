@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 class Endpoint(BaseModel):
+    id: int
     path: str
     method: str
     summary: Optional[str]
@@ -11,6 +12,7 @@ class Endpoint(BaseModel):
         from_attributes = True
 
 class Tag(BaseModel):
+    id: int
     name: str
     description: Optional[str]
     endpoints: List[Endpoint]  # 이 태그가 가지는 엔드포인트들
@@ -19,6 +21,7 @@ class Tag(BaseModel):
         from_attributes = True
 
 class OpenAPISpec(BaseModel):
+    id: int
     title: str
     version: str
     tags: List[Tag]  # 이 명세가 가지는 태그들
