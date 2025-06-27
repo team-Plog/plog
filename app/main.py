@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from app.api import api_router
 import uvicorn
+from app.db.database import engine
+from app.db import models
 app = FastAPI(
     title="Metric Vault API",
     description="Metric 정보를 수집하고 분석하는 백엔드 API입니다.",
@@ -8,3 +10,6 @@ app = FastAPI(
     docs_url="/api/swagger"
 )
 app.include_router(api_router)
+
+# init table
+models.Base.metadata.create_all(bind=engine)

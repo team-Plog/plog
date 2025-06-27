@@ -8,8 +8,13 @@ class Endpoint(BaseModel):
     summary: Optional[str]
     description: Optional[str]
 
+    class Config:
+        from_attributes = True
 
 class OpenAPISpec(BaseModel):
     title: str
     version: str
     endpoints: List[Endpoint]
+
+    class Config:
+        from_attributes = True
