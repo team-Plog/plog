@@ -11,11 +11,14 @@ async def analyze_openapi_spec(swagger_url: str) -> OpenAPISpecModel:
     # 1. 기본 정보 추출
     title = openapi_data.get("info", {}).get("title", "Untitled")
     version = openapi_data.get("info", {}).get("version", "unknown")
+    servers = openapi_data.get("servers", [])
+    base_url = servers[0]["url"]
 
     # 2. openapi 스펙 모델 생성
     openapi_spec_model = OpenAPISpecModel(
         title=title,
-        version=version
+        version=version,
+        base_url=base_url,
     )
 
     # 3. tag description 매핑

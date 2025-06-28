@@ -1,5 +1,4 @@
-import httpx
-from fastapi import APIRouter, Body, HTTPException, Depends
+from fastapi import APIRouter, Body, Depends
 from fastapi.responses import JSONResponse
 from pydantic import HttpUrl
 from sqlalchemy.orm import Session
@@ -20,8 +19,13 @@ async def analyze_swagger(
     db: Session = Depends(get_db),
     openapi_url: HttpUrl = Body(default="http://localhost:8080/v3/api-docs", embed=True)
 ):
+    # 1. analyze
     analyze_result: OpenAPISpecModel = await analyze_openapi_spec(str(openapi_url))
+
+    # 2. save
     saved_open_api_spec: OpenAPISpecModel = await save_openapi_spec(db, analyze_result)
+
+    # 3. converter
     response = OpenAPISpec.from_orm(saved_open_api_spec).model_dump()
 
     return JSONResponse(

@@ -17,6 +17,7 @@ class OpenAPISpecModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=True)
     version = Column(String, nullable=True)
+    base_url = Column(String, nullable=False)
 
     tags = relationship("TagModel", back_populates="openapi_spec", cascade="all, delete")
 

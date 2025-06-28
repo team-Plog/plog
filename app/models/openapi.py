@@ -24,6 +24,7 @@ class OpenAPISpec(BaseModel):
     id: int
     title: str
     version: str
+    base_url: str
     tags: List[Tag]  # 이 명세가 가지는 태그들
 
     class Config:
