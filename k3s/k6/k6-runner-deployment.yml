@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: k6-runner-deployment
+
+spec:
+  selector:
+    matchLabels:
+      app: k6-runner
+
+  template:
+    metadata:
+      labels:
+        app: k6-runner
+    spec:
+      containers:
+        - name: k6-container
+          image: grafana/k6:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5665
+          volumeMounts:
+            - mountPath: /scripts
+              name: k6-script-volume-mounts
+
+        # k6 실행 api 컨테이너 추가 예정
+
+      volumes:
+        - name: k6-script-volume
+          persistentVolumeClaim:
+            claimName: k6-script-pvc
+
+

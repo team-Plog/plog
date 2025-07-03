@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: spring-mock-deployment
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spring-mock
+
+  template:
+    metadata:
+      labels:
+        app: spring-mock
+    spec:
+      containers:
+        - name: spring-mock-container
+          imagePullPolicy: IfNotPresent
+          image: spring-mock-service:latest
+          ports:
+            - containerPort: 8080
+

@@ -1,0 +1,12 @@
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB-k6
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    database: k6         # InfluxDB 1.8에서는 database 이름만 필요함
+    isDefault: true
+    jsonData:
+      httpMode: POST     # (optional) 기본 요청 방식
+      timeInterval: "1s" # 쿼리 최소 간격
