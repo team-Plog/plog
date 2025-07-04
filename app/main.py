@@ -3,6 +3,7 @@ from app.api import api_router
 from app.db.database import engine
 from app.db import models
 from app.exceptionhandler import register_exception_handler
+from k8s.k8s_client import v1_core
 app = FastAPI(
     title="Metric Vault API",
     description="Metric 정보를 수집하고 분석하는 백엔드 API입니다.",
@@ -14,3 +15,8 @@ app.include_router(api_router)
 # init table
 models.Base.metadata.create_all(bind=engine)
 register_exception_handler(app)
+
+# kubernetes connection test
+pods = v1_core.list_namespaced_pod("default")
+for pod in pods.items:
+    print(pod.metadata.name)
