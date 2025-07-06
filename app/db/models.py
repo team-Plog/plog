@@ -1,13 +1,23 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, Table
+from datetime import datetime
+
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, Table, DateTime
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 
-# 중간 테이블 정의
+# 중간 테이블 endpoints <-> tags
 tags_endpoints = Table(
     "tags_endpoints",
     Base.metadata,
     Column("endpoint_id", ForeignKey("endpoints.id"), primary_key=True),
     Column("tag_id", ForeignKey("tags.id"), primary_key=True)
+)
+
+# 중간 테이블 test_history <-> endpoints
+test_history_endpoints = Table(
+    "test_histories_endpoints",
+    Base.metadata,
+    Column("test_history_id", ForeignKey("test_histories.id"), primary_key=True),
+    Column("endpoint_id", ForeignKey("endpoints.id"), primary_key=True)
 )
 
 
@@ -43,3 +53,15 @@ class EndpointModel(Base):
     tag_id = Column(Integer, ForeignKey("tags.id"))
 
     tags = relationship("TagModel", secondary=tags_endpoints, back_populates="endpoints")
+    test_histories = relationship("TestHistoryModel", secondary=test_history_endpoints, back_populates="endpoints")
+
+class TestHistoryModel(Base):
+    __tablename__ = "test_histories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tested_at = Column(DateTime, default=datetime.utcnow)
+    file_name = Column(String(255), nullable=False)
+    test_title = Column(String(255), nullable=False)
+    test_description = Column(Text, nullable=True)
+
+    endpoints = relationship("EndpointModel", secondary=test_history_endpoints, back_populates="test_histories")
