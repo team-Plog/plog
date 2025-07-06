@@ -17,8 +17,10 @@ spec:
     spec:
       containers:
         - name: spring-mock-container
-          imagePullPolicy: IfNotPresent
-          image: spring-mock-service:latest
+          imagePullPolicy: Always
+          image: asia-northeast3-docker.pkg.dev/citric-replica-450012-a8/plog-image-repo/spring-mock-service:latest
           ports:
             - containerPort: 8080
+      imagePullSecrets:
+        - name: gcp-artifact-registry-secret
 

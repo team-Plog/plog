@@ -8,5 +8,5 @@ spec:
   accessModes:
     - ReadWriteMany
   hostPath:
-    path: /mnt/k6-script
+    path: /mnt/k6-scripts
   storageClassName: k6-script

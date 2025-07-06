@@ -25,16 +25,6 @@ spec:
             - mountPath: /scripts
               name: k6-script-volume
 
-        # k6 실행 api 컨테이너 추가 예정
-        - name: k6-express-api
-          image: k6-express-api:latest
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 3000
-          volumeMounts:
-            - mountPath: /scripts
-              name: k6-script-volume
-
       volumes:
         - name: k6-script-volume
           persistentVolumeClaim:
