@@ -50,6 +50,7 @@ def create_k6_job_with_dashboard(job_name: str, script_filename: str, pvc_name: 
 
     # job template
     template = client.V1PodTemplateSpec(
+        metadata=client.V1ObjectMeta(labels=labels),
         spec=pod_spec
     )
 
@@ -60,7 +61,7 @@ def create_k6_job_with_dashboard(job_name: str, script_filename: str, pvc_name: 
     )
 
     job = client.V1Job(
-        metadata=client.V1ObjectMeta(name=job_name, labels=labels),
+        metadata=client.V1ObjectMeta(name=job_name),
         spec=job_spec
     )
 
