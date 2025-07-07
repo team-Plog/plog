@@ -26,6 +26,7 @@ async def create_load_testing_script_by_gui(
     script_content: str = generate_k6_script(request, db)
 
     # 2. 파일로 저장
+    # TODO 생성된 파일 제거 유무 추가
     file_name = generate_unique_filename()
     script_path = f"/k6-scripts/{file_name}"
     with open(script_path, "w") as f:
@@ -35,8 +36,9 @@ async def create_load_testing_script_by_gui(
     create_test_history(request, file_name, db)
 
     # 4. k6 run job 생성
+    job_name = generate_unique_job_name()
     create_k6_job_with_dashboard(
-        "job",
+        job_name,
         file_name,
         "k6-script-pvc"
     )
@@ -50,3 +52,8 @@ def generate_unique_filename(prefix="load_test", ext="js"):
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     unique_id = str(uuid.uuid4())[:6]
     return f"{prefix}_{timestamp}_{unique_id}.{ext}"
+
+def generate_unique_job_name(prefix="job"):
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    unique_id = str(uuid.uuid4())[:6]
+    return f"{prefix}-{timestamp}-{unique_id}"
