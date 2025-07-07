@@ -34,3 +34,24 @@ async def analyze_swagger(
             "data": response
         }
     )
+
+@router.get(
+    path="",
+    summary="OpenAPI 명세 리스트 조회 API",
+    description="저장된 OpenAPI 명세들을 리스트 형태로 반환한다."
+)
+async def get_openapi_specs(
+    db: Session = Depends(get_db)
+):
+    # DB에서 모든 OpenAPISpecModel 조회
+    openapi_specs = db.query(OpenAPISpecModel).all()
+
+    # Pydantic 모델로 변환
+    response = [OpenAPISpec.from_orm(spec).model_dump() for spec in openapi_specs]
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "data": response
+        }
+    )
