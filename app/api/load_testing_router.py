@@ -54,6 +54,6 @@ def generate_unique_filename(prefix="load_test", ext="js"):
     return f"{prefix}_{timestamp}_{unique_id}.{ext}"
 
 def generate_unique_job_name(prefix="job"):
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
     unique_id = str(uuid.uuid4())[:6]
     return f"{prefix}-{timestamp}-{unique_id}"
