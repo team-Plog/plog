@@ -4,3 +4,4 @@ httpx~=0.28.1
 pydantic~=2.11.7
 SQLAlchemy~=2.0.41
 kubernetes~=33.1.0
+influxdb~=5.3.2
