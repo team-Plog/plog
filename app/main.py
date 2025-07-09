@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from app.api import api_router
-from app.db.database import engine
-from app.db import models
+from app.sse import sse_router
+from app.db.sqlite.database import engine
+from app.db.sqlite import models
 from app.exceptionhandler import register_exception_handler
 from k8s.k8s_client import v1_core
 app = FastAPI(
@@ -11,6 +12,7 @@ app = FastAPI(
     docs_url="/api/swagger"
 )
 app.include_router(api_router)
+app.include_router(sse_router)
 
 # init table
 models.Base.metadata.create_all(bind=engine)

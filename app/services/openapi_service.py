@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
-from app.db.models import OpenAPISpecModel, TagModel, EndpointModel
+from app.db.sqlite.models import OpenAPISpecModel
+
 
 async def save_openapi_spec(db: Session, openapi_spec_model: OpenAPISpecModel) -> OpenAPISpecModel:
     db.add(openapi_spec_model)

@@ -2,7 +2,7 @@ from datetime import datetime
 
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, Table, DateTime
 from sqlalchemy.orm import relationship
-from app.db.database import Base
+from app.db.sqlite.database import Base
 
 # 중간 테이블 endpoints <-> tags
 tags_endpoints = Table(

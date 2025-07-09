@@ -1,7 +1,7 @@
 from typing import List
 
 from sqlalchemy.orm import Session
-from app.db.models import EndpointModel, OpenAPISpecModel, TagModel
+from app.db.sqlite.models import EndpointModel, OpenAPISpecModel, TagModel
 from app.models.load_test_request import LoadTestRequest, ScenarioConfig
 from fastapi import HTTPException
 

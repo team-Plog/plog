@@ -1,6 +1,6 @@
 import httpx
 from collections import defaultdict
-from app.db.models import OpenAPISpecModel, EndpointModel, TagModel
+from app.db.sqlite.models import OpenAPISpecModel, EndpointModel, TagModel
 
 async def analyze_openapi_spec(swagger_url: str) -> OpenAPISpecModel:
     async with httpx.AsyncClient(follow_redirects=True) as client:
