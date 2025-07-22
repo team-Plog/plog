@@ -1,0 +1,53 @@
+import React from "react";
+import { Search } from "lucide-react";
+import { colors } from "../assets/colors";
+
+const SearchBar: React.FC<{
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}> = ({ value, onChange, placeholder }) => {
+  return (
+    <div style={{ position: 'relative', width: '100%' }}>
+      <Search style={{
+        position: 'absolute',
+        left: '12px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        color: colors.system.gray2,
+        width: '16px',
+        height: '16px'
+      }} />
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder || "입력 내용"}
+        style={{
+          width: '100%',
+          paddingLeft: '36px',
+          paddingRight: '12px',
+          paddingTop: '10px',
+          paddingBottom: '10px',
+          backgroundColor: colors.system.gray1,
+          border: 'none',
+          borderRadius: '8px',
+          color: colors.system.black,
+          fontSize: '12px',
+          outline: 'none',
+          transition: 'all 0.2s'
+        }}
+        onFocus={(e) => {
+          e.target.style.backgroundColor = colors.system.white;
+          e.target.style.boxShadow = '0 0 0 2px'+ colors.accent.primary;
+        }}
+        onBlur={(e) => {
+          e.target.style.backgroundColor = '#F3F4F6';
+          e.target.style.boxShadow = 'none';
+        }}
+      />
+    </div>
+  );
+};
+
+export default SearchBar;
