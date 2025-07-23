@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.db.sqlite.models import TestHistoryModel, EndpointModel
-from app.models.load_test_request import LoadTestRequest
+from app.dto.load_test.load_test_request import LoadTestRequest
 
 def create_test_history(
         request: LoadTestRequest,

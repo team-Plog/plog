@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models.load_test_request import LoadTestRequest
+from app.dto.load_test.load_test_request import LoadTestRequest
 from app.services.load_test_service import generate_k6_script
 
 from k8s.k8s_service import create_k6_job_with_dashboard

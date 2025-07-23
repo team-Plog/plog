@@ -1,5 +1,18 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 from typing import List, Optional
+
+class ProjectResponse(BaseModel):
+    id: int
+    title: str
+    description: str
+    status: Optional[str] = None
+    updated_at: Optional[datetime] = None
+
+    model_config = {
+        "from_attributes": True  # pydantic v2 -> 기존 from_orm = True 와 동일
+    }
 
 class Endpoint(BaseModel):
     id: int

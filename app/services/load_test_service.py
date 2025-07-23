@@ -2,7 +2,7 @@ from typing import List
 
 from sqlalchemy.orm import Session
 from app.db.sqlite.models import EndpointModel, OpenAPISpecModel, TagModel
-from app.models.load_test_request import LoadTestRequest, ScenarioConfig
+from app.dto.load_test.load_test_request import LoadTestRequest, ScenarioConfig
 from fastapi import HTTPException
 
 def get_endpoint_by_id(db: Session, endpoint_id: int):

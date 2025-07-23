@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.db.sqlite.models import OpenAPISpecModel
 
-from app.models.openapi import OpenAPISpec
+from app.dto.project.openapi import OpenAPISpec
 from app.services import *
 
 router = APIRouter()
