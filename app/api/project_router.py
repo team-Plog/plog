@@ -1,14 +1,11 @@
 from fastapi import APIRouter, Body, Depends
 from fastapi.responses import JSONResponse
-from pydantic import HttpUrl
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app.db.sqlite.models import OpenAPISpecModel
-
-from app.models.openapi import OpenAPISpec
-from app.services import *
 from app.dto.project.register_project_request import RegisterProjectRequest
 from app.db.sqlite.models import ProjectModel
+from app.response.code import SuccessCode
+from app.response.response_template import ResponseTemplate
 
 router = APIRouter()
 
@@ -29,4 +26,4 @@ async def register_project(
     db.commit()
     db.refresh(project) # 객체 상태 새로고침
 
-    return JSONResponse(status_code=201, content={"id": project.id})
+    return ResponseTemplate.success(SuccessCode.SUCCESS_CODE)
