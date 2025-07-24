@@ -2,26 +2,25 @@ import React, { useState } from "react";
 import { Plus, Menu, PlusCircle } from "lucide-react";
 import SearchBar from "../components/SearchBar/SearchBar";
 import { Button } from "../components/Button/Button";
+import MainModal from "../components/MainModal/MainModal";
 
 const Home: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const handleNewProject = () => {
-    console.log("click Button");
-  };
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
     <div
-      style={{
-        minHeight: "100vh",
-        backgroundColor: "var(--color-bg-primary)",
-        margin: 0,
-        padding: 0,
-        width: "100vw",
-        boxSizing: "border-box",
-      }}
-    >
+        style={{
+          transition: "filter 0.2s",
+          minHeight: "100vh",
+          backgroundColor: "var(--color-background-primary)",
+          margin: 0,
+          padding: 0,
+          width: "100vw",
+          boxSizing: "border-box",
+        }}
+      >
       {/* Header */}
       <header
         style={{
@@ -99,7 +98,7 @@ const Home: React.FC = () => {
 
             <Button 
               variant="primaryGradient" 
-              onClick={handleNewProject}
+              onClick={() => setIsModalOpen(true)}
             >
               <Plus style={{ width: "var(--icon-size-md)", height: "var(--icon-size-md)" }} />
               새 프로젝트 추가하기
@@ -107,6 +106,8 @@ const Home: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {isModalOpen && <MainModal onClose={() => setIsModalOpen(false)} />}
 
       {/* Main Content */}
       <main
