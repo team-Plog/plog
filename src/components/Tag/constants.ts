@@ -1,4 +1,4 @@
-import { Clock, CheckCircle, XCircle, Play, type LucideIcon } from 'lucide-react';
+import { CircleDashed, CircleCheck, TriangleAlert, RefreshCcw, type LucideIcon } from 'lucide-react';
 import type { HttpMethod, TestStatus } from './types';
 
 export const HTTP_METHOD_STYLES: Record<HttpMethod, { color: string; background: string }> = {
@@ -20,25 +20,25 @@ export const STATUS_CONFIG: Record<TestStatus, {
   text: string;
 }> = {
   before: {
-    icon: Clock,
+    icon: CircleDashed,
     color: 'var(--color-http-trace)',
     background: 'var(--color-http-trace-bg)',
     text: '실행 전'
   },
   completed: {
-    icon: CheckCircle,
+    icon: CircleCheck,
     color: 'var(--color-http-post)',
     background: 'var(--color-http-post-bg)',
     text: '테스트 완료'
   },
   failed: {
-    icon: XCircle,
+    icon: TriangleAlert,
     color: 'var(--color-http-delete)',
     background: 'var(--color-http-delete-bg)',
     text: '테스트 실패'
   },
   running: {
-    icon: Play,
+    icon: RefreshCcw,
     color: 'var(--color-http-get)',
     background: 'var(--color-http-get-bg)',
     text: '테스트 중'
