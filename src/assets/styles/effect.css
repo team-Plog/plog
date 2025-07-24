@@ -1,0 +1,6 @@
+:root {
+  --shadow-primary: 0px 2px 16px rgba(0, 0, 0, 0.03);
+
+  --gradient-point: linear-gradient(180deg, #bcfff7 0%, #ffffff 100%);
+  --gradient-button: linear-gradient(180deg, #606060 0%, #000000 100%);
+}
