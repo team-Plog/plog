@@ -1,0 +1,32 @@
+.container {
+  position: relative;
+  width: 100%;
+}
+
+.input {
+  width: 95%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-gray-100);
+  background-color: var(--color-white);
+  font-size: 14px;
+  outline: none;
+}
+
+.clearButton {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--color-gray-300);
+}
+
+.title {
+  display: block;
+  font-size: 14px;
+  color: var(--color-gray-300);
+}
