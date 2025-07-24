@@ -1,6 +1,6 @@
 import React from "react";
 import { Search } from "lucide-react";
-import { colors } from "../assets/styles/colors";
+import '../assets/styles/colors.css'
 import { typography } from '../assets//styles/typography';
 
 const SearchBar: React.FC<{
@@ -15,7 +15,7 @@ const SearchBar: React.FC<{
         left: '12px',
         top: '50%',
         transform: 'translateY(-50%)',
-        color: colors.system.gray2,
+        color: 'var(--color-gray-200)',
         width: '16px',
         height: '16px'
       }} />
@@ -30,10 +30,10 @@ const SearchBar: React.FC<{
           paddingRight: '12px',
           paddingTop: '10px',
           paddingBottom: '10px',
-          backgroundColor: colors.system.gray1,
+          backgroundColor: 'var(--color-gray-100)',
           border: 'none',
           borderRadius: '8px',
-          color: colors.system.black,
+          color: 'var(--color-black)',
           outline: 'none',
           transition: 'all 0.2s',
           ...typography.Body
