@@ -1,18 +1,21 @@
 import React, { useState } from "react";
-import { Plus, Menu } from "lucide-react";
-import SearchBar from "../components/SearchBar";
-import '../assets/styles/colors.css';
-import { typography } from '../assets//styles/typography';
+import { Plus, Menu, PlusCircle } from "lucide-react";
+import SearchBar from "../components/SearchBar/SearchBar";
+import { Button } from "../components/Button/Button";
 
 const Home: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  const handleNewProject = () => {
+    console.log("click Button");
+  };
+
   return (
     <div
       style={{
         minHeight: "100vh",
-        backgroundColor: "var(--color-background-primary)",
+        backgroundColor: "var(--color-bg-primary)",
         margin: 0,
         padding: 0,
         width: "100vw",
@@ -22,8 +25,8 @@ const Home: React.FC = () => {
       {/* Header */}
       <header
         style={{
-          backgroundColor: "var(--color-background-primary)",
-          padding: "24px",
+          backgroundColor: "var(--color-bg-primary)",
+          padding: "var(--spacing-xl)",
           margin: 0,
           width: "100%",
           boxSizing: "border-box",
@@ -44,31 +47,31 @@ const Home: React.FC = () => {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "24px",
+              gap: "var(--spacing-sm)",
             }}
           >
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               style={{
-                padding: "4px",
+                padding: "var(--spacing-xs)",
                 backgroundColor: "var(--color-white)",
                 border: "none",
-                borderRadius: "4px",
+                borderRadius: "var(--radius-sm)",
                 cursor: "pointer",
                 transition: "background-color 0.2s",
               }}
             >
               <Menu
                 style={{
-                  width: "24px",
-                  height: "24px",
+                  width: "var(--icon-size-md)",
+                  height: "var(--icon-size-md)",
                   color: "var(--color-gray-200)",
                 }}
               />
             </button>
             <h1
+              className="HeadingS"
               style={{
-                ...typography.HeadingS,
                 color: "var(--color-black)",
                 whiteSpace: 'nowrap',
                 margin: 0,
@@ -94,23 +97,13 @@ const Home: React.FC = () => {
               />
             </div>
 
-            <button
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                background: "linear-gradient(#606060 0%, #000000 100%)",
-                color: "var(--color-white)",
-                padding: "8px 16px",
-                borderRadius: "8px",
-                border: "none",
-                whiteSpace: "nowrap",
-                cursor: "pointer",
-                transition: "background-color 0.2s",
-              }}>
-              <Plus style={{ width: "16px", height: "16px" }} />
-              <span style={{ ...typography.Button }}>새 프로젝트 추가하기</span>
-            </button>
+            <Button 
+              variant="primaryGradient" 
+              onClick={handleNewProject}
+            >
+              <Plus style={{ width: "var(--icon-size-md)", height: "var(--icon-size-md)" }} />
+              새 프로젝트 추가하기
+            </Button>
           </div>
         </div>
       </header>
@@ -120,19 +113,77 @@ const Home: React.FC = () => {
         style={{
           maxWidth: "1280px",
           margin: "0 auto",
-          padding: "32px 16px",
+          padding: "32px var(--spacing-lg)",
           width: "100%",
           boxSizing: "border-box",
         }}
       >
+        {/* Empty State Container */}
         <div
           style={{
-            textAlign: "center",
-            color: "var(--color-gray-300)",
-            marginTop: "80px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "400px",
+            backgroundColor: "var(--color-gray-100)",
+            border: "1px solid var(--color-border-primary)",
+            borderRadius: "var(--radius-lg)",
+            padding: "64px",
+            gap: "64px",
           }}
         >
-          <p>프로젝트 목록이 여기에 표시됩니다.</p>
+          {/* Icon Container */}
+          <div
+            style={{
+              width: "200px",
+              height: "160px",
+              background: "linear-gradient(180deg, rgba(0, 0, 0, 0.07) 0%, rgba(0, 0, 0, 0.03) 100%)",
+              border: "1px solid var(--color-border-primary)",
+              borderRadius: "var(--radius-md)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 4px 15px 0 rgba(0, 0, 0, 0.04) inset",
+            }}
+          >
+            <PlusCircle
+              style={{
+                width: "48px",
+                height: "48px",
+                color: "rgba(0, 0, 0, 0.1)",
+              }}
+            />
+          </div>
+
+          {/* Text Content */}
+          <div
+            style={{
+              textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              gap: "var(--spacing-sm)",
+            }}
+          >
+            <p
+              className="HeadingS"
+              style={{
+                color: "var(--color-black)",
+                margin: 0,
+              }}
+            >
+              아직 생성된 프로젝트가 없습니다
+            </p>
+            <p
+              className="Body"
+              style={{
+                color: "var(--color-gray-300)",
+                margin: 0,
+              }}
+            >
+              부하 테스트를 시작하려면 새로운 프로젝트를 생성하세요.
+            </p>
+          </div>
         </div>
       </main>
     </div>
