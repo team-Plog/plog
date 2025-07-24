@@ -1,10 +1,12 @@
 import httpx
 from collections import defaultdict
 from app.db.sqlite.models import OpenAPISpecModel, EndpointModel, TagModel
+from app.dto.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 
-async def analyze_openapi_spec(swagger_url: str) -> OpenAPISpecModel:
+
+async def analyze_openapi_spec(request: OpenAPISpecRegisterRequest) -> OpenAPISpecModel:
     async with httpx.AsyncClient(follow_redirects=True) as client:
-        response = await client.get(swagger_url)
+        response = await client.get(str(request.open_api_url))
         response.raise_for_status()
         openapi_data = response.json()
 
@@ -19,6 +21,7 @@ async def analyze_openapi_spec(swagger_url: str) -> OpenAPISpecModel:
         title=title,
         version=version,
         base_url=base_url,
+        project_id=request.project_id,
     )
 
     # 3. tag description 매핑
