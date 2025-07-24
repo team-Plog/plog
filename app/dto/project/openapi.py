@@ -6,6 +6,7 @@ from typing import List, Optional
 class ProjectResponse(BaseModel):
     id: int
     title: str
+    summary: str
     description: str
     status: Optional[str] = None
     updated_at: Optional[datetime] = None

@@ -25,6 +25,7 @@ class ProjectModel(Base):
     __tablename__ = "projects"
     id = Column(Integer, primary_key=True)
     title = Column(String)
+    summary = Column(String)
     description = Column(Text)
     openapi_specs = relationship("OpenAPISpecModel", back_populates="project")
 

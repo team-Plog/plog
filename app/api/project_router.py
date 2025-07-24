@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Body, Depends
-from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
+from fastapi import Path
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session, selectinload
 from app.db import get_db
-from app.dto import project
 from app.dto.project.openapi import ProjectResponse
+from app.dto.project.project_detail_response import ProjectDetailResponse
 from app.dto.project.register_project_request import RegisterProjectRequest
-from app.db.sqlite.models import ProjectModel
-from app.response.code import SuccessCode
+from app.db.sqlite.models import ProjectModel, OpenAPISpecModel, TagModel
+from app.response.code import SuccessCode, FailureCode
 from app.response.response_template import ResponseTemplate
 
 router = APIRouter()
@@ -22,6 +23,7 @@ async def register_project(
 ):
     project = ProjectModel(
         title=request.title,
+        summary=request.summary,
         description=request.description,
     )
     db.add(project)
@@ -46,11 +48,34 @@ async def get_projects(
         ProjectResponse(
             id=project.id,
             title=project.title,
+            summary=project.summary,
             description=project.description,
             status=None,
             updated_at=None
         )
         for project in projects
     ]
+
+    return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response)
+
+@router.get(
+    path="/{project_id}",
+    summary="프로젝트 상세정보 조회",
+    description="프로젝트의 상세정보를 조회하는 API"
+)
+async def get_project_info(
+    project_id: int = Path(..., description="조회할 프로젝트의 ID"),
+    db: Session = Depends(get_db)
+):
+    project = db.query(ProjectModel).options(
+        selectinload(ProjectModel.openapi_specs)
+        .selectinload(OpenAPISpecModel.tags)
+        .selectinload(TagModel.endpoints)
+    ).filter(ProjectModel.id == project_id).first()
+
+    if not project:
+        ResponseTemplate.fail(FailureCode.NOT_FOUND_DATA)
+
+    response = ProjectDetailResponse.model_validate(project).model_dump()
 
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response)
