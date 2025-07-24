@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Plus, Menu, CirclePlus } from "lucide-react";
-import SearchBar from "../components/SearchBar/SearchBar";
+import { SearchBar } from "../components/Input";
 import { Button } from "../components/Button/Button";
 import ProjectCard from "../components/ProjectCard/ProjectCard";
 import type { ProjectCardProps } from "../components/ProjectCard/types";
@@ -124,10 +124,15 @@ const Home: React.FC = () => {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "60px",
+              gap: "8px",
             }}
           >
-            <div style={{ width: "300px" }}>
+            <div 
+              style={{ 
+                width: "320px", 
+                flexShrink: 0,
+              }}
+            >
               <SearchBar
                 value={searchTerm}
                 onChange={setSearchTerm}

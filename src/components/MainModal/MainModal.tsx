@@ -4,7 +4,7 @@ import styles from "./MainModal.module.css";
 import ProjectCard1 from "../../assets/images/projectCard1.svg";
 import ProjectCard2 from "../../assets/images/projectCard2.svg";
 import ProjectCard3 from "../../assets/images/projectCard3.svg";
-import InputField from "../InputField/InputField";
+import { InputField } from "../Input";
 import {Button} from "../Button/Button";
 
 interface MainModalProps {
