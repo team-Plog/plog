@@ -1,0 +1,69 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-lg);
+  background-color: var(--color-white);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  max-width: 320px;
+  box-sizing: border-box;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-primary, 0px 2px 16px rgba(0, 0, 0, 0.03));
+  transform: translateY(-2px);
+}
+
+.card:active {
+  transform: translateY(0);
+}
+
+.badgeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.menuButton {
+  background: none;
+  border: none;
+  padding: var(--spacing-xs);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.title {
+  margin: 0;
+  margin-bottom: 4px;
+  color: var(--color-black);
+  word-break: break-word;
+}
+
+.description {
+  margin: 0;
+  margin-bottom: 16px;
+  color: var(--color-gray-300);
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.footer {
+  margin-top: auto;
+}
+
+.createdAt {
+  margin: 0;
+  color: var(--color-gray-300);
+  flex-shrink: 0;
+}
