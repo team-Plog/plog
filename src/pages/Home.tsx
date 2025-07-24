@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Plus, Menu } from "lucide-react";
 import SearchBar from "../components/SearchBar";
-import { colors } from "../assets/colors";
+import { colors } from "../assets/styles/colors";
+import { typography } from '../assets//styles/typography';
 
 const Home: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -67,14 +68,13 @@ const Home: React.FC = () => {
             </button>
             <h1
               style={{
-                fontSize: "16px",
-                fontWeight: "bold",
+                ...typography.HeadingS,
                 color: colors.system.black,
-                whiteSpace: "nowrap",
+                whiteSpace: 'nowrap',
                 margin: 0,
               }}
             >
-              프로젝트 목록
+              내 프로젝트
             </h1>
           </div>
 
@@ -90,7 +90,7 @@ const Home: React.FC = () => {
               <SearchBar
                 value={searchTerm}
                 onChange={setSearchTerm}
-                placeholder="입력 내용"
+                placeholder="검색어를 입력하세요"
               />
             </div>
 
@@ -109,7 +109,7 @@ const Home: React.FC = () => {
                 transition: "background-color 0.2s",
               }}>
               <Plus style={{ width: "16px", height: "16px" }} />
-              <span style={{fontSize: 12}}>새 프로젝트 추가하기</span>
+              <span style={{ ...typography.Button }}>새 프로젝트 추가하기</span>
             </button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React from "react";
 import { Search } from "lucide-react";
-import { colors } from "../assets/colors";
+import { colors } from "../assets/styles/colors";
+import { typography } from '../assets//styles/typography';
 
 const SearchBar: React.FC<{
   value: string;
@@ -33,17 +34,9 @@ const SearchBar: React.FC<{
           border: 'none',
           borderRadius: '8px',
           color: colors.system.black,
-          fontSize: '12px',
           outline: 'none',
-          transition: 'all 0.2s'
-        }}
-        onFocus={(e) => {
-          e.target.style.backgroundColor = colors.system.white;
-          e.target.style.boxShadow = '0 0 0 2px'+ colors.accent.primary;
-        }}
-        onBlur={(e) => {
-          e.target.style.backgroundColor = '#F3F4F6';
-          e.target.style.boxShadow = 'none';
+          transition: 'all 0.2s',
+          ...typography.Body
         }}
       />
     </div>
