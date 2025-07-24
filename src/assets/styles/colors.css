@@ -1,0 +1,40 @@
+:root {
+  /* Base */
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Grayscale */
+  --color-gray-100: rgba(0, 0, 0, 0.03);
+  --color-gray-200: rgba(0, 0, 0, 0.3);
+  --color-gray-300: rgba(0, 0, 0, 0.5);
+
+  /* Accent */
+  --color-accent-primary: #00c0a9;
+  --color-accent-error: #ff0000;
+
+  /* Border / Background */
+  --color-border-primary: rgba(0, 0, 0, 0.07);
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f7f7f7;
+
+  /* HTTP Method Colors */
+  --color-http-get: #61affe;
+  --color-http-post: #49cc90;
+  --color-http-put: #fca130;
+  --color-http-delete: #f93e3e;
+  --color-http-patch: #50e3c2;
+  --color-http-head: #9012fe;
+  --color-http-options: #0d5aa7;
+  --color-http-trace: #909090;
+  --color-http-connect: #909090;
+
+  --color-http-get-bg: rgba(97, 175, 254, 0.2);
+  --color-http-post-bg: rgba(73, 204, 144, 0.2);
+  --color-http-put-bg: rgba(252, 161, 48, 0.2);
+  --color-http-delete-bg: rgba(249, 62, 62, 0.2);
+  --color-http-patch-bg: rgba(80, 227, 194, 0.2);
+  --color-http-head-bg: rgba(144, 18, 254, 0.2);
+  --color-http-options-bg: rgba(13, 90, 167, 0.2);
+  --color-http-trace-bg: rgba(144, 144, 144, 0.2);
+  --color-http-connect-bg: rgba(144, 144, 144, 0.2);
+}

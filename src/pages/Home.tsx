@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Plus, Menu } from "lucide-react";
 import SearchBar from "../components/SearchBar";
-import { colors } from "../assets/styles/colors";
+import '../assets/styles/colors.css';
 import { typography } from '../assets//styles/typography';
 
 const Home: React.FC = () => {
@@ -12,7 +12,7 @@ const Home: React.FC = () => {
     <div
       style={{
         minHeight: "100vh",
-        backgroundColor: colors.background.primary,
+        backgroundColor: "var(--color-background-primary)",
         margin: 0,
         padding: 0,
         width: "100vw",
@@ -22,7 +22,7 @@ const Home: React.FC = () => {
       {/* Header */}
       <header
         style={{
-          backgroundColor: colors.background.primary,
+          backgroundColor: "var(--color-background-primary)",
           padding: "24px",
           margin: 0,
           width: "100%",
@@ -51,7 +51,7 @@ const Home: React.FC = () => {
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               style={{
                 padding: "4px",
-                backgroundColor: colors.system.white,
+                backgroundColor: "var(--color-white)",
                 border: "none",
                 borderRadius: "4px",
                 cursor: "pointer",
@@ -62,14 +62,14 @@ const Home: React.FC = () => {
                 style={{
                   width: "24px",
                   height: "24px",
-                  color: colors.system.gray2,
+                  color: "var(--color-gray-200)",
                 }}
               />
             </button>
             <h1
               style={{
                 ...typography.HeadingS,
-                color: colors.system.black,
+                color: "var(--color-black)",
                 whiteSpace: 'nowrap',
                 margin: 0,
               }}
@@ -100,7 +100,7 @@ const Home: React.FC = () => {
                 alignItems: "center",
                 gap: "8px",
                 background: "linear-gradient(#606060 0%, #000000 100%)",
-                color: colors.system.white,
+                color: "var(--color-white)",
                 padding: "8px 16px",
                 borderRadius: "8px",
                 border: "none",
@@ -128,7 +128,7 @@ const Home: React.FC = () => {
         <div
           style={{
             textAlign: "center",
-            color: colors.system.gray3,
+            color: "var(--color-gray-300)",
             marginTop: "80px",
           }}
         >
