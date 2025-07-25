@@ -81,3 +81,19 @@
   font-style: normal;
   align-self: stretch;
 }
+
+.textareaFixed {
+  height: 128px;
+  overflow-y: auto;
+  resize: none;
+  line-height: var(--body-line-height);
+}
+
+.input::placeholder,
+.textareaFixed::placeholder {
+  color: var(--color-gray-200);
+  font-size: var(--body-font-size);
+  font-family: var(--body-font-family);
+  font-weight: var(--body-font-weight);
+  line-height: var(--body-line-height);
+}
