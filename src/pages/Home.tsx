@@ -1,10 +1,11 @@
-import React, { useState } from "react";
-import { Plus, Menu, CirclePlus } from "lucide-react";
-import { SearchBar } from "../components/Input";
-import { Button } from "../components/Button/Button";
+import React, {useState} from "react";
+import {Plus, Menu, CirclePlus} from "lucide-react";
+import {SearchBar} from "../components/Input";
+import {Button} from "../components/Button/Button";
 import ProjectCard from "../components/ProjectCard/ProjectCard";
-import type { ProjectCardProps } from "../components/ProjectCard/types";
+import type {ProjectCardProps} from "../components/ProjectCard/types";
 import MainModal from "../components/MainModal/MainModal";
+import Header from "../components/Header/Header";
 
 const Home: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -13,33 +14,35 @@ const Home: React.FC = () => {
   // 임시 프로젝트 데이터
   const mockProjects: ProjectCardProps[] = [
     {
-      id: '1',
-      title: 'API 부하 테스트 프로젝트',
-      description: '사용자 인증 API의 성능을 측정하고 병목 구간을 파악하기 위한 부하 테스트입니다.',
-      status: 'completed',
-      createdAt: '2024-01-15T09:30:00Z'
+      id: "1",
+      title: "API 부하 테스트 프로젝트",
+      description:
+        "사용자 인증 API의 성능을 측정하고 병목 구간을 파악하기 위한 부하 테스트입니다.",
+      status: "completed",
+      createdAt: "2024-01-15T09:30:00Z",
     },
     {
-      id: '2',
-      title: '결제 시스템 성능 테스트',
-      description: '결제 처리 시스템의 동시 접속자 처리 능력을 확인합니다.',
-      status: 'running',
-      createdAt: '2024-01-20T14:15:00Z'
+      id: "2",
+      title: "결제 시스템 성능 테스트",
+      description: "결제 처리 시스템의 동시 접속자 처리 능력을 확인합니다.",
+      status: "running",
+      createdAt: "2024-01-20T14:15:00Z",
     },
     {
-      id: '3',
-      title: '데이터베이스 쿼리 최적화',
-      description: '복잡한 조인 쿼리의 성능을 테스트하고 최적화 방안을 도출합니다.',
-      status: 'failed',
-      createdAt: '2024-01-18T11:45:00Z'
+      id: "3",
+      title: "데이터베이스 쿼리 최적화",
+      description:
+        "복잡한 조인 쿼리의 성능을 테스트하고 최적화 방안을 도출합니다.",
+      status: "failed",
+      createdAt: "2024-01-18T11:45:00Z",
     },
     {
-      id: '4',
-      title: '신규 기능 API 테스트',
-      description: '새로 개발된 API 엔드포인트들의 부하 테스트를 진행합니다.',
-      status: 'before',
-      createdAt: '2024-01-22T16:20:00Z'
-    }
+      id: "4",
+      title: "신규 기능 API 테스트",
+      description: "새로 개발된 API 엔드포인트들의 부하 테스트를 진행합니다.",
+      status: "before",
+      createdAt: "2024-01-22T16:20:00Z",
+    },
   ];
 
   const handleProjectClick = (projectId: string) => {
@@ -52,16 +55,16 @@ const Home: React.FC = () => {
 
   return (
     <div
-        style={{
-          transition: "filter 0.2s",
-          minHeight: "100vh",
-          backgroundColor: "var(--color-background-secondary)",
-          margin: 0,
-          padding: 0,
-          width: "100vw",
-          boxSizing: "border-box",
-        }}
-      >
+      style={{
+        transition: "filter 0.2s",
+        minHeight: "100vh",
+        backgroundColor: "var(--color-background-secondary)",
+        margin: 0,
+        paddingTop: "48px",
+        width: "100vw",
+        boxSizing: "border-box",
+      }}>
+      <Header />
       {/* Header */}
       <header
         style={{
@@ -69,8 +72,7 @@ const Home: React.FC = () => {
           margin: 0,
           width: "100%",
           boxSizing: "border-box",
-        }}
-      >
+        }}>
         <div
           style={{
             display: "flex",
@@ -79,16 +81,14 @@ const Home: React.FC = () => {
             width: "100%",
             margin: 0,
             padding: 0,
-          }}
-        >
+          }}>
           {/* Left Group - Menu and Title */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
               gap: "var(--spacing-sm)",
-            }}
-          >
+            }}>
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               style={{
@@ -97,8 +97,7 @@ const Home: React.FC = () => {
                 borderRadius: "var(--radius-sm)",
                 cursor: "pointer",
                 transition: "background-color 0.2s",
-              }}
-            >
+              }}>
               <Menu
                 style={{
                   width: "var(--icon-size-md)",
@@ -111,10 +110,9 @@ const Home: React.FC = () => {
               className="HeadingS"
               style={{
                 color: "var(--color-black)",
-                whiteSpace: 'nowrap',
+                whiteSpace: "nowrap",
                 margin: 0,
-              }}
-            >
+              }}>
               내 프로젝트
             </h1>
           </div>
@@ -125,14 +123,12 @@ const Home: React.FC = () => {
               display: "flex",
               alignItems: "center",
               gap: "8px",
-            }}
-          >
-            <div 
-              style={{ 
-                width: "320px", 
+            }}>
+            <div
+              style={{
+                width: "320px",
                 flexShrink: 0,
-              }}
-            >
+              }}>
               <SearchBar
                 value={searchTerm}
                 onChange={setSearchTerm}
@@ -140,11 +136,15 @@ const Home: React.FC = () => {
               />
             </div>
 
-            <Button 
-              variant="primaryGradient" 
-              onClick={() => setIsModalOpen(true)}
-            >
-              <Plus style={{ width: "var(--icon-size-md)", height: "var(--icon-size-md)" }} />
+            <Button
+              variant="primaryGradient"
+              onClick={() => setIsModalOpen(true)}>
+              <Plus
+                style={{
+                  width: "var(--icon-size-md)",
+                  height: "var(--icon-size-md)",
+                }}
+              />
               새 프로젝트 추가하기
             </Button>
           </div>
@@ -161,8 +161,7 @@ const Home: React.FC = () => {
           padding: "32px var(--spacing-lg)",
           width: "100%",
           boxSizing: "border-box",
-        }}
-      >
+        }}>
         {hasProjects ? (
           /* Projects Grid */
           <div
@@ -170,8 +169,7 @@ const Home: React.FC = () => {
               display: "grid",
               gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
               gap: "16px",
-            }}
-          >
+            }}>
             {mockProjects.map((project) => (
               <ProjectCard
                 key={project.id}
@@ -194,22 +192,21 @@ const Home: React.FC = () => {
               borderRadius: "var(--radius-lg)",
               padding: "64px",
               gap: "64px",
-            }}
-          >
+            }}>
             {/* Icon Container */}
             <div
               style={{
                 width: "200px",
                 height: "160px",
-                background: "linear-gradient(180deg, rgba(0, 0, 0, 0.07) 0%, rgba(0, 0, 0, 0.03) 100%)",
+                background:
+                  "linear-gradient(180deg, rgba(0, 0, 0, 0.07) 0%, rgba(0, 0, 0, 0.03) 100%)",
                 border: "1px solid var(--color-border-primary)",
                 borderRadius: "var(--radius-md)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 boxShadow: "0 4px 15px 0 rgba(0, 0, 0, 0.04) inset",
-              }}
-            >
+              }}>
               <CirclePlus
                 style={{
                   width: "48px",
@@ -226,15 +223,13 @@ const Home: React.FC = () => {
                 display: "flex",
                 flexDirection: "column",
                 gap: "var(--spacing-sm)",
-              }}
-            >
+              }}>
               <p
                 className="HeadingS"
                 style={{
                   color: "var(--color-black)",
                   margin: 0,
-                }}
-              >
+                }}>
                 아직 생성된 프로젝트가 없습니다
               </p>
               <p
@@ -242,8 +237,7 @@ const Home: React.FC = () => {
                 style={{
                   color: "var(--color-gray-300)",
                   margin: 0,
-                }}
-              >
+                }}>
                 부하 테스트를 시작하려면 새로운 프로젝트를 생성하세요.
               </p>
             </div>
