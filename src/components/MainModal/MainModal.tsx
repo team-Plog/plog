@@ -50,6 +50,7 @@ const MainModal: React.FC<MainModalProps> = ({onClose}) => {
               placeholder="프로젝트에 대한 상세 내용을 입력하세요."
               value={projectDescription}
               onChange={setProjectDescription}
+              multiline
             />
 
             <div className={styles.buttonGroup}>

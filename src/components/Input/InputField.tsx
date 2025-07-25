@@ -10,6 +10,7 @@ interface InputFieldProps {
   showClearButton?: boolean;
   width?: string | number;
   variant?: 'gray' | 'white';
+  multiline?: boolean;
 }
 
 const InputField: React.FC<InputFieldProps> = ({ 
@@ -18,7 +19,8 @@ const InputField: React.FC<InputFieldProps> = ({
   value, 
   onChange,
   showClearButton = true,
-  variant = 'white'
+  variant = 'white',
+  multiline = false,
 }) => {
   return (
     <BaseInput
@@ -29,6 +31,7 @@ const InputField: React.FC<InputFieldProps> = ({
       rightIcon={showClearButton && value ? <X /> : undefined}
       onRightIconClick={showClearButton && value ? () => onChange("") : undefined}
       variant={variant}
+      multiline={multiline}
     />
   );
 };
