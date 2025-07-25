@@ -35,7 +35,7 @@
 
 .card1 {
   position: absolute;
-  top: 15%;
+  top: 20%;
   transform: translateX(-42%);
   z-index: 1;
 }
@@ -47,7 +47,7 @@
 
 .card3 {
   position: absolute;
-  top: 15%;
+  top: 20%;
   transform: translateX(42%);
   z-index: 3;
 }
