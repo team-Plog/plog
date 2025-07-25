@@ -1,0 +1,93 @@
+.container {
+  background-color: var(--color-background-secondary);
+  padding-top: 40px;
+  width: 100vw;
+}
+
+.mainContent {
+  display: flex;
+  height: calc(100vh - 40px);
+  width: 100%;
+}
+
+/* 왼쪽 영역 스타일 */
+.leftSection {
+  flex: 1;
+  background-color: var(--color-background-secondary);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.scrollArea {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-lg);
+}
+
+.buttonContainer {
+  padding: 0 var(--spacing-lg) var(--spacing-lg) var(--spacing-lg);
+  display: flex;
+  justify-content: center;
+}
+
+/* 가운데 영역 스타일 */
+.centerSection {
+  flex: 2;
+  background-color: var(--color-white);
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-lg);
+  gap: var(--spacing-lg);
+}
+
+.projectInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.projectHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.projectSubtitle {
+  color: var(--color-gray-300);
+}
+
+.projectDescription {
+  background-color: var(--color-gray-100);
+  color: var(--color-gray-300);
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+}
+
+/* 오른쪽 영역 스타일 */
+.rightSection {
+  flex: 1;
+  background-color: var(--color-background-secondary);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.formArea {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-lg);
+}
+
+.inputContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.buttonGroup {
+  padding: 0 var(--spacing-lg) var(--spacing-lg) var(--spacing-lg);
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
