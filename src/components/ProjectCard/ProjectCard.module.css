@@ -49,7 +49,7 @@
 
 .description {
   margin: 0;
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-lg);
   color: var(--color-gray-300);
   word-break: break-word;
   display: -webkit-box;
