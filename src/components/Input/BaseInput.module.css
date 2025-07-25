@@ -7,6 +7,7 @@
 .inputWrapper {
   position: relative;
   width: 100%;
+  margin-top: var(--spacing-sm);
 }
 
 .input {
@@ -71,8 +72,11 @@
 }
 
 .title {
-  display: block;
-  font-size: 14px;
   color: var(--color-gray-300);
-  margin-bottom: var(--spacing-xs);
+  font-family: var(--title-s-font-family);
+  font-size: var(--title-s-font-size);
+  font-weight: var(--title-s-font-weight);
+  line-height: var(--title-s-line-height);
+  font-style: normal;
+  align-self: stretch;
 }
