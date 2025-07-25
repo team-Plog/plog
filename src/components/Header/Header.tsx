@@ -8,7 +8,7 @@ const Header: React.FC = () => {
     <div className={styles.header}>
       <div className="HeadingS">PLog</div>
       <div className={styles.moonIcon}>
-        <Moon size={20} />
+        <Moon />
       </div>
     </div>
   );
