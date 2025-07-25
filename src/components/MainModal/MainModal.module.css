@@ -21,7 +21,10 @@
 
 .imageContainer {
   height: 200px;
-  background: var(--gradient-point, linear-gradient(180deg, #bcfff7 0%, #fff 100%));
+  background: var(
+    --gradient-point,
+    linear-gradient(180deg, #bcfff7 0%, #fff 100%)
+  );
   border-radius: 8px;
   position: relative;
   display: flex;
@@ -30,7 +33,17 @@
 }
 
 .container {
-  padding: 16px;
+  /* padding: 16px; */
+}
+
+.inputContainer {
+  display: flex;
+  padding: var(--spacing-lg);
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 24px;
+  align-self: stretch;
 }
 
 .card1 {
@@ -68,3 +81,17 @@
   margin-top: 24px;
   gap: 12px;
 }
+
+.secondary {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-background-secondary);
+  color: var(--color-black);
+  padding: 10px 16px;
+  font-family: var(--button-font-family);
+  font-size: var(--button-font-size);
+  font-weight: var(--button-font-weight);
+  line-height: var(--button-line-height);
+  cursor: pointer;
+}
+
