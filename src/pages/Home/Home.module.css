@@ -1,0 +1,163 @@
+.container {
+  min-height: 100vh;
+  background-color: var(--color-background-secondary);
+  padding-top: 40px;
+  width: 100vw;
+}
+
+.content {
+  max-width: 992px;
+  margin: 0 auto;
+  padding: 64px 20px 0 20px;
+}
+
+/* Header 스타일 */
+.header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.headerInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin: 0;
+}
+
+.leftGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.menuButton {
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.2s;
+  padding: 4px;
+}
+
+.menuButton:hover {
+  background-color: var(--color-gray-100);
+}
+
+.menuIcon {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  color: var(--color-gray-200);
+}
+
+.title {
+  color: var(--color-black);
+  white-space: nowrap;
+  margin: 0;
+}
+
+.rightGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.searchContainer {
+  width: 320px;
+  flex-shrink: 0;
+}
+
+.buttonIcon {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+}
+
+/* Main Content 스타일 */
+.main {
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.projectsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+}
+
+/* Empty State 스타일 */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background-color: var(--color-gray-100);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  gap: 64px;
+}
+
+.emptyIconContainer {
+  width: 200px;
+  height: 160px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.07) 0%, rgba(0, 0, 0, 0.03) 100%);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.04) inset;
+}
+
+.emptyIcon {
+  width: 48px;
+  height: 48px;
+  color: rgba(0, 0, 0, 0.1);
+}
+
+.emptyTextContent {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.emptyTitle {
+  color: var(--color-black);
+  margin: 0;
+}
+
+.emptyDescription {
+  color: var(--color-gray-300);
+  margin: 0;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .content {
+    padding: 32px 16px 0 16px;
+  }
+  
+  .headerInner {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+  
+  .leftGroup {
+    justify-content: center;
+  }
+  
+  .rightGroup {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .searchContainer {
+    width: 100%;
+  }
+  
+  .projectsGrid {
+    justify-content: center;
+  }
+}
