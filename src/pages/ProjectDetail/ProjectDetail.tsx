@@ -5,8 +5,10 @@ import Header from "../../components/Header/Header";
 import styles from "./ProjectDetail.module.css";
 import {Play, Plus, Save} from "lucide-react";
 import UrlModal from "../../components/UrlModal/UrlModal";
+import {useNavigate} from "react-router-dom";
 
 const ProjectDetail: React.FC = () => {
+  const navigate = useNavigate();
   const [scenarioTitle, setScenarioTitle] = useState("");
   const [scenarioDescription, setScenarioDescription] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -24,7 +26,10 @@ const ProjectDetail: React.FC = () => {
             ))}
           </div>
           <div className={styles.buttonContainer}>
-            <Button variant="secondary" icon={<Plus />} onClick={() => setIsModalOpen(true)}>
+            <Button
+              variant="secondary"
+              icon={<Plus />}
+              onClick={() => setIsModalOpen(true)}>
               API 서버 등록
             </Button>
           </div>
@@ -72,7 +77,10 @@ const ProjectDetail: React.FC = () => {
             <Button variant="secondary" icon={<Save />}>
               임시 저장
             </Button>
-            <Button variant="primaryGradient" icon={<Play />}>
+            <Button
+              variant="primaryGradient"
+              icon={<Play />}
+              onClick={() => navigate("/test")}>
               테스트 실행하기
             </Button>
           </div>
