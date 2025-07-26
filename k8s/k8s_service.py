@@ -6,17 +6,19 @@ def create_k6_job_with_dashboard(job_name: str, script_filename: str, pvc_name: 
     """
     지정된 PVC에 있는 k6 스크립트를 K6_WEB_DASHBOARD 옵션으로 실행하는 Job 생성
     """
+    # mount_path = "/scripts"
+    mount_path = "/Users/jiwonp/mnt/k6-scripts"
 
     # 1. container 설정
     container = client.V1Container(
         name="k6",
         image="grafana/k6",
-        command=["sh", "-c", f"K6_WEB_DASHBOARD=true k6 run /scripts/{script_filename}"],
+        command=["sh", "-c", f"K6_WEB_DASHBOARD=true k6 run {mount_path}/{script_filename}"],
         ports=[client.V1ContainerPort(container_port=5665)],
         volume_mounts=[
             client.V1VolumeMount(
                 name="k6-script-volume",
-                mount_path="/scripts"
+                mount_path=f"{mount_path}"
             )
         ],
         env=[
