@@ -1,0 +1,46 @@
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background-color: var(--color-gray-100);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  gap: 64px;
+}
+
+.emptyIconContainer {
+  width: 200px;
+  height: 160px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.07) 0%, rgba(0, 0, 0, 0.03) 100%);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.04) inset;
+}
+
+.emptyIcon {
+  width: 48px;
+  height: 48px;
+  color: rgba(0, 0, 0, 0.1);
+}
+
+.emptyTextContent {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.emptyTitle {
+  color: var(--color-black);
+  margin: 0;
+}
+
+.emptyDescription {
+  color: var(--color-gray-300);
+  margin: 0;
+}
