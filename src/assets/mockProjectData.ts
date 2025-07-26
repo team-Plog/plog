@@ -7,6 +7,18 @@ export interface ProjectData {
   createdAt: string;
 }
 
+export interface ApiEndpoint {
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+  endpoint: string;
+  description: string;
+}
+
+export interface ApiGroup {
+  groupName: string;
+  baseUrl: string;
+  endpoints: ApiEndpoint[];
+}
+
 export const mockProjects: ProjectData[] = [
   {
     id: "1",
@@ -42,7 +54,296 @@ export const mockProjects: ProjectData[] = [
   },
 ];
 
+// 프로젝트별 API 그룹 데이터
+export const mockApiGroups: { [projectId: string]: ApiGroup[] } = {
+  "1": [
+    {
+      groupName: "인증 관리",
+      baseUrl: "https://api.medeasy.com/auth",
+      endpoints: [
+        {
+          method: "POST",
+          endpoint: "/login",
+          description: "사용자 로그인"
+        },
+        {
+          method: "POST",
+          endpoint: "/logout",
+          description: "사용자 로그아웃"
+        },
+        {
+          method: "POST",
+          endpoint: "/refresh",
+          description: "토큰 갱신"
+        },
+        {
+          method: "GET",
+          endpoint: "/profile",
+          description: "사용자 프로필 조회"
+        }
+      ]
+    },
+    {
+      groupName: "복약 관리",
+      baseUrl: "https://api.medeasy.com/medication",
+      endpoints: [
+        {
+          method: "GET",
+          endpoint: "/routine",
+          description: "복약 루틴 조회"
+        },
+        {
+          method: "POST",
+          endpoint: "/routine",
+          description: "복약 루틴 등록"
+        },
+        {
+          method: "PUT",
+          endpoint: "/routine/{id}",
+          description: "복약 루틴 수정"
+        },
+        {
+          method: "DELETE",
+          endpoint: "/routine/{id}",
+          description: "복약 루틴 삭제"
+        },
+        {
+          method: "POST",
+          endpoint: "/check",
+          description: "복약 체크"
+        }
+      ]
+    },
+    {
+      groupName: "NFC 관리",
+      baseUrl: "https://api.medeasy.com/nfc",
+      endpoints: [
+        {
+          method: "POST",
+          endpoint: "/register",
+          description: "NFC 태그 등록"
+        },
+        {
+          method: "GET",
+          endpoint: "/scan/{tagId}",
+          description: "NFC 태그 스캔"
+        },
+        {
+          method: "DELETE",
+          endpoint: "/tag/{id}",
+          description: "NFC 태그 삭제"
+        }
+      ]
+    },
+    {
+      groupName: "알림 시스템",
+      baseUrl: "https://api.medeasy.com/notification",
+      endpoints: [
+        {
+          method: "GET",
+          endpoint: "/list",
+          description: "알림 목록 조회"
+        },
+        {
+          method: "POST",
+          endpoint: "/send",
+          description: "알림 발송"
+        },
+        {
+          method: "PUT",
+          endpoint: "/{id}/read",
+          description: "알림 읽음 처리"
+        }
+      ]
+    }
+  ],
+  "2": [
+    {
+      groupName: "결제 처리",
+      baseUrl: "https://api.payment.com/pay",
+      endpoints: [
+        {
+          method: "POST",
+          endpoint: "/request",
+          description: "결제 요청"
+        },
+        {
+          method: "POST",
+          endpoint: "/confirm",
+          description: "결제 확인"
+        },
+        {
+          method: "POST",
+          endpoint: "/cancel",
+          description: "결제 취소"
+        },
+        {
+          method: "GET",
+          endpoint: "/status/{paymentId}",
+          description: "결제 상태 조회"
+        }
+      ]
+    },
+    {
+      groupName: "환불 관리",
+      baseUrl: "https://api.payment.com/refund",
+      endpoints: [
+        {
+          method: "POST",
+          endpoint: "/request",
+          description: "환불 요청"
+        },
+        {
+          method: "GET",
+          endpoint: "/status/{refundId}",
+          description: "환불 상태 조회"
+        },
+        {
+          method: "POST",
+          endpoint: "/approve",
+          description: "환불 승인"
+        }
+      ]
+    },
+    {
+      groupName: "결제 수단",
+      baseUrl: "https://api.payment.com/method",
+      endpoints: [
+        {
+          method: "GET",
+          endpoint: "/list",
+          description: "결제 수단 목록"
+        },
+        {
+          method: "POST",
+          endpoint: "/card/register",
+          description: "카드 등록"
+        },
+        {
+          method: "DELETE",
+          endpoint: "/card/{cardId}",
+          description: "카드 삭제"
+        }
+      ]
+    }
+  ],
+  "3": [
+    {
+      groupName: "사용자 관리",
+      baseUrl: "https://api.database.com/user",
+      endpoints: [
+        {
+          method: "GET",
+          endpoint: "/list",
+          description: "사용자 목록 조회 (복잡한 조인)"
+        },
+        {
+          method: "GET",
+          endpoint: "/{id}/orders",
+          description: "사용자별 주문 내역 (다중 테이블 조인)"
+        },
+        {
+          method: "GET",
+          endpoint: "/analytics",
+          description: "사용자 분석 데이터 (집계 쿼리)"
+        }
+      ]
+    },
+    {
+      groupName: "주문 데이터",
+      baseUrl: "https://api.database.com/order",
+      endpoints: [
+        {
+          method: "GET",
+          endpoint: "/report",
+          description: "주문 리포트 (복잡한 집계)"
+        },
+        {
+          method: "GET",
+          endpoint: "/statistics",
+          description: "주문 통계 (다중 조인 + 그룹핑)"
+        }
+      ]
+    }
+  ],
+  "4": [
+    {
+      groupName: "실시간 알림",
+      baseUrl: "https://api.newfeature.com/notification",
+      endpoints: [
+        {
+          method: "POST",
+          endpoint: "/websocket/connect",
+          description: "웹소켓 연결"
+        },
+        {
+          method: "POST",
+          endpoint: "/push/send",
+          description: "푸시 알림 발송"
+        },
+        {
+          method: "GET",
+          endpoint: "/history",
+          description: "알림 히스토리"
+        }
+      ]
+    },
+    {
+      groupName: "파일 관리",
+      baseUrl: "https://api.newfeature.com/file",
+      endpoints: [
+        {
+          method: "POST",
+          endpoint: "/upload",
+          description: "파일 업로드"
+        },
+        {
+          method: "GET",
+          endpoint: "/download/{fileId}",
+          description: "파일 다운로드"
+        },
+        {
+          method: "DELETE",
+          endpoint: "/{fileId}",
+          description: "파일 삭제"
+        },
+        {
+          method: "GET",
+          endpoint: "/list",
+          description: "파일 목록 조회"
+        }
+      ]
+    },
+    {
+      groupName: "검색 기능",
+      baseUrl: "https://api.newfeature.com/search",
+      endpoints: [
+        {
+          method: "GET",
+          endpoint: "/query",
+          description: "통합 검색"
+        },
+        {
+          method: "GET",
+          endpoint: "/autocomplete",
+          description: "자동완성"
+        },
+        {
+          method: "POST",
+          endpoint: "/index",
+          description: "검색 인덱스 업데이트"
+        }
+      ]
+    }
+  ]
+};
+
 // 프로젝트 ID로 특정 프로젝트 데이터를 찾는 헬퍼 함수
 export const getProjectById = (id: string): ProjectData | undefined => {
   return mockProjects.find(project => project.id === id);
+};
+
+// 프로젝트 ID로 해당 프로젝트의 API 그룹 데이터를 찾는 헬퍼 함수
+export const getApiGroupsByProjectId = (projectId: string): ApiGroup[] => {
+  return mockApiGroups[projectId] || [];
 };
