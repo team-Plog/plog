@@ -9,3 +9,10 @@ export interface ProjectCardProps {
   onClick?: (projectId: string) => void;
   className?: string;
 }
+
+export interface MetricCardProps {
+  icon?: React.ReactNode;
+  label: string;      
+  value: string;     
+  className?: string; 
+}

@@ -1,0 +1,42 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-lg);
+  background-color: var(--color-white);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  max-width: 213px;
+  box-sizing: border-box;
+}
+
+.iconLabelGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-gray-300);
+}
+
+.iconWrapper {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  background-color: var(--color-border-primary);
+}
+
+.iconWrapper svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.texts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
