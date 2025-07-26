@@ -3,7 +3,7 @@ from app.api import api_router
 from app.sse import sse_router
 from app.db.sqlite.database import engine
 from app.db.sqlite import models
-from app.exceptionhandler import register_exception_handler
+from app.common.exceptionhandler import register_exception_handler
 from k8s.k8s_client import v1_core
 app = FastAPI(
     title="Metric Vault API",

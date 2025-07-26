@@ -7,8 +7,8 @@ from app.db.sqlite.models import OpenAPISpecModel
 from app.dto.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 
 from app.dto.project.openapi import OpenAPISpec
-from app.response.code import SuccessCode
-from app.response.response_template import ResponseTemplate
+from app.common.response.code import SuccessCode
+from app.common.response.response_template import ResponseTemplate
 from app.services import *
 
 router = APIRouter()

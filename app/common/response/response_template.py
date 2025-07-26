@@ -2,7 +2,7 @@ from typing import Any
 
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
-from app.response.code import BaseCode
+from app.common.response.code import BaseCode
 
 class ResponseTemplate:
     def __init__(self, success: bool, message: str, status_code: int, data: Any = None):

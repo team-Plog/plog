@@ -1,4 +1,4 @@
-from app.response.code.base_code import BaseCode
+from app.common.response.code.base_code import BaseCode
 
 class SuccessCode(BaseCode):
     SUCCESS_CODE = ("요청 처리에 성공하였습니다.", 200)
