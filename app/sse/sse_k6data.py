@@ -29,7 +29,8 @@ async def event_stream():
         if data:
             yield f"data: {json.dumps(data)}\n\n"
         else:
-            yield f"data: {json.dumps({"time": None, "tps": 0})}\n\n"
+            data = {"time": None, "tps": 0}
+            yield f"data: {json.dumps(data)}\n\n"
         await asyncio.sleep(5)   # 1초마다 전송
 
 
