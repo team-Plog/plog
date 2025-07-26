@@ -1,14 +1,16 @@
-import React, { useState } from "react";
-import { Plus, Menu, CirclePlus } from "lucide-react";
-import { SearchBar } from "../../components/Input";
-import { Button } from "../../components/Button/Button";
+import React, {useState} from "react";
+import {useNavigate} from "react-router-dom";
+import {Plus, Menu, CirclePlus} from "lucide-react";
+import {SearchBar} from "../../components/Input";
+import {Button} from "../../components/Button/Button";
 import ProjectCard from "../../components/ProjectCard/ProjectCard";
-import type { ProjectCardProps } from "../../components/ProjectCard/types";
+import type {ProjectCardProps} from "../../components/ProjectCard/types";
 import MainModal from "../../components/MainModal/MainModal";
 import Header from "../../components/Header/Header";
 import styles from "./Home.module.css";
 
 const Home: React.FC = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -46,8 +48,8 @@ const Home: React.FC = () => {
     },
   ];
 
-  const handleProjectClick = (projectId: string) => {
-    console.log("Project clicked:", projectId);
+  const handleProjectClick = () => {
+    navigate("/projectDetail");
   };
 
   // 프로젝트가 있는지 확인 (테스트를 위해 false로 설정하면 Empty State 확인 가능)
@@ -65,13 +67,10 @@ const Home: React.FC = () => {
             <div className={styles.leftGroup}>
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className={styles.menuButton}
-              >
+                className={styles.menuButton}>
                 <Menu className={styles.menuIcon} />
               </button>
-              <h1 className={`HeadingS ${styles.title}`}>
-                내 프로젝트
-              </h1>
+              <h1 className={`HeadingS ${styles.title}`}>내 프로젝트</h1>
             </div>
 
             {/* Right Group - Search Bar and Button */}
@@ -87,8 +86,7 @@ const Home: React.FC = () => {
               <Button
                 variant="primaryGradient"
                 onClick={() => setIsModalOpen(true)}
-              >
-                <Plus className={styles.buttonIcon} />
+                icon={<Plus />}>
                 새 프로젝트 추가하기
               </Button>
             </div>

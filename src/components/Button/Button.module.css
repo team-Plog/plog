@@ -1,7 +1,9 @@
 .buttonPrimaryGradient {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--spacing-sm);
+  flex: 1 0 0;
   background: var(--gradient-button);
   color: var(--color-white);
   padding: var(--spacing-sm) var(--spacing-lg);
@@ -33,4 +35,11 @@
   font-weight: var(--button-font-weight);
   line-height: var(--button-line-height);
   cursor: pointer;
+}
+
+.iconWrapper {
+  display: inline-flex;
+  align-items: center;
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
 }
