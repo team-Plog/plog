@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
 
@@ -17,7 +17,7 @@ class TagResponse(BaseModel):
     id: int
     name: Optional[str]
     description: Optional[str]
-    endpoints: List[EndpointResponse] = []
+    endpoints: Optional[List[EndpointResponse]] = None
 
     model_config = {
         "from_attributes": True
@@ -29,7 +29,7 @@ class OpenAPISpecResponse(BaseModel):
     title: Optional[str]
     version: Optional[str]
     base_url: str
-    tags: List[TagResponse] = []
+    tags: Optional[List[TagResponse]]
 
     model_config = {
         "from_attributes": True
@@ -41,7 +41,7 @@ class ProjectDetailResponse(BaseModel):
     title: str
     summary: str
     description: str
-    openapi_specs: List[OpenAPISpecResponse] = []
+    openapi_specs: Optional[List[OpenAPISpecResponse]]
 
     model_config = {
         "from_attributes": True
