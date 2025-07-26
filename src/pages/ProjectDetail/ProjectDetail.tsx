@@ -1,20 +1,56 @@
-import React, {useRef, useState} from "react";
+import React, {useState, useEffect} from "react";
+import {useLocation, useNavigate} from "react-router-dom";
 import {InputField} from "../../components/Input";
 import {Button} from "../../components/Button/Button";
 import Header from "../../components/Header/Header";
 import styles from "./ProjectDetail.module.css";
 import {MoreHorizontal, Play, Plus, Save} from "lucide-react";
 import UrlModal from "../../components/UrlModal/UrlModal";
-import {useNavigate} from "react-router-dom";
 import ActionMenu from "../../components/ActionMenu/ActionMenu";
+import {getProjectById} from "../../assets/mockProjectData";
+import type {ProjectData} from "../../assets/mockProjectData";
 
 const ProjectDetail: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const projectId = location.state?.projectId;
+  const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [scenarioTitle, setScenarioTitle] = useState("");
   const [scenarioDescription, setScenarioDescription] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    console.log("ProjectDetail useEffect - projectId:", projectId);
+    if (projectId) {
+      const project = getProjectById(projectId);
+      console.log("Found project:", project);
+      if (project) {
+        setProjectData(project);
+      } else {
+        console.log("Project not found, redirecting to home");
+        // 프로젝트를 찾을 수 없으면 홈으로 리다이렉트
+        navigate("/");
+      }
+    } else {
+      console.log("No projectId provided");
+      navigate("/");
+    }
+  }, [projectId, navigate]);
+
+  // 프로젝트 데이터가 로드되지 않았으면 로딩 상태 표시
+  if (!projectData) {
+    return (
+      <div className={styles.container}>
+        <Header />
+        <div className={styles.mainContent}>
+          <div style={{padding: "20px", textAlign: "center"}}>
+            프로젝트를 불러오는 중...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -43,7 +79,7 @@ const ProjectDetail: React.FC = () => {
           <div className={styles.projectInfo}>
             <div className={styles.projectHeader}>
               <div className={styles.projectTitle}>
-                <div className="HeadingS">MedEasy Project</div>
+                <div className="HeadingS">{projectData.title}</div>
                 <button
                   className={styles.menuButton}
                   onClick={(e) => {
@@ -67,16 +103,11 @@ const ProjectDetail: React.FC = () => {
                 )}
               </div>
               <div className={`Body ${styles.projectSubtitle}`}>
-                고령자 및 만성질환자를 위한 복약관리 자동화 테스트 프로젝트
+                {projectData.description}
               </div>
             </div>
             <div className={`CaptionLight ${styles.projectDescription}`}>
-              MedEasy는 고령자 및 디지털 소외계층을 위한 복약 관리 플랫폼입니다.
-              본 프로젝트는 MedEasy 시스템의 주요 API들에 대해 부하 테스트를
-              수행하고, 로그인, 복약 등록, NFC 기반 체크, 보호자 알림 등 핵심
-              기능의 안정성과 확장성을 검증하는 것을 목표로 합니다. 또한,
-              OpenAPI를 통해 자동으로 API를 가져오고, 시나리오 기반 테스트
-              구성이 가능하도록 설계되었습니다.
+              {projectData.detailedDescription}
             </div>
           </div>
         </div>
