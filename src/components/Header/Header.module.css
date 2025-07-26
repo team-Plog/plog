@@ -20,14 +20,12 @@
   gap: var(--spacing-sm);
 }
 
-.circleIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--color-gray-300);
+.filledCircle {
   width: var(--icon-size-md);
   height: var(--icon-size-md);
+  background-color: var(--color-gray-300);
+  border-radius: 50%;
+  cursor: pointer;
   transition: background-color 0.2s;
 }
 
