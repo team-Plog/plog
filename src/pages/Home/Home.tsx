@@ -1,12 +1,13 @@
 import React, {useState} from "react";
 import {useNavigate} from "react-router-dom";
-import {Plus, Menu, CirclePlus} from "lucide-react";
+import {Plus, Menu} from "lucide-react";
 import {SearchBar} from "../../components/Input";
 import {Button} from "../../components/Button/Button";
 import ProjectCard from "../../components/ProjectCard/ProjectCard";
 import type {ProjectCardProps} from "../../components/ProjectCard/types";
 import MainModal from "../../components/MainModal/MainModal";
 import Header from "../../components/Header/Header";
+import EmptyProjectState from "../../components/EmptyState/EmptyProjectState";
 import styles from "./Home.module.css";
 
 const Home: React.FC = () => {
@@ -109,23 +110,8 @@ const Home: React.FC = () => {
               ))}
             </div>
           ) : (
-            /* Empty State Container */
-            <div className={styles.emptyState}>
-              {/* Icon Container */}
-              <div className={styles.emptyIconContainer}>
-                <CirclePlus className={styles.emptyIcon} />
-              </div>
-
-              {/* Text Content */}
-              <div className={styles.emptyTextContent}>
-                <p className={`HeadingS ${styles.emptyTitle}`}>
-                  아직 생성된 프로젝트가 없습니다.
-                </p>
-                <p className={`Body ${styles.emptyDescription}`}>
-                  부하 테스트를 시작하려면 새로운 프로젝트를 생성하세요.
-                </p>
-              </div>
-            </div>
+            /* Empty State */
+            <EmptyProjectState />
           )}
         </main>
       </div>
