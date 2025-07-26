@@ -22,7 +22,6 @@
 .scrollArea {
   flex: 1;
   overflow-y: auto;
-  padding: var(--spacing-lg);
 }
 
 .buttonContainer {
@@ -37,7 +36,6 @@
   background-color: var(--color-white);
   display: flex;
   flex-direction: column;
-  padding: var(--spacing-lg);
   gap: var(--spacing-lg);
 }
 
@@ -45,6 +43,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
 }
 
 .projectHeader {
@@ -86,6 +85,20 @@
   color: var(--color-gray-300);
   padding: var(--spacing-lg);
   border-radius: var(--radius-md);
+}
+
+.divider {
+  width: 100%;
+  height: 1px;
+  background-color: var(--color-border-primary);
+  margin: var(--spacing-lg) 0;
+}
+
+.apiGroupsSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
 }
 
 /* 오른쪽 영역 스타일 */
