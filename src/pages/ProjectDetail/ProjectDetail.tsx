@@ -1,17 +1,20 @@
-import React, {useState} from "react";
+import React, {useRef, useState} from "react";
 import {InputField} from "../../components/Input";
 import {Button} from "../../components/Button/Button";
 import Header from "../../components/Header/Header";
 import styles from "./ProjectDetail.module.css";
-import {Play, Plus, Save} from "lucide-react";
+import {MoreHorizontal, Play, Plus, Save} from "lucide-react";
 import UrlModal from "../../components/UrlModal/UrlModal";
 import {useNavigate} from "react-router-dom";
+import ActionMenu from "../../components/ActionMenu/ActionMenu";
 
 const ProjectDetail: React.FC = () => {
   const navigate = useNavigate();
   const [scenarioTitle, setScenarioTitle] = useState("");
   const [scenarioDescription, setScenarioDescription] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className={styles.container}>
@@ -39,7 +42,30 @@ const ProjectDetail: React.FC = () => {
         <div className={styles.centerSection}>
           <div className={styles.projectInfo}>
             <div className={styles.projectHeader}>
-              <div className="HeadingS">MedEasy Project</div>
+              <div className={styles.projectTitle}>
+                <div className="HeadingS">MedEasy Project</div>
+                <button
+                  className={styles.menuButton}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(!menuOpen);
+                  }}
+                  aria-label="프로젝트 메뉴"
+                  type="button">
+                  <MoreHorizontal />
+                </button>
+                {menuOpen && (
+                  <ActionMenu
+                    onEdit={() => {
+                      setMenuOpen(false);
+                    }}
+                    onDelete={() => {
+                      setMenuOpen(false);
+                    }}
+                    onClose={() => setMenuOpen(false)}
+                  />
+                )}
+              </div>
               <div className={`Body ${styles.projectSubtitle}`}>
                 고령자 및 만성질환자를 위한 복약관리 자동화 테스트 프로젝트
               </div>

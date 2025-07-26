@@ -17,6 +17,7 @@
   align-items: center;
   gap: var(--spacing-sm);
   color: var(--color-gray-300);
+  margin-bottom: var(--spacing-md);
 }
 
 .iconWrapper {
@@ -26,7 +27,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 10px;
+  gap: var(--spacing-sm);
   background-color: var(--color-border-primary);
 }
 
@@ -35,8 +36,22 @@
   height: var(--icon-size-sm);
 }
 
-.texts {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.tps {
+  background-color: var(--color-http-get-bg);
+  color: var(--color-http-get);
+}
+
+.response {
+  background-color: var(--color-http-post-bg);
+  color: var(--color-http-post);
+}
+
+.error {
+  background-color: var(--color-http-delete-bg);
+  color: var(--color-http-delete);
+}
+
+.user {
+  background-color: var(--color-http-head-bg);
+  color: var(--color-http-head);
 }
