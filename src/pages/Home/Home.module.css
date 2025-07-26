@@ -66,11 +66,6 @@
   flex-shrink: 0;
 }
 
-.buttonIcon {
-  width: var(--icon-size-md);
-  height: var(--icon-size-md);
-}
-
 /* Main Content 스타일 */
 .main {
   margin: 0 auto;

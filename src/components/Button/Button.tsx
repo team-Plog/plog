@@ -10,6 +10,7 @@ interface ButtonProps {
   type?: 'button' | 'submit' | 'reset';
   className?: string;
   useInlineStyle?: boolean; // CSS 클래스 vs 인라인 스타일 선택
+  icon?: React.ReactNode;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -20,6 +21,7 @@ export const Button: React.FC<ButtonProps> = ({
   type = 'button',
   className = '',
   useInlineStyle = false,
+  icon
 }) => {
   if (!useInlineStyle) {
     const buttonClass = variant === 'primaryGradient' 
@@ -33,6 +35,7 @@ export const Button: React.FC<ButtonProps> = ({
         onClick={onClick}
         disabled={disabled}
       >
+        {icon && <span className={styles.iconWrapper}>{icon}</span>}
         {children}
       </button>
     );
