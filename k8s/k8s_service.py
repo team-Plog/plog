@@ -6,8 +6,8 @@ def create_k6_job_with_dashboard(job_name: str, script_filename: str, pvc_name: 
     """
     지정된 PVC에 있는 k6 스크립트를 K6_WEB_DASHBOARD 옵션으로 실행하는 Job 생성
     """
-    # mount_path = "/scripts"
-    mount_path = "/Users/jiwonp/mnt/k6-scripts"
+    mount_path = "/scripts"
+    # mount_path = "/Users/jiwonp/mnt/k6-scripts"
 
     # 1. container 설정
     container = client.V1Container(
