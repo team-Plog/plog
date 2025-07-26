@@ -34,3 +34,7 @@
   height: var(--icon-size-sm);
   color: var(--color-gray-200);
 }
+
+.item:hover {
+  background-color: var(--color-gray-100);
+}

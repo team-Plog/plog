@@ -107,3 +107,7 @@
   width: var(--icon-size-md);
   height: var(--icon-size-md);
 }
+
+.addButton:hover {
+  background-color: var(--color-gray-100);
+}
