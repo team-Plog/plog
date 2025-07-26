@@ -1,0 +1,68 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background-color: var(--color-white);
+  border-radius: 12px;
+  box-shadow: 0px 4px 16px rgba(0, 0, 0, 0.1);
+  width: 480px;
+  height: 348px;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.imageContainer {
+  height: 200px;
+  background: var(
+    --gradient-point,
+    linear-gradient(180deg, #bcfff7 0%, #fff 100%)
+  );
+  border-radius: 8px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image {
+  position: absolute;
+  top: 48px;
+}
+
+.container {
+  /* padding: 16px; */
+}
+
+.inputContainer {
+  display: flex;
+  padding: var(--spacing-lg);
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 24px;
+  align-self: stretch;
+}
+
+.closeButton {
+  margin-top: 16px;
+  padding: 8px 12px;
+  background-color: var(--color-gray-200);
+  color: var(--color-white);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.buttonGroup {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
