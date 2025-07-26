@@ -4,13 +4,16 @@ import {Button} from "../../components/Button/Button";
 import Header from "../../components/Header/Header";
 import styles from "./ProjectDetail.module.css";
 import {Play, Plus, Save} from "lucide-react";
+import UrlModal from "../../components/UrlModal/UrlModal";
 
 const ProjectDetail: React.FC = () => {
   const [scenarioTitle, setScenarioTitle] = useState("");
   const [scenarioDescription, setScenarioDescription] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
     <div className={styles.container}>
+      {isModalOpen && <UrlModal onClose={() => setIsModalOpen(false)} />}
       <Header />
       <div className={styles.mainContent}>
         {/* 왼쪽 영역 */}
@@ -21,7 +24,7 @@ const ProjectDetail: React.FC = () => {
             ))}
           </div>
           <div className={styles.buttonContainer}>
-            <Button variant="secondary" icon={<Plus />}>
+            <Button variant="secondary" icon={<Plus />} onClick={() => setIsModalOpen(true)}>
               API 서버 등록
             </Button>
           </div>

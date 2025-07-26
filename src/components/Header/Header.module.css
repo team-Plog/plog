@@ -14,13 +14,30 @@
   box-sizing: border-box;
 }
 
+.title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.circleIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--color-gray-300);
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  transition: background-color 0.2s;
+}
+
 .moonIcon {
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  color: var(--color-gray-300);
   width: var(--icon-size-md);
   height: var(--icon-size-md);
-  border-radius: 4px;
   transition: background-color 0.2s;
 }
