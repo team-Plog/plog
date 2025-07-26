@@ -42,7 +42,7 @@
   flex-direction: column;
   justify-content: center;
   align-items: flex-end;
-  gap: 24px;
+  gap: 22px;
   align-self: stretch;
 }
 
@@ -63,16 +63,6 @@
   top: 20%;
   transform: translateX(42%);
   z-index: 3;
-}
-
-.closeButton {
-  margin-top: 16px;
-  padding: 8px 12px;
-  background-color: var(--color-gray-200);
-  color: var(--color-white);
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
 }
 
 .buttonGroup {
