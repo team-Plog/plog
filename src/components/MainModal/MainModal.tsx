@@ -4,8 +4,9 @@ import styles from "./MainModal.module.css";
 import ProjectCard1 from "../../assets/images/projectCard1.svg";
 import ProjectCard2 from "../../assets/images/projectCard2.svg";
 import ProjectCard3 from "../../assets/images/projectCard3.svg";
-import { InputField } from "../Input";
+import {InputField} from "../Input";
 import {Button} from "../Button/Button";
+import { createProject } from "../../api";
 
 interface MainModalProps {
   onClose: () => void;
@@ -16,9 +17,19 @@ const MainModal: React.FC<MainModalProps> = ({onClose}) => {
   const [projectSummary, setProjectSummary] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
 
-  const handleSave = () => {
-    console.log("저장하기");
-    onClose();
+  const handleSave = async () => {
+    try {
+      await createProject({
+        title: projectName,
+        summary: projectSummary,
+        description: projectDescription,
+      });
+      console.log("✅ 프로젝트 생성 성공");
+      onClose();
+    } catch (error) {
+      console.error("❌ 프로젝트 생성 실패:", error);
+      // 필요 시 사용자 알림 처리도 추가
+    }
   };
 
   return (

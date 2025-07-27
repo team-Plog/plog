@@ -8,9 +8,9 @@ import ActionMenu from "../ActionMenu/ActionMenu";
 const ProjectCard: React.FC<ProjectCardProps> = ({
   id,
   title,
-  description,
+  summary,
   status,
-  createdAt,
+  updatedAt,
   onClick,
   className = "",
 }) => {
@@ -29,7 +29,8 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
     console.log("Menu clicked for project:", id);
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "날짜 없음";
     const date = new Date(dateString);
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -50,7 +51,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
         }
       }}>
       <div className={styles.badgeRow}>
-        <StatusBadge status={status} />
+        <StatusBadge status={status ?? 'before'} />
         <button
           className={styles.menuButton}
           onClick={(e) => {
@@ -83,11 +84,11 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
 
       <h3 className={`${styles.title} HeadingS`}>{title}</h3>
 
-      <p className={`${styles.description} Body`}>{description}</p>
+      <p className={`${styles.summary} Body`}>{summary}</p>
 
       <div className={styles.footer}>
-        <p className={`${styles.createdAt} CaptionBold`}>
-          {formatDate(createdAt)}
+        <p className={`${styles.updated_at} CaptionBold`}>
+          {formatDate(updatedAt)}
         </p>
       </div>
     </div>
