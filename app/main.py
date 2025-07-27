@@ -1,11 +1,11 @@
 from fastapi import FastAPI
-from starlette.middleware.cors import CORSMiddleware
 
 from app.api import api_router
 from app.sse import sse_router
 from app.db.sqlite.database import engine
 from app.db.sqlite import models
 from app.common.exceptionhandler import register_exception_handler
+from app.common.middleware.cors_middleware import register_cors_middleware
 from k8s.k8s_client import v1_core
 app = FastAPI(
     title="Metric Vault API",
@@ -16,13 +16,7 @@ app = FastAPI(
 app.include_router(api_router)
 app.include_router(sse_router)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"]
-)
+register_cors_middleware(app)
 
 
 # init table
