@@ -4,8 +4,10 @@ import HttpMethodTag from '../Tag/HttpMethodTag';
 import styles from './ApiGroupCard.module.css';
 
 interface ApiEndpoint {
+  id: number;
+  path: string;
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-  endpoint: string;
+  summary: string;
   description: string;
 }
 
@@ -50,19 +52,19 @@ const ApiGroupCard: React.FC<ApiGroupCardProps> = ({
       
       {isExpanded && (
         <div className={styles.endpointsContainer}>
-          {endpoints.map((endpoint, index) => (
-            <div key={index} className={styles.endpointItem}>
+          {endpoints.map((endpoint) => (
+            <div key={endpoint.id} className={styles.endpointItem}>
               <div className={styles.endpointInfo}>
                 <HttpMethodTag method={endpoint.method} />
-                <span className={`${styles.endpoint} CaptionBold`}>{endpoint.endpoint}</span>
-                <span className={`${styles.description} CaptionLight`}>{endpoint.description}</span>
+                <span className={`${styles.endpoint} CaptionBold`}>{endpoint.path}</span>
+                <span className={`${styles.description} CaptionLight`}>{endpoint.summary}</span>
               </div>
               <button 
                 className={styles.addButton} 
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleAddEndpoint(endpoint.endpoint);
+                  handleAddEndpoint(endpoint.path);
                 }}
               >
                 <Plus />

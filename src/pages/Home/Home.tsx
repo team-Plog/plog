@@ -7,7 +7,6 @@ import ProjectCard from "../../components/ProjectCard/ProjectCard";
 import MainModal from "../../components/MainModal/MainModal";
 import Header from "../../components/Header/Header";
 import EmptyProjectState from "../../components/EmptyState/EmptyProjectState";
-import {mockProjects} from "../../assets/mockProjectData";
 import styles from "./Home.module.css";
 import {getProjectList} from "../../api";
 import type { TestStatus } from "../../components/Tag";
