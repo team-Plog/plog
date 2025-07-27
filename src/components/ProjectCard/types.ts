@@ -1,12 +1,12 @@
 import type { TestStatus } from '../Tag/types';
 
 export interface ProjectCardProps {
-  id: string;
+  id: number;
   title: string;
-  description: string;
+  summary: string;
   status: TestStatus;
-  createdAt: string;
-  onClick?: (projectId: string) => void;
+  updatedAt: string | null;
+  onClick?: (projectId: number) => void;
   className?: string;
 }
 
