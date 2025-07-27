@@ -6,7 +6,8 @@ import ProjectCard2 from "../../assets/images/projectCard2.svg";
 import ProjectCard3 from "../../assets/images/projectCard3.svg";
 import {InputField} from "../Input";
 import {Button} from "../Button/Button";
-import { createProject } from "../../api";
+import {createProject} from "../../api";
+import {useNavigate} from "react-router-dom";
 
 interface MainModalProps {
   onClose: () => void;
@@ -16,6 +17,7 @@ const MainModal: React.FC<MainModalProps> = ({onClose}) => {
   const [projectName, setProjectName] = useState("");
   const [projectSummary, setProjectSummary] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
+  const navigate = useNavigate();
 
   const handleSave = async () => {
     try {
@@ -26,6 +28,8 @@ const MainModal: React.FC<MainModalProps> = ({onClose}) => {
       });
       console.log("✅ 프로젝트 생성 성공");
       onClose();
+      navigate("/", {replace: true});
+      window.location.reload();
     } catch (error) {
       console.error("❌ 프로젝트 생성 실패:", error);
       // 필요 시 사용자 알림 처리도 추가
