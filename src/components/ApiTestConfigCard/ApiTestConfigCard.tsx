@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, X, Clock, UserRound, LockKeyhole, ChartLine, Plus, Minus } from 'lucide-react';
-import InputWithIcon from '../../components/Input/InputWithIcon';
+import {InputWithIcon} from '../../components/Input';
 import ToggleButton from '../../components/Button/ToggleButton';
 import styles from './ApiTestConfigCard.module.css';
 

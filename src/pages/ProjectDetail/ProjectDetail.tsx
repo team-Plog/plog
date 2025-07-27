@@ -10,12 +10,7 @@ import ActionMenu from "../../components/ActionMenu/ActionMenu";
 import ApiGroupCard from "../../components/ApiGroupCard/ApiGroupCard";
 import ApiTestConfigCard from "../../components/ApiTestConfigCard/ApiTestConfigCard";
 import {getProjectById, getApiGroupsByProjectId} from "../../assets/mockProjectData";
-import type {ProjectData, ApiGroup} from "../../assets/mockProjectData";
-
-interface ApiTestConfig {
-  id: string;
-  endpoint: string;
-}
+import type {ProjectData, ApiGroup, ApiTestConfig} from "../../assets/mockProjectData";
 
 const ProjectDetail: React.FC = () => {
   const navigate = useNavigate();

@@ -2,13 +2,10 @@ import React from "react";
 import { Search, X } from "lucide-react";
 import BaseInput from './BaseInput';
 
-interface SearchBarProps {
-  value: string;
-  onChange: (value: string) => void;
+interface SearchBarProps extends Omit<React.ComponentProps<typeof BaseInput>, 'leftIcon' | 'rightIcon' | 'onRightIconClick'> {
   placeholder?: string;
   showClearButton?: boolean;
-  width?: string | number;
-  variant?: 'gray' | 'white'; // variant prop 추가
+  onClear?: () => void;
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({ 
@@ -16,8 +13,16 @@ const SearchBar: React.FC<SearchBarProps> = ({
   onChange, 
   placeholder = "검색어를 입력하세요",
   showClearButton = true,
-  variant = 'gray'
+  onClear,
+  variant = 'gray',
+  className = 'Body',
+  ...rest
 }) => {
+  const handleClear = () => {
+    onChange('');
+    onClear?.();
+  };
+
   return (
     <BaseInput
       value={value}
@@ -25,9 +30,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
       placeholder={placeholder}
       leftIcon={<Search />}
       rightIcon={showClearButton && value ? <X /> : undefined}
-      onRightIconClick={showClearButton && value ? () => onChange("") : undefined}
-      className="Body"
+      onRightIconClick={showClearButton && value ? handleClear : undefined}
       variant={variant}
+      className={className}
+      {...rest}
     />
   );
 };

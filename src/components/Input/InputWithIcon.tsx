@@ -1,27 +1,24 @@
 import React from "react";
 import BaseInput from '../Input/BaseInput';
 
-interface InputWithIconProps {
+interface InputWithIconProps extends Omit<React.ComponentProps<typeof BaseInput>, 'leftIcon'> {
   icon: React.ReactNode;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
 }
 
 const InputWithIcon: React.FC<InputWithIconProps> = ({ 
   icon,
-  value, 
-  onChange, 
-  placeholder 
+  variant = 'white',
+  className = 'Body',
+  leftIconSize = 'small',
+  ...rest
 }) => {
   return (
     <BaseInput
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
       leftIcon={icon}
-      variant="white"
-      className="Body"
+      variant={variant}
+      className={className}
+      leftIconSize={leftIconSize}
+      {...rest}
     />
   );
 };

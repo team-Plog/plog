@@ -2,36 +2,32 @@ import React from "react";
 import { X } from "lucide-react";
 import BaseInput from './BaseInput';
 
-interface InputFieldProps {
-  title?: string;
-  placeholder?: string;
-  value: string;
-  onChange: (value: string) => void;
+interface InputFieldProps extends Omit<React.ComponentProps<typeof BaseInput>, 'rightIcon' | 'onRightIconClick'> {
   showClearButton?: boolean;
-  width?: string | number;
-  variant?: 'gray' | 'white';
-  multiline?: boolean;
+  onClear?: () => void;
 }
 
 const InputField: React.FC<InputFieldProps> = ({ 
-  title, 
-  placeholder, 
   value, 
   onChange,
   showClearButton = true,
+  onClear,
   variant = 'white',
-  multiline = false,
+  ...rest
 }) => {
+  const handleClear = () => {
+    onChange('');
+    onClear?.();
+  };
+
   return (
     <BaseInput
       value={value}
       onChange={onChange}
-      placeholder={placeholder}
-      title={title}
       rightIcon={showClearButton && value ? <X /> : undefined}
-      onRightIconClick={showClearButton && value ? () => onChange("") : undefined}
+      onRightIconClick={showClearButton && value ? handleClear : undefined}
       variant={variant}
-      multiline={multiline}
+      {...rest}
     />
   );
 };

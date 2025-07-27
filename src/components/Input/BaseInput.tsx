@@ -12,7 +12,9 @@ interface BaseInputProps {
   className?: string;
   variant?: 'gray' | 'white';
   showBoxShadow?: boolean;
-  multiline?: boolean; 
+  multiline?: boolean;
+  leftIconSize?: 'normal' | 'small';
+  rightIconSize?: 'normal' | 'small'; // 오른쪽 아이콘도 지원
 }
 
 const BaseInput: React.FC<BaseInputProps> = ({
@@ -27,6 +29,8 @@ const BaseInput: React.FC<BaseInputProps> = ({
   variant = 'gray',
   showBoxShadow,
   multiline = false,
+  leftIconSize = 'normal',
+  rightIconSize = 'normal',
 }) => {
   const shouldShowBoxShadow = showBoxShadow !== undefined ? showBoxShadow : variant === 'white';
   const inputStyle = `
@@ -39,12 +43,16 @@ const BaseInput: React.FC<BaseInputProps> = ({
     ${multiline ? styles.textareaFixed : ''}
   `;
 
+  // 아이콘 클래스 선택
+  const leftIconClass = leftIconSize === 'small' ? styles.leftIconSmall : styles.leftIcon;
+  const rightIconClass = rightIconSize === 'small' ? styles.rightIconSmall : styles.rightIcon;
+
   return (
     <div className={styles.inputContainer}>
       {title && <label className={styles.title}>{title}</label>}
 
       <div className={styles.inputWrapper}>
-        {leftIcon && <div className={styles.leftIcon}>{leftIcon}</div>}
+        {leftIcon && <div className={leftIconClass}>{leftIcon}</div>}
 
         {multiline ? (
           <textarea
@@ -64,7 +72,7 @@ const BaseInput: React.FC<BaseInputProps> = ({
         )}
 
         {rightIcon && (
-          <div className={styles.rightIcon} onClick={onRightIconClick}>
+          <div className={rightIconClass} onClick={onRightIconClick}>
             {rightIcon}
           </div>
         )}

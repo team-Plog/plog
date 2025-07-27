@@ -19,6 +19,11 @@ export interface ApiGroup {
   endpoints: ApiEndpoint[];
 }
 
+export interface ApiTestConfig {
+  id: string;
+  endpoint: string;
+}
+
 export const mockProjects: ProjectData[] = [
   {
     id: "1",
