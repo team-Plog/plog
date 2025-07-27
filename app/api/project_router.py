@@ -79,3 +79,21 @@ async def get_project_info(
     response = ProjectDetailResponse.model_validate(project).model_dump()
 
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response)
+
+@router.delete(
+    path="/{project_id}",
+    summary="프로젝트 삭제 API",
+    description="지정한 ID를 가진 프로젝트를 삭제하는 API"
+)
+async def delete_project(
+    project_id: int = Path(..., description="삭제할 프로젝트의 ID"),
+    db: Session = Depends(get_db),
+):
+    project = db.query(ProjectModel).filter(ProjectModel.id == project_id).first()
+    if not project:
+        ResponseTemplate.fail(FailureCode.NOT_FOUND_DATA)
+
+    db.delete(project)
+    db.commit()
+
+    return ResponseTemplate.success(SuccessCode.SUCCESS_CODE)
