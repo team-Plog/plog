@@ -7,7 +7,7 @@ import styles from "./ProjectDetail.module.css";
 import {MoreHorizontal, Play, Plus, Save} from "lucide-react";
 import UrlModal from "../../components/UrlModal/UrlModal";
 import ActionMenu from "../../components/ActionMenu/ActionMenu";
-import ApiGroupCard from "../../components/ApiGroupCard/APIGroupCard";
+import ApiGroupCard from "../../components/ApiGroupCard/ApiGroupCard";
 import {getProjectById, getApiGroupsByProjectId} from "../../assets/mockProjectData";
 import type {ProjectData, ApiGroup} from "../../assets/mockProjectData";
 
