@@ -1,4 +1,4 @@
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {Plus, Menu} from "lucide-react";
 import {SearchBar} from "../../components/Input";
@@ -9,24 +9,48 @@ import Header from "../../components/Header/Header";
 import EmptyProjectState from "../../components/EmptyState/EmptyProjectState";
 import {mockProjects} from "../../assets/mockProjectData";
 import styles from "./Home.module.css";
+import {getProjectList} from "../../api";
+import type { TestStatus } from "../../components/Tag";
+
+interface Project {
+  id: number;
+  title: string;
+  summary: string;
+  status: string | null;
+  updated_at: string | null;
+}
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
 
-  const handleProjectClick = (projectId: string) => {
-    navigate("/projectDetail", { state: { projectId } });
+  const handleProjectClick = (projectId: number) => {
+    navigate("/projectDetail", {state: {projectId}});
   };
 
+  useEffect(() => {
+    getProjectList()
+      .then((res) => {
+        console.log("📦 받아온 프로젝트 리스트:", res.data);
+        setProjects(res.data.data);
+      })
+      .catch((err) => {
+        console.error("❌ 프로젝트 리스트 가져오기 실패:", err);
+      });
+  }, []);
+
   // 프로젝트가 있는지 확인 (테스트를 위해 false로 설정하면 Empty State 확인 가능)
-  const hasProjects = mockProjects.length > 0;
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // 검색 필터링 로직
-  const filteredProjects = mockProjects.filter(project =>
-    project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.description.toLowerCase().includes(searchTerm.toLowerCase())
+  const hasProjects = projects.length > 0;
+
+  const filteredProjects = projects.filter(
+    (project) =>
+      project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.summary.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -78,9 +102,9 @@ const Home: React.FC = () => {
                   key={project.id}
                   id={project.id}
                   title={project.title}
-                  description={project.description}
-                  status={project.status}
-                  createdAt={project.createdAt}
+                  summary={project.summary}
+                  status={(project.status ?? 'before') as TestStatus}
+                  updatedAt={project.updated_at}
                   onClick={handleProjectClick}
                 />
               ))}
