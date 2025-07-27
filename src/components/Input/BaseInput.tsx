@@ -59,7 +59,7 @@ const BaseInput: React.FC<BaseInputProps> = ({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
-            className={inputStyle}
+            className={`${inputStyle} Body`}
           />
         ) : (
           <input
@@ -67,7 +67,7 @@ const BaseInput: React.FC<BaseInputProps> = ({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
-            className={inputStyle}
+            className={`${inputStyle} Body`}
           />
         )}
 

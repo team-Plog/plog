@@ -9,15 +9,15 @@ import UrlModal from "../../components/UrlModal/UrlModal";
 import ActionMenu from "../../components/ActionMenu/ActionMenu";
 import ApiGroupCard from "../../components/ApiGroupCard/ApiGroupCard";
 import ApiTestConfigCard from "../../components/ApiTestConfigCard/ApiTestConfigCard";
-import {getProjectById, getApiGroupsByProjectId} from "../../assets/mockProjectData";
-import type {ProjectData, ApiGroup, ApiTestConfig} from "../../assets/mockProjectData";
+import {getProjectById, getOpenApiSpecsByProjectId} from "../../assets/mockProjectData";
+import type {ProjectData, OpenApiSpec, ApiTestConfig} from "../../assets/mockProjectData";
 
 const ProjectDetail: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const projectId = location.state?.projectId;
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
-  const [apiGroups, setApiGroups] = useState<ApiGroup[]>([]);
+  const [openApiSpecs, setOpenApiSpecs] = useState<OpenApiSpec[]>([]);
   const [scenarioTitle, setScenarioTitle] = useState("");
   const [scenarioDescription, setScenarioDescription] = useState("");
   const [testGoal, setTestGoal] = useState("");
@@ -32,13 +32,12 @@ const ProjectDetail: React.FC = () => {
       console.log("Found project:", project);
       if (project) {
         setProjectData(project);
-        // 프로젝트에 해당하는 API 그룹 데이터 로드
-        const projectApiGroups = getApiGroupsByProjectId(projectId);
-        setApiGroups(projectApiGroups);
-        console.log("Loaded API groups:", projectApiGroups);
+        // 프로젝트에 해당하는 OpenAPI 스펙 데이터 로드
+        const projectOpenApiSpecs = getOpenApiSpecsByProjectId(projectId.toString());
+        setOpenApiSpecs(projectOpenApiSpecs);
+        console.log("Loaded OpenAPI specs:", projectOpenApiSpecs);
       } else {
         console.log("Project not found, redirecting to home");
-        // 프로젝트를 찾을 수 없으면 홈으로 리다이렉트
         navigate("/");
       }
     } else {
@@ -61,7 +60,6 @@ const ProjectDetail: React.FC = () => {
     setApiTestConfigs(prev => prev.filter(config => config.id !== id));
   };
 
-  // 프로젝트 데이터가 로드되지 않았으면 로딩 상태 표시
   if (!projectData) {
     return (
       <div className={styles.container}>
@@ -113,6 +111,7 @@ const ProjectDetail: React.FC = () => {
                   </button>
                   {menuOpen && (
                     <ActionMenu
+                      projectId={projectData.id}
                       onEdit={() => {
                         setMenuOpen(false);
                       }}
@@ -124,27 +123,30 @@ const ProjectDetail: React.FC = () => {
                   )}
                 </div>
                 <div className={`Body ${styles.projectSubtitle}`}>
-                  {projectData.description}
+                  {projectData.summary}
                 </div>
               </div>
               <div className={`CaptionLight ${styles.projectDescription}`}>
-                {projectData.detailedDescription}
+                {projectData.description}
               </div>
             </div>
             
             <div className={styles.divider}></div>
             
             <div className={styles.apiGroupsSection}>
-              {apiGroups.length > 0 ? (
-                apiGroups.map((group, index) => (
-                  <ApiGroupCard
-                    key={index}
-                    groupName={group.groupName}
-                    baseUrl={group.baseUrl}
-                    endpoints={group.endpoints}
-                    onAddEndpoint={handleAddApiTest}
-                  />
-                ))
+              {openApiSpecs.length > 0 ? (
+                // 각 OpenAPI 스펙의 tags를 순회하며 ApiGroupCard 렌더링
+                openApiSpecs.flatMap((spec) =>
+                  spec.tags.map((tag) => (
+                    <ApiGroupCard
+                      key={`${spec.id}-${tag.id}`}
+                      groupName={tag.name}
+                      baseUrl={spec.base_url}
+                      endpoints={tag.endpoints}
+                      onAddEndpoint={handleAddApiTest}
+                    />
+                  ))
+                )
               ) : (
                 <div className={styles.noApiGroups}>
                   <p>등록된 API 그룹이 없습니다.</p>
