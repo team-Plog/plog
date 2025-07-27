@@ -13,17 +13,25 @@ interface ApiGroupCardProps {
   groupName: string;
   baseUrl: string;
   endpoints: ApiEndpoint[];
+  onAddEndpoint?: (endpoint: string) => void;
 }
 
 const ApiGroupCard: React.FC<ApiGroupCardProps> = ({ 
   groupName, 
   baseUrl, 
-  endpoints 
+  endpoints,
+  onAddEndpoint
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
+  };
+
+  const handleAddEndpoint = (endpoint: string) => {
+    if (onAddEndpoint) {
+      onAddEndpoint(endpoint);
+    }
   };
 
   return (
@@ -49,7 +57,14 @@ const ApiGroupCard: React.FC<ApiGroupCardProps> = ({
                 <span className={`${styles.endpoint} CaptionBold`}>{endpoint.endpoint}</span>
                 <span className={`${styles.description} CaptionLight`}>{endpoint.description}</span>
               </div>
-              <button className={styles.addButton} type="button">
+              <button 
+                className={styles.addButton} 
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAddEndpoint(endpoint.endpoint);
+                }}
+              >
                 <Plus />
               </button>
             </div>

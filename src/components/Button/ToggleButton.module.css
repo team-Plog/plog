@@ -1,0 +1,43 @@
+.container {
+  display: flex;
+  background-color: var(--color-gray-100);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xs);
+  gap: 2px;
+}
+
+.option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) ;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--color-gray-200);
+}
+
+.option.selected {
+  background-color: var(--color-white);
+  color: var(--color-black);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.label {
+  white-space: nowrap;
+}

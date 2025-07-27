@@ -40,11 +40,11 @@
 }
 
 .input.withLeftIcon {
-  padding-left: 36px;
+  padding-left: 32px;
 }
 
 .input.withRightIcon {
-  padding-right: 36px;
+  padding-right: 32px;
 }
 
 .leftIcon {
@@ -69,6 +69,35 @@
   color: var(--color-gray-200);
   width: var(--icon-size-md);
   height: var(--icon-size-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.leftIconSmall {
+  position: absolute;
+  left: var(--spacing-md);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-gray-200);
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.rightIconSmall {
+  position: absolute;
+  right: var(--spacing-md);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-gray-200);
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
   display: flex;
   align-items: center;
   justify-content: center;

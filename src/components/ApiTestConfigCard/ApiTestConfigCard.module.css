@@ -1,0 +1,156 @@
+.container {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-primary);
+  box-shadow: var(--shadow-primary);
+  padding: var(--spacing-lg);
+  background-color: var(--color-white);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.linkIcon {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  color: var(--color-gray-200);
+}
+
+.endpoint {
+  color: var(--color-black);
+}
+
+.removeButton {
+  background: none;
+  border: none;
+  padding: var(--spacing-xs);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.removeButton:hover {
+  background-color: var(--color-gray-100);
+}
+
+.removeButton svg {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  color: var(--color-gray-200);
+}
+
+.configSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.configItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  flex: 1;
+}
+
+.configLabel {
+  color: var(--color-gray-300);
+}
+
+.horizontalGroup {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.gradualSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.gradualHeader {
+  display: flex;
+  flex-direction: column;
+}
+
+.gradualStep {
+  display: flex;
+  flex-direction: column;
+}
+
+.headerWithButton {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.labelWithButton {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.addButton {
+  background: none;
+  border: none;
+  padding: var(--spacing-xs);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.addButton:hover {
+  background-color: var(--color-gray-100);
+}
+
+.addButton svg {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  color: var(--color-gray-200);
+}
+
+.inputWithButton {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.removeStepButton {
+  background: none;
+  border: none;
+  padding: var(--spacing-xs);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.removeStepButton:hover {
+  background-color: var(--color-gray-100);
+}
+
+.removeStepButton svg {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  color: var(--color-gray-200);
+}

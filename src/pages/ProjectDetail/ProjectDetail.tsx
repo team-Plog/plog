@@ -8,8 +8,9 @@ import {MoreHorizontal, Play, Plus, Save} from "lucide-react";
 import UrlModal from "../../components/UrlModal/UrlModal";
 import ActionMenu from "../../components/ActionMenu/ActionMenu";
 import ApiGroupCard from "../../components/ApiGroupCard/ApiGroupCard";
+import ApiTestConfigCard from "../../components/ApiTestConfigCard/ApiTestConfigCard";
 import {getProjectById, getApiGroupsByProjectId} from "../../assets/mockProjectData";
-import type {ProjectData, ApiGroup} from "../../assets/mockProjectData";
+import type {ProjectData, ApiGroup, ApiTestConfig} from "../../assets/mockProjectData";
 
 const ProjectDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -19,8 +20,10 @@ const ProjectDetail: React.FC = () => {
   const [apiGroups, setApiGroups] = useState<ApiGroup[]>([]);
   const [scenarioTitle, setScenarioTitle] = useState("");
   const [scenarioDescription, setScenarioDescription] = useState("");
+  const [testGoal, setTestGoal] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [apiTestConfigs, setApiTestConfigs] = useState<ApiTestConfig[]>([]);
 
   useEffect(() => {
     console.log("ProjectDetail useEffect - projectId:", projectId);
@@ -43,6 +46,20 @@ const ProjectDetail: React.FC = () => {
       navigate("/");
     }
   }, [projectId, navigate]);
+
+  // API 테스트 설정 카드 추가
+  const handleAddApiTest = (endpoint: string) => {
+    const newConfig: ApiTestConfig = {
+      id: Date.now().toString(),
+      endpoint: endpoint
+    };
+    setApiTestConfigs(prev => [...prev, newConfig]);
+  };
+
+  // API 테스트 설정 카드 제거
+  const handleRemoveApiTest = (id: string) => {
+    setApiTestConfigs(prev => prev.filter(config => config.id !== id));
+  };
 
   // 프로젝트 데이터가 로드되지 않았으면 로딩 상태 표시
   if (!projectData) {
@@ -125,6 +142,7 @@ const ProjectDetail: React.FC = () => {
                     groupName={group.groupName}
                     baseUrl={group.baseUrl}
                     endpoints={group.endpoints}
+                    onAddEndpoint={handleAddApiTest}
                   />
                 ))
               ) : (
@@ -153,6 +171,21 @@ const ProjectDetail: React.FC = () => {
                 value={scenarioDescription}
                 onChange={setScenarioDescription}
               />
+              <InputField
+                title="테스트 목표"
+                placeholder="테스트 목표를 입력하세요."
+                value={testGoal}
+                onChange={setTestGoal}
+              />
+              
+              {/* API 테스트 설정 카드들 */}
+              {apiTestConfigs.map((config) => (
+                <ApiTestConfigCard
+                  key={config.id}
+                  endpoint={config.endpoint}
+                  onRemove={() => handleRemoveApiTest(config.id)}
+                />
+              ))}
             </div>
           </div>
           <div className={styles.buttonGroup}>
