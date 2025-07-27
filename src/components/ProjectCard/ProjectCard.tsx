@@ -4,6 +4,8 @@ import styles from "./ProjectCard.module.css";
 import {StatusBadge} from "../Tag";
 import type {ProjectCardProps} from "./types";
 import ActionMenu from "../ActionMenu/ActionMenu";
+import {deleteProject} from "../../api";
+import { useNavigate } from "react-router-dom";
 
 const ProjectCard: React.FC<ProjectCardProps> = ({
   id,
@@ -16,6 +18,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   const handleClick = () => {
     if (onClick) {
@@ -51,7 +54,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
         }
       }}>
       <div className={styles.badgeRow}>
-        <StatusBadge status={status ?? 'before'} />
+        <StatusBadge status={status ?? "before"} />
         <button
           className={styles.menuButton}
           onClick={(e) => {
@@ -69,15 +72,23 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
         </button>
         {menuOpen && (
           <ActionMenu
-            onEdit={() => {
-              console.log("편집", id);
-              setMenuOpen(true);
-            }}
-            onDelete={() => {
-              console.log("삭제", id);
+            projectId={id}
+            onEdit={(projectId) => {
+              console.log("편집", projectId);
               setMenuOpen(false);
             }}
-            onClose={() => setMenuOpen(true)}
+            onDelete={(projectId) => {
+              deleteProject(projectId)
+                .then(() => {
+                  console.log("삭제 성공:", projectId);
+                  setMenuOpen(false);
+                  navigate("/");
+                })
+                .catch((error) => {
+                  console.error("삭제 실패:", error);
+                });
+            }}
+            onClose={() => setMenuOpen(false)}
           />
         )}
       </div>
