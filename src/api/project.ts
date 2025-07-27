@@ -10,3 +10,6 @@ export const createProject = (data: {
 
 export const getProjectDetail = (projectId: number) =>
   axios.get(`/project/${projectId}`);
+
+export const deleteProject = (projectId: number) =>
+  axios.delete(`/project/${projectId}`);
