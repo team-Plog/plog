@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from starlette.middleware.cors import CORSMiddleware
+
 from app.api import api_router
 from app.sse import sse_router
 from app.db.sqlite.database import engine
@@ -13,6 +15,15 @@ app = FastAPI(
 )
 app.include_router(api_router)
 app.include_router(sse_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
 
 # init table
 models.Base.metadata.create_all(bind=engine)
