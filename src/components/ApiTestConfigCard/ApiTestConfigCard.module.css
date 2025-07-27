@@ -11,8 +11,6 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: var(--spacing-lg);
-  padding-bottom: var(--spacing-md);
-  border-bottom: 1px solid var(--color-border-primary);
 }
 
 .headerLeft {
