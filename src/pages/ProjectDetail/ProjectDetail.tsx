@@ -9,18 +9,29 @@ import UrlModal from "../../components/UrlModal/UrlModal";
 import ActionMenu from "../../components/ActionMenu/ActionMenu";
 import ApiGroupCard from "../../components/ApiGroupCard/ApiGroupCard";
 import ApiTestConfigCard from "../../components/ApiTestConfigCard/ApiTestConfigCard";
-import {
-  getProjectById,
-  getOpenApiSpecsByProjectId,
-} from "../../assets/mockProjectData";
 import type {OpenApiSpec, ApiTestConfig} from "../../assets/mockProjectData";
 import {getProjectDetail} from "../../api";
+import ApiTree from "../../components/ApiTree/ApiTree";
 
 interface ProjectData {
   id: number;
   title: string;
   summary: string;
   description: string;
+}
+
+interface ApiServer {
+  id: string;
+  name: string;
+  groups: {
+    id: string;
+    name: string;
+    endpoints: {
+      id: string;
+      path: string;
+      method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+    }[];
+  }[];
 }
 
 const ProjectDetail: React.FC = () => {
@@ -59,11 +70,47 @@ const ProjectDetail: React.FC = () => {
       });
   }, [projectId, navigate]);
 
+  const convertToApiTreeData = (specs: OpenApiSpec[]): ApiServer[] => {
+    return specs.map((spec) => ({
+      id: spec.id.toString(),
+      name: spec.title, // "MedEasy API", "Payment API" 등
+      groups: spec.tags.map((tag) => ({
+        id: tag.id.toString(),
+        name: tag.name, // "인증 관리", "복약 관리" 등
+        endpoints: tag.endpoints.map((endpoint) => ({
+          id: endpoint.id.toString(),
+          path: endpoint.path,
+          method: endpoint.method,
+        })),
+      })),
+    }));
+  };
+
   // API 테스트 설정 카드 추가
   const handleAddApiTest = (endpoint: string) => {
     const newConfig: ApiTestConfig = {
       id: Date.now().toString(),
       endpoint: endpoint,
+    };
+    setApiTestConfigs((prev) => [...prev, newConfig]);
+  };
+
+  const handleEndpointClick = (
+    endpoint: {id: string; path: string; method: string},
+    serverName: string,
+    groupName: string
+  ) => {
+    console.log(`선택된 엔드포인트:`, {
+      server: serverName,
+      group: groupName,
+      path: endpoint.path,
+      method: endpoint.method,
+    });
+
+    // 기존 handleAddApiTest와 동일한 로직으로 API 테스트 설정 추가
+    const newConfig: ApiTestConfig = {
+      id: Date.now().toString(),
+      endpoint: endpoint.path,
     };
     setApiTestConfigs((prev) => [...prev, newConfig]);
   };
@@ -93,7 +140,19 @@ const ProjectDetail: React.FC = () => {
       <div className={styles.mainContent}>
         {/* 왼쪽 영역 */}
         <div className={styles.leftSection}>
-          <div className={styles.scrollArea}></div>
+          <div className={styles.scrollArea}>
+            {openApiSpecs.length > 0 ? (
+              <ApiTree
+                servers={convertToApiTreeData(openApiSpecs)}
+                onEndpointClick={handleEndpointClick}
+              />
+            ) : (
+              <div className={styles.noApiData}>
+                <p>등록된 API가 없습니다.</p>
+                <p>API 서버를 등록해주세요.</p>
+              </div>
+            )}
+          </div>
           <div className={styles.buttonContainer}>
             <Button
               variant="secondary"
