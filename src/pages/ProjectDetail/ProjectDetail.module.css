@@ -2,17 +2,21 @@
   background-color: var(--color-background-secondary);
   padding-top: 40px;
   width: 100%;
+  min-height: 100vh;
 }
 
 .mainContent {
   display: flex;
   height: calc(100vh - 40px);
-  width: 100%;
+  width: 100vw;
+  min-width: 100%;
 }
 
 /* 왼쪽 영역 스타일 */
 .leftSection {
-  flex: 0 0 20.1%;
+  width: 20.1%; 
+  min-width: 20.1%; 
+  max-width: 20.1%; 
   background-color: var(--color-background-secondary);
   display: flex;
   flex-direction: column;
@@ -32,7 +36,9 @@
 
 /* 가운데 영역 스타일 */
 .centerSection {
-  flex: 1 1 54.1%;
+  width: 54.1%; 
+  min-width: 54.1%; 
+  max-width: 54.1%;
   background-color: var(--color-white);
   display: flex;
   flex-direction: column;
@@ -51,6 +57,7 @@
   flex-direction: column;
   gap: var(--spacing-sm);
 }
+
 .projectTitle {
   display: flex;
   position: relative;
@@ -76,6 +83,10 @@
   justify-content: center;
 }
 
+.menuButton:hover {
+  background-color: var(--color-gray-100);
+}
+
 .projectSubtitle {
   color: var(--color-gray-300);
 }
@@ -98,11 +109,20 @@
   flex-direction: column;
   gap: var(--spacing-md);
   padding: var(--spacing-lg);
+  min-height: 200px; 
+}
+
+.noApiGroups {
+  text-align: center;
+  color: var(--color-gray-300);
+  padding: var(--spacing-xl);
 }
 
 /* 오른쪽 영역 스타일 */
 .rightSection {
-  flex: 0 0 25.8%;
+  width: 25.8%; 
+  min-width: 25.8%; 
+  max-width: 25.8%; 
   background-color: var(--color-background-secondary);
   display: flex;
   flex-direction: column;
