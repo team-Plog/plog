@@ -9,8 +9,19 @@ import UrlModal from "../../components/UrlModal/UrlModal";
 import ActionMenu from "../../components/ActionMenu/ActionMenu";
 import ApiGroupCard from "../../components/ApiGroupCard/ApiGroupCard";
 import ApiTestConfigCard from "../../components/ApiTestConfigCard/ApiTestConfigCard";
-import {getProjectById, getOpenApiSpecsByProjectId} from "../../assets/mockProjectData";
-import type {ProjectData, OpenApiSpec, ApiTestConfig} from "../../assets/mockProjectData";
+import {
+  getProjectById,
+  getOpenApiSpecsByProjectId,
+} from "../../assets/mockProjectData";
+import type {OpenApiSpec, ApiTestConfig} from "../../assets/mockProjectData";
+import {getProjectDetail} from "../../api";
+
+interface ProjectData {
+  id: number;
+  title: string;
+  summary: string;
+  description: string;
+}
 
 const ProjectDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -26,38 +37,40 @@ const ProjectDetail: React.FC = () => {
   const [apiTestConfigs, setApiTestConfigs] = useState<ApiTestConfig[]>([]);
 
   useEffect(() => {
-    console.log("ProjectDetail useEffect - projectId:", projectId);
-    if (projectId) {
-      const project = getProjectById(projectId);
-      console.log("Found project:", project);
-      if (project) {
-        setProjectData(project);
-        // 프로젝트에 해당하는 OpenAPI 스펙 데이터 로드
-        const projectOpenApiSpecs = getOpenApiSpecsByProjectId(projectId.toString());
-        setOpenApiSpecs(projectOpenApiSpecs);
-        console.log("Loaded OpenAPI specs:", projectOpenApiSpecs);
-      } else {
-        console.log("Project not found, redirecting to home");
-        navigate("/");
-      }
-    } else {
-      console.log("No projectId provided");
+    if (!projectId) {
       navigate("/");
+      return;
     }
+
+    getProjectDetail(projectId)
+      .then((res) => {
+        const data = res.data.data;
+        setProjectData({
+          id: data.id,
+          title: data.title,
+          summary: data.summary,
+          description: data.description,
+        });
+        setOpenApiSpecs(data.openapi_specs);
+      })
+      .catch((err) => {
+        console.error("❌ 프로젝트 상세 불러오기 실패:", err);
+        navigate("/");
+      });
   }, [projectId, navigate]);
 
   // API 테스트 설정 카드 추가
   const handleAddApiTest = (endpoint: string) => {
     const newConfig: ApiTestConfig = {
       id: Date.now().toString(),
-      endpoint: endpoint
+      endpoint: endpoint,
     };
-    setApiTestConfigs(prev => [...prev, newConfig]);
+    setApiTestConfigs((prev) => [...prev, newConfig]);
   };
 
   // API 테스트 설정 카드 제거
   const handleRemoveApiTest = (id: string) => {
-    setApiTestConfigs(prev => prev.filter(config => config.id !== id));
+    setApiTestConfigs((prev) => prev.filter((config) => config.id !== id));
   };
 
   if (!projectData) {
@@ -80,8 +93,7 @@ const ProjectDetail: React.FC = () => {
       <div className={styles.mainContent}>
         {/* 왼쪽 영역 */}
         <div className={styles.leftSection}>
-          <div className={styles.scrollArea}>
-          </div>
+          <div className={styles.scrollArea}></div>
           <div className={styles.buttonContainer}>
             <Button
               variant="secondary"
@@ -130,9 +142,9 @@ const ProjectDetail: React.FC = () => {
                 {projectData.description}
               </div>
             </div>
-            
+
             <div className={styles.divider}></div>
-            
+
             <div className={styles.apiGroupsSection}>
               {openApiSpecs.length > 0 ? (
                 // 각 OpenAPI 스펙의 tags를 순회하며 ApiGroupCard 렌더링
@@ -150,7 +162,9 @@ const ProjectDetail: React.FC = () => {
               ) : (
                 <div className={styles.noApiGroups}>
                   <p>등록된 API 그룹이 없습니다.</p>
-                  <p>상단의 "API 서버 등록" 버튼을 클릭하여 API를 추가해보세요.</p>
+                  <p>
+                    상단의 "API 서버 등록" 버튼을 클릭하여 API를 추가해보세요.
+                  </p>
                 </div>
               )}
             </div>
@@ -179,7 +193,7 @@ const ProjectDetail: React.FC = () => {
                 value={testGoal}
                 onChange={setTestGoal}
               />
-              
+
               {/* API 테스트 설정 카드들 */}
               {apiTestConfigs.map((config) => (
                 <ApiTestConfigCard

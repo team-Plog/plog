@@ -1,4 +1,4 @@
-import React, {useRef, useState} from "react";
+import React, {useState} from "react";
 import {MoreHorizontal} from "lucide-react";
 import styles from "./ProjectCard.module.css";
 import {StatusBadge} from "../Tag";
@@ -17,7 +17,6 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
   className = "",
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   const handleClick = () => {
