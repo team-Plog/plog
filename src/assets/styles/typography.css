@@ -5,40 +5,40 @@
   --heading-l-font-weight: 700;
   --heading-l-line-height: 48px;
 
-  --heading-s-font-size: 16px;
+  --heading-s-font-size: 18px;
   --heading-s-font-family: Pretendard, sans-serif;
   --heading-s-font-weight: 700;
-  --heading-s-line-height: 24px;
+  --heading-s-line-height: 27px;
 
-  --title-l-font-size: 14px;
+  --title-l-font-size: 16px;
   --title-l-font-family: Pretendard, sans-serif;
   --title-l-font-weight: 700;
-  --title-l-line-height: 21px;
+  --title-l-line-height: 24px;
 
-  --title-s-font-size: 12px;
+  --title-s-font-size: 14px;
   --title-s-font-family: Pretendard, sans-serif;
   --title-s-font-weight: 700;
-  --title-s-line-height: 18px;
+  --title-s-line-height: 21px;
 
-  --body-font-size: 12px;
+  --body-font-size: 14px;
   --body-font-family: Pretendard, sans-serif;
   --body-font-weight: 500;
-  --body-line-height: 18px;
+  --body-line-height: 21px;
 
-  --caption-bold-font-size: 11px;
+  --caption-bold-font-size: 12px;
   --caption-bold-font-family: Pretendard, sans-serif;
   --caption-bold-font-weight: 600;
-  --caption-bold-line-height: 16px;
+  --caption-bold-line-height: 18px;
 
-  --caption-light-font-size: 11px;
+  --caption-light-font-size: 12px;
   --caption-light-font-family: Pretendard, sans-serif;
   --caption-light-font-weight: 500;
-  --caption-light-line-height: 16px;
+  --caption-light-line-height: 18px;
 
-  --button-font-size: 12px;
+  --button-font-size: 14px;
   --button-font-family: Pretendard, sans-serif;
   --button-font-weight: 600;
-  --button-line-height: 14px;
+  --button-line-height: 16px;
 }
 
 .HeadingL {
@@ -48,44 +48,44 @@
   line-height: 48px;
 }
 .HeadingS {
+  font-size: 18px;
+  font-family: Pretendard, sans-serif;
+  font-weight: 700;
+  line-height: 27px;
+}
+.TitleL {
   font-size: 16px;
   font-family: Pretendard, sans-serif;
   font-weight: 700;
   line-height: 24px;
 }
-.TitleL {
+.TitleS {
   font-size: 14px;
   font-family: Pretendard, sans-serif;
   font-weight: 700;
   line-height: 21px;
 }
-.TitleS {
-  font-size: 12px;
-  font-family: Pretendard, sans-serif;
-  font-weight: 700;
-  line-height: 18px;
-}
 .Body {
-  font-size: 12px;
+  font-size: 14px;
   font-family: Pretendard, sans-serif;
   font-weight: 500;
-  line-height: 18px;
+  line-height: 21px;
 }
 .CaptionBold {
-  font-size: 11px;
-  font-family: Pretendard, sans-serif;
-  font-weight: 600; /* undefined → 보통 600 or 700 */
-  line-height: 16px;
-}
-.CaptionLight {
-  font-size: 11px;
-  font-family: Pretendard, sans-serif;
-  font-weight: 500;
-  line-height: 16px;
-}
-.Button {
   font-size: 12px;
   font-family: Pretendard, sans-serif;
   font-weight: 600; /* undefined → 보통 600 or 700 */
-  line-height: 14px;
+  line-height: 18px;
+}
+.CaptionLight {
+  font-size: 12px;
+  font-family: Pretendard, sans-serif;
+  font-weight: 500;
+  line-height: 18px;
+}
+.Button {
+  font-size: 14px;
+  font-family: Pretendard, sans-serif;
+  font-weight: 600; /* undefined → 보통 600 or 700 */
+  line-height: 16px;
 }
