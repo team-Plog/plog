@@ -86,6 +86,23 @@ const ProjectDetail: React.FC = () => {
     }));
   };
 
+  const refreshProjectData = async () => {
+    try {
+      const res = await getProjectDetail(projectId);
+      const data = res.data.data;
+      setProjectData({
+        id: data.id,
+        title: data.title,
+        summary: data.summary,
+        description: data.description,
+      });
+      setOpenApiSpecs(data.openapi_specs);
+      console.log("✅ 프로젝트 데이터 새로고침 완료");
+    } catch (err) {
+      console.error("❌ 프로젝트 데이터 새로고침 실패:", err);
+    }
+  };
+
   // API 테스트 설정 카드 추가
   const handleAddApiTest = (endpoint: string) => {
     const newConfig: ApiTestConfig = {
@@ -135,7 +152,13 @@ const ProjectDetail: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      {isModalOpen && <UrlModal onClose={() => setIsModalOpen(false)} />}
+      {isModalOpen && (
+        <UrlModal 
+          onClose={() => setIsModalOpen(false)} 
+          projectId={projectData.id}
+          onSuccess={refreshProjectData}
+        />
+      )}
       <Header />
       <div className={styles.mainContent}>
         {/* 왼쪽 영역 */}
