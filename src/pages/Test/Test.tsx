@@ -29,7 +29,9 @@ const Test: React.FC = () => {
                 <div className="Body">30%</div>
               </div>
             </div>
-            <Button variant="primaryGradient">테스트 중단하기</Button>
+            <div className={styles.progressButton}>
+              <Button variant="primaryGradient">테스트 중단하기</Button>
+            </div>
           </div>
           <div className={styles.card}>
               <MetricCard

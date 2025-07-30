@@ -39,12 +39,17 @@ const MainModal: React.FC<MainModalProps> = ({onClose}) => {
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.imageContainer}>
-          <img src={ProjectCard1} className={styles.card1} />
-          <img src={ProjectCard2} className={styles.card2} />
-          <img src={ProjectCard3} className={styles.card3} />
+        {/* 이미지 영역 */}
+        <div className={styles.imageSection}>
+          <div className={styles.imageContainer}>
+            <img src={ProjectCard1} className={styles.card1} />
+            <img src={ProjectCard2} className={styles.card2} />
+            <img src={ProjectCard3} className={styles.card3} />
+          </div>
         </div>
-        <div className={styles.container}>
+
+        {/* 입력 영역 */}
+        <div className={styles.contentSection}>
           <div className={styles.inputContainer}>
             <InputField
               title="프로젝트 제목"

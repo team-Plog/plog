@@ -32,15 +32,19 @@
 }
 
 .progress {
-  width: 262px;
   display: flex;
   align-items: center;
-  gap: var(--spacing-lg);
-  margin-left: auto;
+  gap: var(--spacing-md);
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+.progressButton {
+  flex-shrink: 0;
 }
 
 .status {
-  width: 142px;
+  min-width: 142px;
   border-radius: var(--radius-sm);
   background-color: var(--color-gray-100);
   color: var(--color-black);
@@ -48,19 +52,22 @@
   align-items: center;
   justify-content: center;
   gap: var(--spacing-lg);
-  align-self: stretch;
+  padding: var(--spacing-sm);
+  white-space: nowrap;
 }
 
 .statusItem {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  flex-shrink: 0;
 }
 
 .icon {
   color: var(--color-gray-200);
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
+  flex-shrink: 0;
 }
 
 .card {

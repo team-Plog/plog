@@ -73,10 +73,15 @@ const UrlModal: React.FC<UrlModalProps> = ({onClose, projectId, onSuccess}) => {
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.container}>
+        {/* 이미지 영역 */}
+        <div className={styles.imageSection}>
           <div className={styles.imageContainer}>
             <img src={EndPoint} className={styles.image} />
           </div>
+        </div>
+
+        {/* 입력 영역 */}
+        <div className={styles.contentSection}>
           <div className={styles.inputContainer}>
             <InputField
               title="API 문서 URL"
