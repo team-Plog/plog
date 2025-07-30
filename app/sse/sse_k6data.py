@@ -6,6 +6,7 @@ import json
 
 router = APIRouter()
 
+# 기능 별로 따로 (일단 job name+number) like 연산자 등으로 찾는다?
 async def event_stream():
     while True:
         result = client.query(
@@ -35,5 +36,7 @@ async def event_stream():
 
 
 @router.get('/sse/k6data')
-async def sse_k6data():
+async def sse_k6data(
+        # TODO k8s job_name 인자로 받기
+):
     return StreamingResponse(event_stream(), media_type="text/event-stream")

@@ -11,7 +11,7 @@ def get_endpoint_by_id(db: Session, endpoint_id: int):
         raise HTTPException(status_code=404, detail=f"Endpoint ID {endpoint_id} not found")
     return endpoint
 
-def generate_k6_script(payload: LoadTestRequest, db: Session) -> str:
+def generate_k6_script(payload: LoadTestRequest, job_name: str, db: Session) -> str:
     script_lines = []
 
     # K6 import
@@ -34,7 +34,7 @@ def generate_k6_script(payload: LoadTestRequest, db: Session) -> str:
     script_lines.append("  scenarios: {")
 
     for scenario in payload.scenarios:
-        script_lines.append(f"    {scenario.name}: {{")
+        script_lines.append(f"    {job_name}+{scenario.endpoint_id}: {{")
         # executor 별 옵션 출력
         option_lines = generate_k6_scenario_options(scenario)
         for line in option_lines:

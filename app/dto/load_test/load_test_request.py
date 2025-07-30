@@ -6,7 +6,7 @@ class StageConfig(BaseModel):
     target: int = 10
 
 class ScenarioConfig(BaseModel):
-    name: str = "scenario"
+    name: str = "제목없음"
     endpoint_id: int = 1
     executor: str = "constant-vus"   # ex: "constant-vus" or "ramping-vus"
     think_time: float = 1.0

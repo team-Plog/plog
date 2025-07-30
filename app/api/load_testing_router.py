@@ -4,6 +4,8 @@ from datetime import datetime
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.common.response.code import SuccessCode
+from app.common.response.response_template import ResponseTemplate
 from app.db import get_db
 from app.dto.load_test.load_test_request import LoadTestRequest
 from app.services.load_test_service import generate_k6_script
@@ -23,7 +25,8 @@ async def create_load_testing_script_by_gui(
         db: Session = Depends(get_db),
 ):
     # 1. 스크립트 생성
-    script_content: str = generate_k6_script(request, db)
+    job_name = generate_unique_job_name()
+    script_content: str = generate_k6_script(request, job_name, db)
 
     # 2. 파일로 저장
     # TODO 생성된 파일 제거 유무 추가
@@ -36,17 +39,17 @@ async def create_load_testing_script_by_gui(
     create_test_history(request, file_name, db)
 
     # 4. k6 run job 생성
-    job_name = generate_unique_job_name()
     create_k6_job_with_dashboard(
         job_name,
         file_name,
         "k6-script-pvc"
     )
 
-    return {
-        "message": "부하테스트 스크립트 생성, 기록 및 Job 실행 완료",
+    return ResponseTemplate.success(
+        SuccessCode.SUCCESS_CODE, {
         "file_name": file_name,
-    }
+        "job_name": job_name,
+    })
 
 def generate_unique_filename(prefix="load_test", ext="js"):
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
