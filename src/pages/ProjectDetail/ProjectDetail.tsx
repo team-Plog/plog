@@ -10,7 +10,7 @@ import ActionMenu from "../../components/ActionMenu/ActionMenu";
 import ApiGroupCard from "../../components/ApiGroupCard/ApiGroupCard";
 import ApiTestConfigCard from "../../components/ApiTestConfigCard/ApiTestConfigCard";
 import type {OpenApiSpec, ApiTestConfig} from "../../assets/mockProjectData";
-import {getProjectDetail} from "../../api";
+import {deleteProject, getProjectDetail} from "../../api";
 import ApiTree from "../../components/ApiTree/ApiTree";
 
 interface ProjectData {
@@ -153,8 +153,8 @@ const ProjectDetail: React.FC = () => {
   return (
     <div className={styles.container}>
       {isModalOpen && (
-        <UrlModal 
-          onClose={() => setIsModalOpen(false)} 
+        <UrlModal
+          onClose={() => setIsModalOpen(false)}
           projectId={projectData.id}
           onSuccess={refreshProjectData}
         />
@@ -209,8 +209,16 @@ const ProjectDetail: React.FC = () => {
                       onEdit={() => {
                         setMenuOpen(false);
                       }}
-                      onDelete={() => {
-                        setMenuOpen(false);
+                      onDelete={async () => {
+                        try {
+                          await deleteProject(projectData.id);
+                          console.log("삭제 성공:", projectData.id);
+                          navigate("/"); // 홈으로 이동
+                        } catch (error) {
+                          console.error("삭제 실패:", error);
+                        } finally {
+                          setMenuOpen(false);
+                        }
                       }}
                       onClose={() => setMenuOpen(false)}
                     />
