@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 
 from app.api import api_router
+from app.db.sqlite import models
 from app.sse import sse_router
 from app.db.sqlite.database import engine
-from app.db.sqlite import models
 from app.common.exceptionhandler import register_exception_handler
 from app.common.middleware.cors_middleware import register_cors_middleware
 from k8s.k8s_client import v1_core

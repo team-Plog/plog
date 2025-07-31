@@ -6,7 +6,7 @@ from app.db import get_db
 from app.dto.project.openapi import ProjectResponse
 from app.dto.project.project_detail_response import ProjectDetailResponse
 from app.dto.project.register_project_request import RegisterProjectRequest
-from app.db.sqlite.models import ProjectModel, OpenAPISpecModel, TagModel
+from app.db.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, TagModel
 from app.common.response.code import SuccessCode, FailureCode
 from app.common.response.response_template import ResponseTemplate
 

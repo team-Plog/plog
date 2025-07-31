@@ -1,9 +1,7 @@
-from fastapi import APIRouter, Body, Depends
-from fastapi.responses import JSONResponse
-from pydantic import HttpUrl
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app.db.sqlite.models import OpenAPISpecModel
+from app.db.sqlite.models.project_models import OpenAPISpecModel
 from app.dto.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 
 from app.dto.project.openapi import OpenAPISpec

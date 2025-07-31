@@ -1,7 +1,7 @@
 from typing import List
 
 from sqlalchemy.orm import Session
-from app.db.sqlite.models import EndpointModel, OpenAPISpecModel, TagModel
+from app.db.sqlite.models.project_models import EndpointModel, OpenAPISpecModel, TagModel
 from app.dto.load_test.load_test_request import LoadTestRequest, ScenarioConfig
 from fastapi import HTTPException
 
@@ -34,7 +34,7 @@ def generate_k6_script(payload: LoadTestRequest, job_name: str, db: Session) -> 
     script_lines.append("  scenarios: {")
 
     for scenario in payload.scenarios:
-        script_lines.append(f"    {job_name}+{scenario.endpoint_id}: {{")
+        script_lines.append(f"    {job_name}#{scenario.endpoint_id}: {{")
         # executor 별 옵션 출력
         option_lines = generate_k6_scenario_options(scenario)
         for line in option_lines:

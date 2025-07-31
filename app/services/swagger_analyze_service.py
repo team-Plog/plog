@@ -1,6 +1,6 @@
 import httpx
 from collections import defaultdict
-from app.db.sqlite.models import OpenAPISpecModel, EndpointModel, TagModel
+from app.db.sqlite.models.project_models import OpenAPISpecModel, EndpointModel, TagModel
 from app.dto.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 
 

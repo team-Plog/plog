@@ -9,9 +9,10 @@ from app.common.response.response_template import ResponseTemplate
 from app.db import get_db
 from app.dto.load_test.load_test_request import LoadTestRequest
 from app.services.load_test_service import generate_k6_script
+from app.services.test_history_service import save_test_history
 
 from k8s.k8s_service import create_k6_job_with_dashboard
-from app.services import create_test_history
+from app.services import save_test_history
 
 router = APIRouter()
 
@@ -31,12 +32,18 @@ async def create_load_testing_script_by_gui(
     # 2. 파일로 저장
     # TODO 생성된 파일 제거 유무 추가
     file_name = generate_unique_filename()
-    script_path = f"/k6-scripts/{file_name}"
+    # script_path = f"/k6-scripts/{file_name}"
+    script_path = f"/Users/jiwonp/mnt/k6-scripts/{file_name}"
     with open(script_path, "w") as f:
         f.write(script_content)
 
     # 3. test history 생성 및 연관관계
-    create_test_history(request, file_name, db)
+    save_test_history(
+        request,
+        file_name,
+        job_name,
+        db
+    )
 
     # 4. k6 run job 생성
     create_k6_job_with_dashboard(
