@@ -12,6 +12,7 @@ import ApiTestConfigCard from "../../components/ApiTestConfigCard/ApiTestConfigC
 import type {OpenApiSpec, ApiTestConfig} from "../../assets/mockProjectData";
 import {deleteProject, getProjectDetail} from "../../api";
 import ApiTree from "../../components/ApiTree/ApiTree";
+import WarningModal from "../../components/warningModal/WarningModal";
 
 interface ProjectData {
   id: number;
@@ -46,6 +47,7 @@ const ProjectDetail: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [apiTestConfigs, setApiTestConfigs] = useState<ApiTestConfig[]>([]);
+  const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
 
   useEffect(() => {
     if (!projectId) {
@@ -203,22 +205,24 @@ const ProjectDetail: React.FC = () => {
                     type="button">
                     <MoreHorizontal />
                   </button>
+                  {isWarningModalOpen && (
+                    <WarningModal
+                      projectId={projectData.id}
+                      onClose={() => setIsWarningModalOpen(false)}
+                      onSuccess={async () => {
+                        await deleteProject(projectData.id);
+                        console.log("✅ 삭제 완료");
+                        navigate("/");
+                      }}
+                    />
+                  )}
                   {menuOpen && (
                     <ActionMenu
                       projectId={projectData.id}
-                      onEdit={() => {
+                      onEdit={() => setMenuOpen(false)}
+                      onDelete={() => {
                         setMenuOpen(false);
-                      }}
-                      onDelete={async () => {
-                        try {
-                          await deleteProject(projectData.id);
-                          console.log("삭제 성공:", projectData.id);
-                          navigate("/"); // 홈으로 이동
-                        } catch (error) {
-                          console.error("삭제 실패:", error);
-                        } finally {
-                          setMenuOpen(false);
-                        }
+                        setIsWarningModalOpen(true);
                       }}
                       onClose={() => setMenuOpen(false)}
                     />
