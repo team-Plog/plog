@@ -22,10 +22,6 @@
   overflow: hidden;
 }
 
-.imageSection {
-  /* 이미지 영역 전체 */
-}
-
 .imageContainer {
   height: 200px;
   background: linear-gradient(180deg, #ffbcbc 0%, #fff 100%);
@@ -36,21 +32,10 @@
   justify-content: center;
 }
 
-.image {
-  position: absolute;
-  top: 48px;
-}
-
 .contentSection {
   /* 입력 영역 전체 */
   flex: 1;
   padding: var(--spacing-lg);
-  display: flex;
-  flex-direction: column;
-}
-
-.container {
-  flex: 1;
   display: flex;
   flex-direction: column;
 }
@@ -62,9 +47,6 @@
   align-items: flex-end;
   align-self: stretch;
   flex: 1;
-}
-
-.warningText {
 }
 
 .warningTitle {
@@ -90,7 +72,7 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--spacing-sm);
-  margin-top: var(--spacing-sm);
+  margin-top: var(--spacing-xl);
 }
 
 .errorMessage {
