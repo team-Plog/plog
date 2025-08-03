@@ -1,13 +1,18 @@
+import os
+
+from dotenv import load_dotenv
 from kubernetes import client
 from k8s.k8s_client import v1_batch
+
+load_dotenv()
 
 # job 구조 job_spec -> template -> pod_spec
 def create_k6_job_with_dashboard(job_name: str, script_filename: str, pvc_name: str="k6-script-pvc"):
     """
     지정된 PVC에 있는 k6 스크립트를 K6_WEB_DASHBOARD 옵션으로 실행하는 Job 생성
     """
-    mount_path = "/scripts"
-    # mount_path = "/Users/jiwonp/mnt/k6-scripts"
+    mount_path = os.getenv("K6_SCRIPT_FILE_FOLDER", '/mnt/k6-scripts')
+    # mount_path = os.getenv("K6_SCRIPT_FILE_FOLDER")
 
     # 1. container 설정
     container = client.V1Container(
@@ -24,9 +29,10 @@ def create_k6_job_with_dashboard(job_name: str, script_filename: str, pvc_name: 
         env=[
             client.V1EnvVar(
                 name="K6_OUT",
-                value="influxdb=http://influxdb:8086/k6"
+                value=f"influxdb=http://{os.getenv('INFLUXDB_HOST')}:{os.getenv('INFLUXDB_PORT')}/{os.getenv('INFLUXDB_DATABASE')}"
             )
         ],
+        # TODO 리소스 요청량에 비례하여 할당
         resources=client.V1ResourceRequirements(
             requests={"cpu": "500m", "memory": "512Mi"},
             limits={"cpu": "1", "memory": "1Gi"}
@@ -68,4 +74,4 @@ def create_k6_job_with_dashboard(job_name: str, script_filename: str, pvc_name: 
     )
 
     v1_batch.create_namespaced_job(namespace="default", body=job)
-    print(f"✅ Job '{job_name}' created to run '/scripts/{script_filename}' with dashboard enabled.")
+    print(f"✅ Job '{job_name}' created to run '/{mount_path}/{script_filename}' with dashboard enabled.")

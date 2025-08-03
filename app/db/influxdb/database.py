@@ -1,10 +1,13 @@
 from influxdb import InfluxDBClient
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 # client 초기화
 client = InfluxDBClient(
-    '35.216.24.11',
-    31000,
+    os.getenv("INFLUXDB_HOST"),
+    os.getenv("INFLUXDB_PORT"),
     None,
     None,
-    'k6'
+    os.getenv("INFLUXDB_DATABASE"),
 )

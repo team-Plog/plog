@@ -31,12 +31,16 @@ def generate_k6_script(payload: LoadTestRequest, job_name: str, db: Session) -> 
 
     # K6 options
     script_lines.append("export const options = {")
+    script_lines.append(f"  tags: {{")
+    script_lines.append(f"    job_name: '{job_name}'")
+    script_lines.append(f"  }},")
     script_lines.append("  scenarios: {")
 
     for scenario in payload.scenarios:
-        script_lines.append(f"    {job_name}#{scenario.endpoint_id}: {{")
+        scenario_name = f"'{job_name}{scenario.endpoint_id}'"
+        script_lines.append(f"    {scenario_name}: {{")
         # executor 별 옵션 출력
-        option_lines = generate_k6_scenario_options(scenario)
+        option_lines = generate_k6_scenario_options(scenario, scenario_name)
         for line in option_lines:
             script_lines.append(line)
         script_lines.append("    },")
@@ -57,9 +61,10 @@ def generate_k6_script(payload: LoadTestRequest, job_name: str, db: Session) -> 
     return "\n".join(script_lines)
 
 
-def generate_k6_scenario_options(scenario: ScenarioConfig) -> List[str]:
+def generate_k6_scenario_options(scenario: ScenarioConfig, scenario_name: str) -> List[str]:
     lines = []
     lines.append(f"      executor: '{scenario.executor}',")
+    lines.append(f"      tags: {{ scenario: {scenario_name} }},")
 
     if scenario.executor == "constant-vus":
         # constant-vus는 stages 대신 vus와 duration 단일 필드

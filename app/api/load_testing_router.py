@@ -1,6 +1,9 @@
+import logging
+import os
 import uuid
 from datetime import datetime
 
+from dotenv import load_dotenv
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -14,7 +17,10 @@ from app.services.test_history_service import save_test_history
 from k8s.k8s_service import create_k6_job_with_dashboard
 from app.services import save_test_history
 
+load_dotenv()
+
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 @router.post(
     path="",
@@ -29,11 +35,13 @@ async def create_load_testing_script_by_gui(
     job_name = generate_unique_job_name()
     script_content: str = generate_k6_script(request, job_name, db)
 
+    logger.info(f"생성된 스크립트 파일 디버깅: {script_content}")
+
     # 2. 파일로 저장
     # TODO 생성된 파일 제거 유무 추가
     file_name = generate_unique_filename()
     # script_path = f"/k6-scripts/{file_name}"
-    script_path = f"/Users/jiwonp/mnt/k6-scripts/{file_name}"
+    script_path = f"{os.getenv('K6_SCRIPT_FILE_FOLDER', '/mnt/k6-scripts')}/{file_name}"
     with open(script_path, "w") as f:
         f.write(script_content)
 
@@ -64,6 +72,6 @@ def generate_unique_filename(prefix="load_test", ext="js"):
     return f"{prefix}_{timestamp}_{unique_id}.{ext}"
 
 def generate_unique_job_name(prefix="job"):
-    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
     unique_id = str(uuid.uuid4())[:6]
     return f"{prefix}-{timestamp}-{unique_id}"
