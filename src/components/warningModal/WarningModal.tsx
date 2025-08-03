@@ -1,6 +1,7 @@
 import React from "react";
 import styles from "./WarningModal.module.css";
 import {Button} from "../Button/Button";
+import {Trash} from "lucide-react";
 
 interface WarningModalProps {
   onClose: () => void;
@@ -46,8 +47,12 @@ const WarningModal: React.FC<WarningModalProps> = ({
               <Button variant="secondary" onClick={onClose}>
                 취소
               </Button>
-              <Button variant="primaryGradient" onClick={handleConfirm}>
-                확인
+              <Button 
+                variant="warning" 
+                icon={<Trash />}
+                onClick={handleConfirm}
+              >
+                삭제하기
               </Button>
             </div>
           </div>

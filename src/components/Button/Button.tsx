@@ -1,10 +1,9 @@
-// src/components/Button/Button.tsx
 import React from 'react';
 import styles from './Button.module.css';
 
 interface ButtonProps {
   children: React.ReactNode;
-  variant?: 'primaryGradient' | 'secondary';
+  variant?: 'primaryGradient' | 'secondary' | 'warning';
   onClick?: () => void;
   disabled?: boolean;
   type?: 'button' | 'submit' | 'reset';
@@ -24,9 +23,19 @@ export const Button: React.FC<ButtonProps> = ({
   icon
 }) => {
   if (!useInlineStyle) {
-    const buttonClass = variant === 'primaryGradient' 
-      ? styles.buttonPrimaryGradient 
-      : styles.buttonSecondary;
+    let buttonClass = styles.buttonSecondary; // 기본값
+    
+    switch (variant) {
+      case 'primaryGradient':
+        buttonClass = styles.buttonPrimaryGradient;
+        break;
+      case 'secondary':
+        buttonClass = styles.buttonSecondary;
+        break;
+      case 'warning':
+        buttonClass = styles.buttonWarning;
+        break;
+    }
 
     return (
       <button
