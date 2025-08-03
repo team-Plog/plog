@@ -8,6 +8,7 @@ import {
   ChartLine,
   Plus,
   Minus,
+  AlertTriangle,
 } from "lucide-react";
 import {InputWithIcon} from "../../components/Input";
 import ToggleButton from "../../components/Button/ToggleButton";
@@ -23,6 +24,8 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
   onRemove,
 }) => {
   const [waitTime, setWaitTime] = useState("1ms");
+  const [responseTime, setResponseTime] = useState("100ms");
+  const [errorRate, setErrorRate] = useState("5%");
   const [userControlMethod, setUserControlMethod] = useState<
     "fixed" | "gradual"
   >("fixed");
@@ -79,6 +82,30 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
             icon={<Clock />}
             value={waitTime}
             onChange={setWaitTime}
+          />
+        </div>
+
+        {/* 응답시간 */}
+        <div className={styles.configItem}>
+          <span className={`${styles.configLabel} CaptionBold`}>
+            응답시간
+          </span>
+          <InputWithIcon
+            icon={<Clock />}
+            value={responseTime}
+            onChange={setResponseTime}
+          />
+        </div>
+
+        {/* 에러율 */}
+        <div className={styles.configItem}>
+          <span className={`${styles.configLabel} CaptionBold`}>
+            에러율
+          </span>
+          <InputWithIcon
+            icon={<AlertTriangle />}
+            value={errorRate}
+            onChange={setErrorRate}
           />
         </div>
 

@@ -44,6 +44,7 @@ const ProjectDetail: React.FC = () => {
   const [scenarioTitle, setScenarioTitle] = useState("");
   const [scenarioDescription, setScenarioDescription] = useState("");
   const [testGoal, setTestGoal] = useState("");
+  const [tps, setTps] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [apiTestConfigs, setApiTestConfigs] = useState<ApiTestConfig[]>([]);
@@ -286,6 +287,12 @@ const ProjectDetail: React.FC = () => {
                 placeholder="테스트 목표를 입력하세요."
                 value={testGoal}
                 onChange={setTestGoal}
+              />
+              <InputField
+                title="TPS"
+                placeholder="TPS를 입력하세요."
+                value={tps}
+                onChange={setTps}
               />
 
               {/* API 테스트 설정 카드들 */}
