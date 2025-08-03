@@ -1,6 +1,6 @@
 .dropdown {
   position: absolute;
-  top: 44px;
+  top: 32px;
   right:13px;
   background-color: var(--color-background-primary);
   border: 1px solid var(--color-border-primary);
