@@ -1,10 +1,10 @@
-import React, {useState, useEffect} from "react";
+import React, {useState, useEffect, useRef, useCallback} from "react";
 import {useLocation, useNavigate} from "react-router-dom";
 import {InputField} from "../../components/Input";
 import {Button} from "../../components/Button/Button";
 import Header from "../../components/Header/Header";
 import styles from "./ProjectDetail.module.css";
-import {MoreHorizontal, Play, Plus, Save} from "lucide-react";
+import {MoreHorizontal, Play, Plus, Save, ChevronLeft, ChevronRight} from "lucide-react";
 import UrlModal from "../../components/UrlModal/UrlModal";
 import ActionMenu from "../../components/ActionMenu/ActionMenu";
 import ApiGroupCard from "../../components/ApiGroupCard/ApiGroupCard";
@@ -50,6 +50,21 @@ const ProjectDetail: React.FC = () => {
   const [apiTestConfigs, setApiTestConfigs] = useState<ApiTestConfig[]>([]);
   const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
 
+  // 리사이즈 관련 상태
+  const [leftWidth, setLeftWidth] = useState(20.1); // %
+  const [rightWidth, setRightWidth] = useState(25.8); // %
+  const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
+  const [isRightCollapsed, setIsRightCollapsed] = useState(false);
+  const [isLeftResizing, setIsLeftResizing] = useState(false);
+  const [isRightResizing, setIsRightResizing] = useState(false);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // 최소/최대 너비 설정 (%)
+  const MIN_PANEL_WIDTH = 15;
+  const MAX_PANEL_WIDTH = 40;
+  const COLLAPSE_THRESHOLD = 12; // 이 너비 이하로 줄어들면 자동으로 접힘
+
   useEffect(() => {
     if (!projectId) {
       navigate("/");
@@ -73,13 +88,85 @@ const ProjectDetail: React.FC = () => {
       });
   }, [projectId, navigate]);
 
+  // 리사이즈 핸들러
+  const handleMouseDown = useCallback((side: 'left' | 'right') => (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (side === 'left') {
+      setIsLeftResizing(true);
+    } else {
+      setIsRightResizing(true);
+    }
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!containerRef.current) return;
+
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const containerWidth = containerRect.width;
+    const mouseX = e.clientX - containerRect.left;
+
+    if (isLeftResizing) {
+      const newLeftWidth = (mouseX / containerWidth) * 100;
+      
+      if (newLeftWidth < COLLAPSE_THRESHOLD) {
+        setIsLeftCollapsed(true);
+        setLeftWidth(MIN_PANEL_WIDTH);
+      } else if (newLeftWidth >= MIN_PANEL_WIDTH && newLeftWidth <= MAX_PANEL_WIDTH) {
+        setLeftWidth(newLeftWidth);
+        setIsLeftCollapsed(false);
+      }
+    }
+
+    if (isRightResizing) {
+      const newRightWidth = ((containerWidth - mouseX) / containerWidth) * 100;
+      
+      if (newRightWidth < COLLAPSE_THRESHOLD) {
+        setIsRightCollapsed(true);
+        setRightWidth(MIN_PANEL_WIDTH);
+      } else if (newRightWidth >= MIN_PANEL_WIDTH && newRightWidth <= MAX_PANEL_WIDTH) {
+        setRightWidth(newRightWidth);
+        setIsRightCollapsed(false);
+      }
+    }
+  }, [isLeftResizing, isRightResizing]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsLeftResizing(false);
+    setIsRightResizing(false);
+  }, []);
+
+  useEffect(() => {
+    if (isLeftResizing || isRightResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+    }
+  }, [isLeftResizing, isRightResizing, handleMouseMove, handleMouseUp]);
+
+  // 패널 토글 함수
+  const toggleLeftPanel = () => {
+    setIsLeftCollapsed(!isLeftCollapsed);
+  };
+
+  const toggleRightPanel = () => {
+    setIsRightCollapsed(!isRightCollapsed);
+  };
+
   const convertToApiTreeData = (specs: OpenApiSpec[]): ApiServer[] => {
     return specs.map((spec) => ({
       id: spec.id.toString(),
-      name: spec.title, // "MedEasy API", "Payment API" 등
+      name: spec.title,
       groups: spec.tags.map((tag) => ({
         id: tag.id.toString(),
-        name: tag.name, // "인증 관리", "복약 관리" 등
+        name: tag.name,
         endpoints: tag.endpoints.map((endpoint) => ({
           id: endpoint.id.toString(),
           path: endpoint.path,
@@ -106,7 +193,6 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
-  // API 테스트 설정 카드 추가
   const handleAddApiTest = (endpoint: string) => {
     const newConfig: ApiTestConfig = {
       id: Date.now().toString(),
@@ -127,7 +213,6 @@ const ProjectDetail: React.FC = () => {
       method: endpoint.method,
     });
 
-    // 기존 handleAddApiTest와 동일한 로직으로 API 테스트 설정 추가
     const newConfig: ApiTestConfig = {
       id: Date.now().toString(),
       endpoint: endpoint.path,
@@ -135,7 +220,6 @@ const ProjectDetail: React.FC = () => {
     setApiTestConfigs((prev) => [...prev, newConfig]);
   };
 
-  // API 테스트 설정 카드 제거
   const handleRemoveApiTest = (id: string) => {
     setApiTestConfigs((prev) => prev.filter((config) => config.id !== id));
   };
@@ -153,6 +237,9 @@ const ProjectDetail: React.FC = () => {
     );
   }
 
+  // 중앙 영역의 너비 계산
+  const centerWidth = 100 - (isLeftCollapsed ? 0 : leftWidth) - (isRightCollapsed ? 0 : rightWidth);
+
   return (
     <div className={styles.container}>
       {isModalOpen && (
@@ -163,9 +250,16 @@ const ProjectDetail: React.FC = () => {
         />
       )}
       <Header />
-      <div className={styles.mainContent}>
+      <div className={styles.mainContent} ref={containerRef}>
         {/* 왼쪽 영역 */}
-        <div className={styles.leftSection}>
+        <div 
+          className={`${styles.leftSection} ${isLeftCollapsed ? styles.collapsed : ''}`}
+          style={{
+            width: isLeftCollapsed ? '0px' : `${leftWidth}%`,
+            minWidth: isLeftCollapsed ? '0px' : `${leftWidth}%`,
+            maxWidth: isLeftCollapsed ? '0px' : `${leftWidth}%`,
+          }}
+        >
           <div className={styles.scrollArea}>
             {openApiSpecs.length > 0 ? (
               <ApiTree
@@ -189,8 +283,30 @@ const ProjectDetail: React.FC = () => {
           </div>
         </div>
 
+        {/* 왼쪽 리사이저 */}
+        {!isLeftCollapsed && (
+          <div 
+            className={`${styles.resizer} ${isLeftResizing ? styles.active : ''}`}
+            onMouseDown={handleMouseDown('left')}
+          />
+        )}
+
+        {/* 접힌 왼쪽 패널 토글 버튼 */}
+        {isLeftCollapsed && (
+          <button 
+            className={`${styles.collapsedToggle} ${styles.leftCollapsedToggle}`}
+            onClick={toggleLeftPanel}
+            type="button"
+          >
+            <ChevronRight />
+          </button>
+        )}
+
         {/* 가운데 영역 */}
-        <div className={styles.centerSection}>
+        <div 
+          className={styles.centerSection}
+          style={{ width: `${centerWidth}%` }}
+        >
           <div className={styles.scrollArea}>
             <div className={styles.projectInfo}>
               <div className={styles.projectHeader}>
@@ -242,7 +358,6 @@ const ProjectDetail: React.FC = () => {
 
             <div className={styles.apiGroupsSection}>
               {openApiSpecs.length > 0 ? (
-                // 각 OpenAPI 스펙의 tags를 순회하며 ApiGroupCard 렌더링
                 openApiSpecs.flatMap((spec) =>
                   spec.tags.map((tag) => (
                     <ApiGroupCard
@@ -266,8 +381,34 @@ const ProjectDetail: React.FC = () => {
           </div>
         </div>
 
+        {/* 접힌 오른쪽 패널 토글 버튼 */}
+        {isRightCollapsed && (
+          <button 
+            className={`${styles.collapsedToggle} ${styles.rightCollapsedToggle}`}
+            onClick={toggleRightPanel}
+            type="button"
+          >
+            <ChevronLeft />
+          </button>
+        )}
+
+        {/* 오른쪽 리사이저 */}
+        {!isRightCollapsed && (
+          <div 
+            className={`${styles.resizer} ${isRightResizing ? styles.active : ''}`}
+            onMouseDown={handleMouseDown('right')}
+          />
+        )}
+
         {/* 오른쪽 영역 */}
-        <div className={styles.rightSection}>
+        <div 
+          className={`${styles.rightSection} ${isRightCollapsed ? styles.collapsed : ''}`}
+          style={{
+            width: isRightCollapsed ? '0px' : `${rightWidth}%`,
+            minWidth: isRightCollapsed ? '0px' : `${rightWidth}%`,
+            maxWidth: isRightCollapsed ? '0px' : `${rightWidth}%`,
+          }}
+        >
           <div className={styles.formArea}>
             <div className={styles.inputContainer}>
               <InputField
@@ -295,7 +436,6 @@ const ProjectDetail: React.FC = () => {
                 onChange={setTps}
               />
 
-              {/* API 테스트 설정 카드들 */}
               {apiTestConfigs.map((config) => (
                 <ApiTestConfigCard
                   key={config.id}
