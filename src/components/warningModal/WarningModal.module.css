@@ -1,0 +1,105 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background-color: var(--color-white);
+  border-radius: var(--radius-md);
+  box-shadow: 0px 4px 16px rgba(0, 0, 0, 0.1);
+  width: 480px;
+  min-height: 348px;
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.imageSection {
+  /* 이미지 영역 전체 */
+}
+
+.imageContainer {
+  height: 200px;
+  background: linear-gradient(180deg, #ffbcbc 0%, #fff 100%);
+  border-radius: var(--radius-sm);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image {
+  position: absolute;
+  top: 48px;
+}
+
+.contentSection {
+  /* 입력 영역 전체 */
+  flex: 1;
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.warningContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  align-self: stretch;
+  flex: 1;
+}
+
+.warningText {
+}
+
+.warningTitle {
+  color: var(--color-black);
+  margin-bottom: var(--spacing-sm);
+}
+
+.warningSubTitle {
+  color: var(--color-gray-300);
+}
+
+.closeButton {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--color-gray-200);
+  color: var(--color-white);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.buttonGroup {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+}
+
+.errorMessage {
+  color: var(--color-error, #e74c3c);
+  font-size: 14px;
+  text-align: left;
+  align-self: stretch;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--color-error-bg, #ffeaea);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-error-border, #f5c6cb);
+}
