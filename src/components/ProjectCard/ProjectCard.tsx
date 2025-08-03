@@ -52,45 +52,6 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
           handleClick();
         }
       }}>
-      <div className={styles.badgeRow}>
-        <StatusBadge status={status ?? "before"} />
-        <button
-          className={styles.menuButton}
-          onClick={(e) => {
-            e.stopPropagation();
-            setMenuOpen(!menuOpen);
-          }}
-          aria-label="프로젝트 메뉴">
-          <MoreHorizontal
-            style={{
-              width: "var(--icon-size-sm)",
-              height: "var(--icon-size-sm)",
-              color: "var(--color-gray-200)",
-            }}
-          />
-        </button>
-        {menuOpen && (
-          <ActionMenu
-            projectId={id}
-            onEdit={(projectId) => {
-              console.log("편집", projectId);
-              setMenuOpen(false);
-            }}
-            onDelete={(projectId) => {
-              deleteProject(projectId)
-                .then(() => {
-                  console.log("삭제 성공:", projectId);
-                  setMenuOpen(false);
-                  navigate("/");
-                })
-                .catch((error) => {
-                  console.error("삭제 실패:", error);
-                });
-            }}
-            onClose={() => setMenuOpen(false)}
-          />
-        )}
-      </div>
 
       <h3 className={`${styles.title} HeadingS`}>{title}</h3>
 
