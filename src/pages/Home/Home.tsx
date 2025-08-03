@@ -9,7 +9,7 @@ import Header from "../../components/Header/Header";
 import EmptyProjectState from "../../components/EmptyState/EmptyProjectState";
 import styles from "./Home.module.css";
 import {getProjectList} from "../../api";
-import type { TestStatus } from "../../components/Tag";
+import {StatusBadge, type TestStatus} from "../../components/Tag";
 
 interface Project {
   id: number;
@@ -102,7 +102,7 @@ const Home: React.FC = () => {
                   id={project.id}
                   title={project.title}
                   summary={project.summary}
-                  status={(project.status ?? 'before') as TestStatus}
+                  status={(project.status ?? "before") as TestStatus}
                   updatedAt={project.updated_at}
                   onClick={handleProjectClick}
                 />
@@ -113,6 +113,25 @@ const Home: React.FC = () => {
             <EmptyProjectState />
           )}
         </main>
+        <div className={styles.recentRunning}>
+          <div className={styles.leftGroup}>
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className={styles.menuButton}>
+              <Menu className={styles.menuIcon} />
+            </button>
+            <h1 className={`HeadingS ${styles.title}`}>최근 실행</h1>
+          </div>
+          <div className={styles.runningList}>
+            <div className={`TitleS ${styles.listTitle}`}>
+              <StatusBadge status={"before"} />
+              프로젝트 타이틀 / 테스트 타이틀
+            </div>
+            <div className={`CaptionBold ${styles.runningTime}`}>
+              2025.01.01
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
