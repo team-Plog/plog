@@ -56,8 +56,8 @@ const ApiGroupCard: React.FC<ApiGroupCardProps> = ({
             <div key={endpoint.id} className={styles.endpointItem}>
               <div className={styles.endpointInfo}>
                 <HttpMethodTag method={endpoint.method} />
-                <span className={`${styles.endpoint} CaptionBold`}>{endpoint.path}</span>
-                <span className={`${styles.description} CaptionLight`}>{endpoint.summary}</span>
+                <span className={`${styles.endpoint} TitleS`}>{endpoint.path}</span>
+                <span className={`${styles.description} Body`}>{endpoint.summary}</span>
               </div>
               <button 
                 className={styles.addButton} 
