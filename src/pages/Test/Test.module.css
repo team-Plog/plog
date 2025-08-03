@@ -78,6 +78,24 @@
   justify-content: center;
 }
 
+.chart {
+  width: 45%;
+  background-color: var(--color-white);
+  padding: 16px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-primary);
+}
+
+.chartWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  justify-content: space-between;
+  margin-top: 32px;
+  padding-top: 32px;
+  padding-bottom: 32px;
+}
+
 /* 반응형 디자인 */
 @media (max-width: 768px) {
   .content {

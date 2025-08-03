@@ -79,6 +79,28 @@
   gap: var(--spacing-lg);
 }
 
+.recentRunning {
+  margin-top: var(--spacing-xl);
+}
+
+.runningList {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--spacing-lg);
+  gap: var(--spacing-lg);
+}
+
+.listTitle{
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.runningTime {
+  color: var(--color-gray-300);
+}
+
 /* 반응형 디자인 */
 @media (max-width: 768px) {
   .content {
