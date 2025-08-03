@@ -12,7 +12,7 @@ import ApiTestConfigCard from "../../components/ApiTestConfigCard/ApiTestConfigC
 import type {OpenApiSpec, ApiTestConfig} from "../../assets/mockProjectData";
 import {deleteProject, getProjectDetail} from "../../api";
 import ApiTree from "../../components/ApiTree/ApiTree";
-import WarningModal from "../../components/warningModal/warningModal";
+import WarningModal from "../../components/warningModal/WarningModal";
 
 interface ProjectData {
   id: number;
