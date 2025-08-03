@@ -10,17 +10,23 @@
   height: calc(100vh - 40px);
   width: 100vw;
   min-width: 100%;
+  position: relative;
 }
 
 /* 왼쪽 영역 스타일 */
 .leftSection {
-  width: 20.1%; 
-  min-width: 20.1%; 
-  max-width: 20.1%; 
   background-color: var(--color-background-secondary);
   display: flex;
   flex-direction: column;
   position: relative;
+  transition: width 0.3s ease;
+}
+
+.leftSection.collapsed {
+  width: 0px !important;
+  min-width: 0px !important;
+  max-width: 0px !important;
+  overflow: hidden;
 }
 
 .scrollArea {
@@ -36,13 +42,12 @@
 
 /* 가운데 영역 스타일 */
 .centerSection {
-  width: 54.1%; 
-  min-width: 54.1%; 
-  max-width: 54.1%;
   background-color: var(--color-white);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+  flex: 1;
+  min-width: 400px; /* 최소 너비 보장 */
 }
 
 .projectInfo {
@@ -120,13 +125,18 @@
 
 /* 오른쪽 영역 스타일 */
 .rightSection {
-  width: 25.8%; 
-  min-width: 25.8%; 
-  max-width: 25.8%; 
   background-color: var(--color-background-secondary);
   display: flex;
   flex-direction: column;
   position: relative;
+  transition: width 0.3s ease;
+}
+
+.rightSection.collapsed {
+  width: 0px !important;
+  min-width: 0px !important;
+  max-width: 0px !important;
+  overflow: hidden;
 }
 
 .formArea {
@@ -146,4 +156,64 @@
   display: flex;
   justify-content: center;
   gap: 8px;
+}
+
+/* 리사이저 스타일 */
+.resizer {
+  width: 4px;
+  cursor: col-resize;
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+.resizer:hover,
+.resizer.active {
+  background-color: var(--color-border-primary);
+}
+
+.resizer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -2px;
+  right: -2px;
+  bottom: 0;
+  background: transparent;
+}
+
+/* 접힌 상태일 때의 토글 버튼 */
+.collapsedToggle {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  background-color: var(--color-background-secondary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 4px;
+  width: 24px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-primary);
+}
+
+.collapsedToggle:hover {
+  border-color: var(--color-accent-primary);
+}
+
+.collapsedToggle svg {
+  width: 12px;
+  height: 12px;
+  color: var(--color-gray-300);
+}
+
+.leftCollapsedToggle {
+  left: 0;
+}
+
+.rightCollapsedToggle {
+  right: 0;
 }
