@@ -5,6 +5,7 @@ from app.api.openapi_router import router as swagger_analyze_router
 from app.api.load_testing_router import router as load_testing_router
 from app.api.project_router import router as project_router
 from app.api.test_history_router import router as test_history_router
+from app.api.endpoint_router import router as endpoint_router
 
 api_router = APIRouter()
 api_router.include_router(
@@ -34,4 +35,10 @@ api_router.include_router(
     test_history_router,
     prefix="/test-history",
     tags=["Test History"]
+)
+
+api_router.include_router(
+    endpoint_router,
+    prefix="/endpoint",
+    tags=["Endpoint"]
 )
