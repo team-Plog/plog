@@ -12,5 +12,5 @@ spec:
     - name: k6-api-port
       port: 3000
       nodePort: 31000
-      targetPort: 3000
+      targetPort: 5665
       protocol: TCP
