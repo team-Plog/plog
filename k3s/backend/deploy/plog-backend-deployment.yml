@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: plog-backend-deployment
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: plog-backend
+  template:
+    metadata:
+      labels:
+        app: plog-backend
+    spec:
+      containers:
+        - name: plog-backend-container
+          ports:
+            - containerPort: 8000
+          image: asia-northeast3-docker.pkg.dev/citric-replica-450012-a8/plog-image-repo/plog-backend:latest
+          imagePullPolicy: Always
+
+          env:
+            - name: K6_SCRIPT_FILE_FOLDER
+              valueFrom:
+                secretKeyRef:
+                  key: k6_script_file_folder
+                  name: plog-backend-secret
+
+            - name: INFLUXDB_HOST
+              valueFrom:
+                secretKeyRef:
+                  key: influxdb_host
+                  name: plog-backend-secret
+
+            - name: INFLUXDB_PORT
+              valueFrom:
+                secretKeyRef:
+                  key: influxdb_port
+                  name: plog-backend-secret
+
+            - name: INFLUXDB_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  key: influxdb_database
+                  name: plog-backend-secret
+
+          volumeMounts:
+            - mountPath: /mnt/k6-scripts
+              name: k6-script-volume
+            - mountPath: /app/sqlite-data
+              name: sqlite-data-volume
+
+      serviceAccountName: plog-backend-service-account
+
+      imagePullSecrets:
+        - name: gcp-artifact-registry-secret
+
+      volumes:
+        - name: k6-script-volume
+          persistentVolumeClaim:
+            claimName: k6-script-pvc
+
+        - name: sqlite-data-volume
+          hostPath:
+            path: /data/sqlite
+            type: DirectoryOrCreate
+
