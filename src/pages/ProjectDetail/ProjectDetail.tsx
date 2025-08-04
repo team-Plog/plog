@@ -10,8 +10,8 @@ import ActionMenu from "../../components/ActionMenu/ActionMenu";
 import ApiGroupCard from "../../components/ApiGroupCard/ApiGroupCard";
 import ApiTestConfigCard, {type ApiTestConfig} from "../../components/ApiTestConfigCard/ApiTestConfigCard";
 import type {OpenApiSpec} from "../../assets/mockProjectData";
-import {deleteProject, getProjectDetail} from "../../api";
-import {generateLoadTestScript, type LoadTestingRequest} from "../../api/loadTesting";
+import {deleteProject, getProjectDetail, generateLoadTestScript, deleteOpenAPI, deleteEndpoint} from "../../api";
+import type {LoadTestingRequest} from "../../api";
 import ApiTree from "../../components/ApiTree/ApiTree";
 import WarningModal from "../../components/WarningModal/WarningModal";
 
@@ -209,6 +209,12 @@ const ProjectDetail: React.FC = () => {
     return null;
   };
 
+  // OpenAPI Spec ID를 찾는 헬퍼 함수
+  const findOpenApiSpecId = (serverId: string): number | null => {
+    const spec = openApiSpecs.find(spec => spec.id.toString() === serverId);
+    return spec ? spec.id : null;
+  };
+
   const handleEndpointClick = (
     endpoint: {id: string; path: string; method: string},
     serverName: string,
@@ -237,6 +243,67 @@ const ProjectDetail: React.FC = () => {
       stages: [{ duration: '10s', target: 10 }],
     };
     setApiTestConfigs((prev) => [...prev, newConfig]);
+  };
+
+  // 서버(OpenAPI Spec) 삭제 핸들러
+  const handleDeleteServer = async (serverId: string) => {
+    try {
+      const openApiSpecId = findOpenApiSpecId(serverId);
+      if (!openApiSpecId) {
+        console.error("OpenAPI Spec ID를 찾을 수 없습니다:", serverId);
+        alert("삭제할 수 없습니다. 서버 정보를 찾을 수 없습니다.");
+        return;
+      }
+
+      console.log("🗑️ 서버 삭제 중:", openApiSpecId);
+      await deleteOpenAPI(openApiSpecId);
+      console.log("✅ 서버 삭제 완료");
+      
+      // 프로젝트 데이터 새로고침
+      await refreshProjectData();
+      alert("서버가 성공적으로 삭제되었습니다.");
+    } catch (error) {
+      console.error("❌ 서버 삭제 실패:", error);
+      alert("서버 삭제에 실패했습니다. 다시 시도해주세요.");
+    }
+  };
+
+  // 그룹 삭제 핸들러 (그룹 내 모든 엔드포인트 삭제)
+  const handleDeleteGroup = async (serverId: string, groupId: string, endpointIds: string[]) => {
+    try {
+      console.log("🗑️ 그룹 삭제 중:", { serverId, groupId, endpointIds });
+      
+      // 그룹 내 모든 엔드포인트를 순차적으로 삭제
+      for (const endpointId of endpointIds) {
+        await deleteEndpoint(parseInt(endpointId));
+        console.log(`✅ 엔드포인트 삭제 완료: ${endpointId}`);
+      }
+      
+      console.log("✅ 그룹 내 모든 엔드포인트 삭제 완료");
+      
+      // 프로젝트 데이터 새로고침
+      await refreshProjectData();
+      alert("그룹이 성공적으로 삭제되었습니다.");
+    } catch (error) {
+      console.error("❌ 그룹 삭제 실패:", error);
+      alert("그룹 삭제에 실패했습니다. 다시 시도해주세요.");
+    }
+  };
+
+  // 엔드포인트 삭제 핸들러
+  const handleDeleteEndpoint = async (endpointId: string) => {
+    try {
+      console.log("🗑️ 엔드포인트 삭제 중:", endpointId);
+      await deleteEndpoint(parseInt(endpointId));
+      console.log("✅ 엔드포인트 삭제 완료");
+      
+      // 프로젝트 데이터 새로고침
+      await refreshProjectData();
+      alert("엔드포인트가 성공적으로 삭제되었습니다.");
+    } catch (error) {
+      console.error("❌ 엔드포인트 삭제 실패:", error);
+      alert("엔드포인트 삭제에 실패했습니다. 다시 시도해주세요.");
+    }
   };
 
   const handleAddApiTest = (endpoint: string) => {
@@ -362,6 +429,9 @@ const ProjectDetail: React.FC = () => {
               <ApiTree
                 servers={convertToApiTreeData(openApiSpecs)}
                 onEndpointClick={handleEndpointClick}
+                onDeleteServer={handleDeleteServer}
+                onDeleteGroup={handleDeleteGroup}
+                onDeleteEndpoint={handleDeleteEndpoint}
               />
             ) : (
               <div className={styles.noApiData}>

@@ -4,9 +4,11 @@ import {Pen, Trash} from "lucide-react";
 
 interface ActionMenuProps {
   projectId: number;
-  onEdit: (id: number) => void;
+  onEdit?: (id: number) => void;
   onDelete: (id: number) => void;
   onClose: () => void;
+  deleteOnly?: boolean; // 삭제만 표시할지 여부
+  position?: { x: number; y: number }; // 커스텀 위치
 }
 
 const ActionMenu: React.FC<ActionMenuProps> = ({
@@ -14,6 +16,8 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
   onEdit,
   onDelete,
   onClose,
+  deleteOnly = false,
+  position,
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -27,13 +31,27 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
+  const menuStyle = position ? {
+    position: 'fixed' as const,
+    left: position.x,
+    top: position.y,
+    right: 'auto',
+  } : {};
+
   return (
-    <div className={styles.dropdown} ref={menuRef}>
-      <button onClick={() => onEdit(projectId)} className={styles.item}>
-        <Pen />
-        <span className="Body">편집</span>
-      </button>
-      <button onClick={() => onDelete(projectId)} className={styles.item}>
+    <div 
+      className={`${styles.dropdown} ${deleteOnly ? styles.deleteOnlyMenu : ''}`} 
+      ref={menuRef}
+      style={menuStyle}>
+      {!deleteOnly && onEdit && (
+        <button onClick={() => onEdit(projectId)} className={styles.item}>
+          <Pen />
+          <span className="Body">편집</span>
+        </button>
+      )}
+      <button 
+        onClick={() => onDelete(projectId)} 
+        className={`${styles.item} ${deleteOnly ? styles.singleItem : ''}`}>
         <Trash />
         <span className="Body">삭제</span>
       </button>
