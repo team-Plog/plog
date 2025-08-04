@@ -1,4 +1,4 @@
-import React, {useState} from "react";
+import React from "react";
 import {
   Link,
   X,
@@ -9,59 +9,116 @@ import {
   Plus,
   Minus,
   AlertTriangle,
+  Target,
 } from "lucide-react";
 import {InputWithIcon} from "../../components/Input";
 import ToggleButton from "../../components/Button/ToggleButton";
 import styles from "./ApiTestConfigCard.module.css";
 
+interface Stage {
+  duration: string;
+  target: number;
+}
+
+export interface ApiTestConfig {
+  id: string;
+  endpoint_id: number;
+  endpoint_path: string;
+  scenario_name: string;
+  think_time: number;
+  executor: 'constant-vus' | 'ramping-vus';
+  response_time_target?: number;
+  error_rate_target?: number;
+  stages: Stage[];
+}
+
 interface ApiTestConfigCardProps {
-  endpoint: string;
+  config: ApiTestConfig;
   onRemove: () => void;
+  onChange: (config: ApiTestConfig) => void;
 }
 
 const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
-  endpoint,
+  config,
   onRemove,
+  onChange,
 }) => {
-  const [waitTime, setWaitTime] = useState("1ms");
-  const [responseTime, setResponseTime] = useState("100ms");
-  const [errorRate, setErrorRate] = useState("5%");
-  const [userControlMethod, setUserControlMethod] = useState<
-    "fixed" | "gradual"
-  >("fixed");
-  const [userCount, setUserCount] = useState("1000");
-  const [testTime, setTestTime] = useState("1ms");
-  const [gradualSteps, setGradualSteps] = useState([
-    {userCount: "1000", testTime: "1ms"},
-  ]);
-
-  const addGradualStep = () => {
-    setGradualSteps([...gradualSteps, {userCount: "1000", testTime: "1ms"}]);
+  const updateConfig = (updates: Partial<ApiTestConfig>) => {
+    onChange({ ...config, ...updates });
   };
 
-  const removeGradualStep = (index: number) => {
-    if (gradualSteps.length > 1) {
-      setGradualSteps(gradualSteps.filter((_, i) => i !== index));
+  // 숫자만 입력받는 헬퍼 함수
+  const handleNumberInput = (value: string): number => {
+    // 빈 문자열이면 0 반환
+    if (value === '') return 0;
+    
+    // 숫자만 허용 (소수점 포함)
+    const numericValue = value.replace(/[^0-9.]/g, '');
+    const parsedValue = parseFloat(numericValue);
+    
+    // NaN이면 0 반환, 그렇지 않으면 파싱된 값 반환
+    return isNaN(parsedValue) ? 0 : parsedValue;
+  };
+
+  // 정수만 입력받는 헬퍼 함수
+  const handleIntegerInput = (value: string): number => {
+    // 빈 문자열이면 0 반환
+    if (value === '') return 0;
+    
+    // 숫자만 허용 (정수만)
+    const numericValue = value.replace(/[^0-9]/g, '');
+    const parsedValue = parseInt(numericValue);
+    
+    // NaN이면 0 반환, 그렇지 않으면 파싱된 값 반환
+    return isNaN(parsedValue) ? 0 : parsedValue;
+  };
+
+  const addStage = () => {
+    const newStages = [...config.stages, { duration: "10s", target: 10 }];
+    updateConfig({ stages: newStages });
+  };
+
+  const removeStage = (index: number) => {
+    if (config.stages.length > 1) {
+      const newStages = config.stages.filter((_, i) => i !== index);
+      updateConfig({ stages: newStages });
     }
   };
 
-  const updateGradualStep = (
-    index: number,
-    field: "userCount" | "testTime",
-    value: string
-  ) => {
-    const newSteps = [...gradualSteps];
-    newSteps[index][field] = value;
-    setGradualSteps(newSteps);
+  const updateStage = (index: number, field: keyof Stage, value: string | number) => {
+    const newStages = [...config.stages];
+    if (field === 'target') {
+      newStages[index][field] = typeof value === 'string' ? handleIntegerInput(value) : value;
+    } else {
+      newStages[index][field] = value as string;
+    }
+    updateConfig({ stages: newStages });
+  };
+
+  // duration 포맷 검증 및 변환
+  const formatDuration = (value: string): string => {
+    // 숫자만 입력된 경우 's' 추가
+    if (/^\d+$/.test(value)) {
+      return value + 's';
+    }
+    // 이미 올바른 포맷인지 확인
+    if (/^\d+[smh]$/.test(value)) {
+      return value;
+    }
+    return value;
+  };
+
+  const handleDurationChange = (index: number, value: string) => {
+    updateStage(index, 'duration', formatDuration(value));
   };
 
   return (
     <div className={styles.container}>
-      {/* 첫 번째 영역 - 헤더 */}
+      {/* 헤더 */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <Link className={styles.linkIcon} />
-          <span className={`${styles.endpoint} TitleL`}>{endpoint}</span>
+          <span className={`${styles.endpoint} TitleL`}>{config.endpoint_path}</span>
         </div>
         <button
           className={styles.removeButton}
@@ -71,133 +128,150 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
         </button>
       </div>
 
-      {/* 두 번째 영역 - 설정 */}
+      {/* 설정 */}
       <div className={styles.configSection}>
-        {/* 가상 사용자 대기 시간 */}
+        {/* 시나리오 이름 */}
         <div className={styles.configItem}>
           <span className={`${styles.configLabel} CaptionBold`}>
-            가상 사용자 대기 시간
+            시나리오 이름
           </span>
           <InputWithIcon
-            icon={<Clock />}
-            value={waitTime}
-            onChange={setWaitTime}
+            icon={<Target />}
+            value={config.scenario_name}
+            onChange={(value) => updateConfig({ scenario_name: value })}
+            placeholder="시나리오 이름을 입력하세요"
           />
         </div>
 
-        {/* 응답시간 */}
+        {/* 요청 간 대기시간 */}
         <div className={styles.configItem}>
           <span className={`${styles.configLabel} CaptionBold`}>
-            응답시간
+            요청 간 대기시간 (초)
           </span>
           <InputWithIcon
             icon={<Clock />}
-            value={responseTime}
-            onChange={setResponseTime}
+            value={config.think_time.toString()}
+            onChange={(value) => updateConfig({ think_time: handleNumberInput(value) })}
+            placeholder="1"
           />
         </div>
 
-        {/* 에러율 */}
+        {/* 응답시간 목표 (선택사항) */}
         <div className={styles.configItem}>
           <span className={`${styles.configLabel} CaptionBold`}>
-            에러율
+            응답시간 목표 (ms, 선택사항)
+          </span>
+          <InputWithIcon
+            icon={<Clock />}
+            value={config.response_time_target?.toString() || ''}
+            onChange={(value) => {
+              if (value === '') {
+                updateConfig({ response_time_target: undefined });
+              } else {
+                updateConfig({ response_time_target: handleNumberInput(value) });
+              }
+            }}
+            placeholder="예: 100"
+          />
+        </div>
+
+        {/* 에러율 목표 (선택사항) */}
+        <div className={styles.configItem}>
+          <span className={`${styles.configLabel} CaptionBold`}>
+            에러율 목표 (%, 선택사항)
           </span>
           <InputWithIcon
             icon={<AlertTriangle />}
-            value={errorRate}
-            onChange={setErrorRate}
+            value={config.error_rate_target?.toString() || ''}
+            onChange={(value) => {
+              if (value === '') {
+                updateConfig({ error_rate_target: undefined });
+              } else {
+                updateConfig({ error_rate_target: handleNumberInput(value) });
+              }
+            }}
+            placeholder="예: 5"
           />
         </div>
 
-        {/* 사용자 수 조절 방식 */}
+        {/* 실행 모드 */}
         <div className={styles.configItem}>
           <span className={`${styles.configLabel} CaptionBold`}>
-            사용자 수 조절 방식
+            실행 모드
           </span>
           <ToggleButton
             options={[
-              {value: "fixed", label: "고정", icon: <LockKeyhole />},
-              {value: "gradual", label: "점진적 증가", icon: <ChartLine />},
+              {value: "constant-vus", label: "고정", icon: <LockKeyhole />},
+              {value: "ramping-vus", label: "점진적 증가", icon: <ChartLine />},
             ]}
-            selectedValue={userControlMethod}
-            onChange={(value) =>
-              setUserControlMethod(value as "fixed" | "gradual")
-            }
+            selectedValue={config.executor}
+            onChange={(value) => {
+              const newExecutor = value as 'constant-vus' | 'ramping-vus';
+              // 고정 모드로 변경할 때는 첫 번째 단계만 유지
+              if (newExecutor === 'constant-vus' && config.stages.length > 1) {
+                updateConfig({ 
+                  executor: newExecutor,
+                  stages: [config.stages[0]] // 첫 번째 단계만 유지
+                });
+              } else {
+                updateConfig({ executor: newExecutor });
+              }
+            }}
           />
         </div>
 
-        {/* 가상 사용자 수 & 테스트 시간 */}
-        {userControlMethod === "fixed" ? (
+        {/* 단계별 설정 */}
+        <div className={styles.stagesSection}>
           <div className={styles.horizontalGroup}>
             <div className={styles.configItem}>
               <span className={`${styles.configLabel} CaptionBold`}>
                 가상 사용자 수
               </span>
-              <InputWithIcon
-                icon={<UserRound />}
-                value={userCount}
-                onChange={setUserCount}
-              />
             </div>
             <div className={styles.configItem}>
-              <span className={`${styles.configLabel} CaptionBold`}>
-                테스트 시간
-              </span>
-              <InputWithIcon
-                icon={<Clock />}
-                value={testTime}
-                onChange={setTestTime}
-              />
-            </div>
-          </div>
-        ) : (
-          <div className={styles.gradualSection}>
-            <div className={styles.horizontalGroup}>
-              <div className={styles.configItem}>
+              <div className={styles.labelWithButton}>
                 <span className={`${styles.configLabel} CaptionBold`}>
-                  가상 사용자 수
+                  테스트 시간
                 </span>
-              </div>
-              <div className={styles.configItem}>
-                <div className={styles.labelWithButton}>
-                  <span className={`${styles.configLabel} CaptionBold`}>
-                    테스트 시간
-                  </span>
+                {config.executor === 'ramping-vus' && (
                   <button
                     className={styles.addButton}
-                    onClick={addGradualStep}
+                    onClick={addStage}
                     type="button">
                     <Plus />
                   </button>
-                </div>
+                )}
               </div>
             </div>
+          </div>
 
-            {gradualSteps.map((step, index) => (
-              <div key={index} className={styles.gradualStep}>
+          {(config.executor === 'constant-vus' ? [config.stages[0]] : config.stages).map((stage, index) => {
+            // 고정 모드에서는 실제 인덱스를 0으로, 점진적 증가에서는 실제 인덱스 사용
+            const actualIndex = config.executor === 'constant-vus' ? 0 : index;
+            
+            return (
+              <div key={actualIndex} className={styles.stageItem}>
                 <div className={styles.horizontalGroup}>
                   <div className={styles.configItem}>
                     <InputWithIcon
                       icon={<UserRound />}
-                      value={step.userCount}
-                      onChange={(value) =>
-                        updateGradualStep(index, "userCount", value)
-                      }
+                      value={stage.target.toString()}
+                      onChange={(value) => updateStage(actualIndex, 'target', value)}
+                      placeholder="10"
                     />
                   </div>
                   <div className={styles.configItem}>
                     <div className={styles.inputWithButton}>
                       <InputWithIcon
                         icon={<Clock />}
-                        value={step.testTime}
-                        onChange={(value) =>
-                          updateGradualStep(index, "testTime", value)
-                        }
+                        value={stage.duration}
+                        onChange={(value) => handleDurationChange(actualIndex, value)}
+                        placeholder="10s (초: s, 분: m, 시: h)"
                       />
-                      {gradualSteps.length > 1 && (
+                      {config.executor === 'ramping-vus' && config.stages.length > 1 && (
                         <button
                           className={styles.removeStepButton}
-                          onClick={() => removeGradualStep(index)}
+                          onClick={() => removeStage(actualIndex)}
                           type="button">
                           <Minus />
                         </button>
@@ -205,10 +279,13 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
                     </div>
                   </div>
                 </div>
+                {actualIndex === 0 && config.executor === 'constant-vus' && (
+                  <div className={styles.stageHelperText} />
+                )}
               </div>
-            ))}
-          </div>
-        )}
+            );
+          })}
+        </div>
       </div>
     </div>
   );
