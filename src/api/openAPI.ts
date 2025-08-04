@@ -11,3 +11,7 @@ export const analyzeOpenAPI = (data: AnalyzeRequest) =>
 
 // 명세 리스트 조회
 export const getOpenAPIList = () => axios.get('/openapi');
+
+// 명세 삭제
+export const deleteOpenAPI = (openapi_spec_id: number) =>
+  axios.delete(`/openapi/${openapi_spec_id}`);
