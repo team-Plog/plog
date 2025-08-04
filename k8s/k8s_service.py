@@ -65,7 +65,7 @@ def create_k6_job_with_dashboard(job_name: str, script_filename: str, pvc_name: 
     # job spec
     job_spec = client.V1JobSpec(
         template=template,
-        ttl_seconds_after_finished=60
+        ttl_seconds_after_finished=300  # 5분으로 연장하여 메트릭 수집 시간 확보
     )
 
     job = client.V1Job(
