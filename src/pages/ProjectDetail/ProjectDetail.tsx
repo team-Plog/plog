@@ -8,9 +8,10 @@ import {MoreHorizontal, Play, Plus, Save, ChevronLeft, ChevronRight} from "lucid
 import UrlModal from "../../components/UrlModal/UrlModal";
 import ActionMenu from "../../components/ActionMenu/ActionMenu";
 import ApiGroupCard from "../../components/ApiGroupCard/ApiGroupCard";
-import ApiTestConfigCard from "../../components/ApiTestConfigCard/ApiTestConfigCard";
-import type {OpenApiSpec, ApiTestConfig} from "../../assets/mockProjectData";
+import ApiTestConfigCard, {type ApiTestConfig} from "../../components/ApiTestConfigCard/ApiTestConfigCard";
+import type {OpenApiSpec} from "../../assets/mockProjectData";
 import {deleteProject, getProjectDetail} from "../../api";
+import {generateLoadTestScript, type LoadTestingRequest} from "../../api/loadTesting";
 import ApiTree from "../../components/ApiTree/ApiTree";
 import WarningModal from "../../components/WarningModal/WarningModal";
 
@@ -43,12 +44,12 @@ const ProjectDetail: React.FC = () => {
   const [openApiSpecs, setOpenApiSpecs] = useState<OpenApiSpec[]>([]);
   const [scenarioTitle, setScenarioTitle] = useState("");
   const [scenarioDescription, setScenarioDescription] = useState("");
-  const [testGoal, setTestGoal] = useState("");
-  const [tps, setTps] = useState("");
+  const [targetTps, setTargetTps] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [apiTestConfigs, setApiTestConfigs] = useState<ApiTestConfig[]>([]);
   const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 리사이즈 관련 상태
   const [leftWidth, setLeftWidth] = useState(20.1); // %
@@ -81,6 +82,7 @@ const ProjectDetail: React.FC = () => {
           description: data.description,
         });
         setOpenApiSpecs(data.openapi_specs);
+        console.log("📩 프로젝트 상세 정보: ", data);
       })
       .catch((err) => {
         console.error("❌ 프로젝트 상세 불러오기 실패:", err);
@@ -193,12 +195,18 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
-  const handleAddApiTest = (endpoint: string) => {
-    const newConfig: ApiTestConfig = {
-      id: Date.now().toString(),
-      endpoint: endpoint,
-    };
-    setApiTestConfigs((prev) => [...prev, newConfig]);
+  // endpoint_id를 찾는 헬퍼 함수
+  const findEndpointId = (path: string): number | null => {
+    for (const spec of openApiSpecs) {
+      for (const tag of spec.tags) {
+        for (const endpoint of tag.endpoints) {
+          if (endpoint.path === path) {
+            return endpoint.id;
+          }
+        }
+      }
+    }
+    return null;
   };
 
   const handleEndpointClick = (
@@ -213,15 +221,104 @@ const ProjectDetail: React.FC = () => {
       method: endpoint.method,
     });
 
+    const endpointId = findEndpointId(endpoint.path);
+    if (!endpointId) {
+      console.error("엔드포인트 ID를 찾을 수 없습니다:", endpoint.path);
+      return;
+    }
+
     const newConfig: ApiTestConfig = {
       id: Date.now().toString(),
-      endpoint: endpoint.path,
+      endpoint_id: endpointId,
+      endpoint_path: endpoint.path,
+      scenario_name: `${groupName}_${endpoint.method}_${endpoint.path.split('/').pop()}`,
+      think_time: 1,
+      executor: 'constant-vus',
+      stages: [{ duration: '10s', target: 10 }],
+    };
+    setApiTestConfigs((prev) => [...prev, newConfig]);
+  };
+
+  const handleAddApiTest = (endpoint: string) => {
+    const endpointId = findEndpointId(endpoint);
+    if (!endpointId) {
+      console.error("엔드포인트 ID를 찾을 수 없습니다:", endpoint);
+      return;
+    }
+
+    const newConfig: ApiTestConfig = {
+      id: Date.now().toString(),
+      endpoint_id: endpointId,
+      endpoint_path: endpoint,
+      scenario_name: `scenario_${Date.now()}`,
+      think_time: 1,
+      executor: 'constant-vus',
+      stages: [{ duration: '10s', target: 10 }],
     };
     setApiTestConfigs((prev) => [...prev, newConfig]);
   };
 
   const handleRemoveApiTest = (id: string) => {
     setApiTestConfigs((prev) => prev.filter((config) => config.id !== id));
+  };
+
+  const handleConfigChange = (updatedConfig: ApiTestConfig) => {
+    setApiTestConfigs((prev) => 
+      prev.map((config) => 
+        config.id === updatedConfig.id ? updatedConfig : config
+      )
+    );
+  };
+
+  // 로드 테스팅 실행
+  const handleRunLoadTest = async () => {
+    if (apiTestConfigs.length === 0) {
+      alert("최소 1개 이상의 API 테스트를 구성해주세요.");
+      return;
+    }
+
+    if (!scenarioTitle.trim()) {
+      alert("테스트 시나리오 제목을 입력해주세요.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const loadTestRequest: LoadTestingRequest = {
+        title: scenarioTitle,
+        description: scenarioDescription || "설명 없음",
+        target_tps: targetTps ? parseFloat(targetTps) : undefined,
+        scenarios: apiTestConfigs.map((config) => ({
+          name: config.scenario_name,
+          endpoint_id: config.endpoint_id,
+          executor: config.executor,
+          think_time: config.think_time,
+          stages: config.stages,
+          response_time_target: config.response_time_target,
+          error_rate_target: config.error_rate_target,
+        })),
+      };
+
+      console.log("🚀 로드 테스트 요청:", loadTestRequest);
+
+      const response = await generateLoadTestScript(loadTestRequest);
+      console.log("✅ 로드 테스트 시작:", response.data);
+
+      // 테스트 페이지로 이동하면서 job_name을 전달
+      navigate("/test", { 
+        state: { 
+          jobName: response.data.job_name,
+          fileName: response.data.file_name,
+          testTitle: scenarioTitle
+        } 
+      });
+    } catch (error) {
+      console.error("❌ 로드 테스트 시작 실패:", error);
+      alert("로드 테스트 시작에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!projectData) {
@@ -424,23 +521,18 @@ const ProjectDetail: React.FC = () => {
                 onChange={setScenarioDescription}
               />
               <InputField
-                title="테스트 목표"
-                placeholder="테스트 목표를 입력하세요."
-                value={testGoal}
-                onChange={setTestGoal}
-              />
-              <InputField
-                title="TPS"
-                placeholder="TPS를 입력하세요."
-                value={tps}
-                onChange={setTps}
+                title="목표 TPS (선택사항)"
+                placeholder="예: 1000"
+                value={targetTps}
+                onChange={setTargetTps}
               />
 
               {apiTestConfigs.map((config) => (
                 <ApiTestConfigCard
                   key={config.id}
-                  endpoint={config.endpoint}
+                  config={config}
                   onRemove={() => handleRemoveApiTest(config.id)}
+                  onChange={handleConfigChange}
                 />
               ))}
             </div>
@@ -452,8 +544,9 @@ const ProjectDetail: React.FC = () => {
             <Button
               variant="primaryGradient"
               icon={<Play />}
-              onClick={() => navigate("/test")}>
-              테스트 실행하기
+              onClick={handleRunLoadTest}
+              disabled={isSubmitting || apiTestConfigs.length === 0}>
+              {isSubmitting ? "테스트 시작 중..." : "테스트 실행하기"}
             </Button>
           </div>
         </div>
