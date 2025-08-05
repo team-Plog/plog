@@ -18,6 +18,7 @@ class ProjectModel(Base):
     summary = Column(String)
     description = Column(Text)
     openapi_specs = relationship("OpenAPISpecModel", back_populates="project")
+    test_histories = relationship("TestHistoryModel", back_populates="project")
 
 # OpenAPI 스펙(서버)
 class OpenAPISpecModel(Base):

@@ -6,6 +6,7 @@ from app.api.load_testing_router import router as load_testing_router
 from app.api.project_router import router as project_router
 from app.api.test_history_router import router as test_history_router
 from app.api.endpoint_router import router as endpoint_router
+from app.api.scheduler_router import router as scheduler_router
 
 api_router = APIRouter()
 api_router.include_router(
@@ -41,4 +42,10 @@ api_router.include_router(
     endpoint_router,
     prefix="/endpoint",
     tags=["Endpoint"]
+)
+
+api_router.include_router(
+    scheduler_router,
+    prefix="/scheduler",
+    tags=["Job Scheduler"]
 )
