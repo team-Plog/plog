@@ -6,7 +6,7 @@ from pydantic import BaseModel
 class TestHistorySimpleResponse(BaseModel):
     project_title: str
     test_title: str
-    completed_at: Optional[datetime]
+    status_datetime: datetime
     test_status: str
 
     class Config:
