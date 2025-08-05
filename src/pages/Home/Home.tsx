@@ -8,7 +8,7 @@ import MainModal from "../../components/MainModal/MainModal";
 import Header from "../../components/Header/Header";
 import EmptyProjectState from "../../components/EmptyState/EmptyProjectState";
 import styles from "./Home.module.css";
-import {getProjectList} from "../../api";
+import {getProjectList, getTestHistoryList} from "../../api";
 import {StatusBadge, type TestStatus} from "../../components/Tag";
 
 interface Project {
@@ -23,7 +23,9 @@ const Home: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [testHistory, setTestHistory] = useState<any[]>([]);
 
   const handleProjectClick = (projectId: number) => {
     navigate("/projectDetail", {state: {projectId}});
@@ -40,8 +42,16 @@ const Home: React.FC = () => {
       });
   }, []);
 
-  // 프로젝트가 있는지 확인 (테스트를 위해 false로 설정하면 Empty State 확인 가능)
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  useEffect(() => {
+    getTestHistoryList(0, 5)
+      .then((res) => {
+        console.log("🕒 최근 실행 기록:", res.data);
+        setTestHistory(res.data);
+      })
+      .catch((err) => {
+        console.error("❌ 최근 실행 기록 가져오기 실패:", err);
+      });
+  }, []);
 
   // 검색 필터링 로직
   const hasProjects = projects.length > 0;
@@ -122,15 +132,21 @@ const Home: React.FC = () => {
             </button>
             <h1 className={`HeadingS ${styles.title}`}>최근 실행</h1>
           </div>
-          <div className={styles.runningList}>
-            <div className={`TitleS ${styles.listTitle}`}>
-              <StatusBadge status={"before"} />
-              프로젝트 타이틀 / 테스트 타이틀
-            </div>
-            <div className={`CaptionBold ${styles.runningTime}`}>
-              2025.01.01
-            </div>
-          </div>
+          {testHistory.length > 0 ? (
+            testHistory.map((item) => (
+              <div key={item.id} className={styles.runningList}>
+                <div className={`TitleS ${styles.listTitle}`}>
+                  <StatusBadge status={"before"} />
+                  {item.title} / {item.scenarios[0]?.name || "시나리오 없음"}
+                </div>
+                <div className={`CaptionBold ${styles.runningTime}`}>
+                  {new Date(item.tested_at).toLocaleDateString("ko-KR")}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className={styles.noHistory}>최근 실행 기록이 없습니다.</div>
+          )}
         </div>
       </div>
     </div>

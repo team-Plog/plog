@@ -63,21 +63,21 @@
 }
 
 .card1 {
-  position: absolute;
-  top: 20%;
-  transform: translateX(-42%);
+  /* position: absolute; */
+  /* top: 20%; */
+  transform: rotate(-7.806deg) translateX(40%) translateY(30%);
   z-index: 1;
 }
 
 .card2 {
-  position: absolute;
+  /* position: absolute; */
   z-index: 2;
 }
 
 .card3 {
-  position: absolute;
-  top: 20%;
-  transform: translateX(42%);
+  /* position: absolute; */
+  /* top: 20%; */
+  transform: rotate(9.426deg) translateX(-40%) translateY(30%);
   z-index: 3;
 }
 

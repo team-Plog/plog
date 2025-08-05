@@ -1,9 +1,7 @@
 import React, {useState} from "react";
 import styles from "./MainModal.module.css";
 
-import ProjectCard1 from "../../assets/images/projectCard1.svg";
-import ProjectCard2 from "../../assets/images/projectCard2.svg";
-import ProjectCard3 from "../../assets/images/projectCard3.svg";
+import ProjectCard from "../../assets/images/projectCard.svg";
 import {InputField} from "../Input";
 import {Button} from "../Button/Button";
 import {createProject} from "../../api";
@@ -42,9 +40,9 @@ const MainModal: React.FC<MainModalProps> = ({onClose}) => {
         {/* 이미지 영역 */}
         <div className={styles.imageSection}>
           <div className={styles.imageContainer}>
-            <img src={ProjectCard1} className={styles.card1} />
-            <img src={ProjectCard2} className={styles.card2} />
-            <img src={ProjectCard3} className={styles.card3} />
+            <img src={ProjectCard} className={styles.card1} />
+            <img src={ProjectCard} className={styles.card2} />
+            <img src={ProjectCard} className={styles.card3} />
           </div>
         </div>
 
