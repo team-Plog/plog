@@ -29,6 +29,31 @@
   transition: background-color 0.2s;
 }
 
+.button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 var(--spacing-xl);
+  gap: var(--spacing-sm);
+}
+
+.button svg {
+  width: var(--icon-size-lg);
+  height: var(--icon-size-lg);
+  color: var(--color-gray-300);
+}
+
+.navMenu {
+  display: flex;
+}
+
+.navButton {
+  border: none;
+  color: var(--color-gray-300);
+  padding-left: var(--spacing-xs);
+  padding-right: var(--spacing-xs);
+}
+
 .moonIcon {
   display: flex;
   align-items: center;
