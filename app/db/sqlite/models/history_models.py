@@ -19,6 +19,10 @@ class TestHistoryModel(Base):
     # 테스트 완료 상태 및 결과 필드들
     is_completed = Column(Boolean, default=False)
     completed_at = Column(DateTime, nullable=True)
+
+    # 프로젝트 id
+    project_id = Column(Integer, ForeignKey("project.id"))
+    project = relationship("ProjectModel", back_populates="test_histories")
     
     # 전체 테스트 결과 메트릭
     actual_tps = Column(Float, nullable=True)

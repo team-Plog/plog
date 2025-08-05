@@ -4,7 +4,9 @@ from sqlalchemy.orm import Session, joinedload
 import logging
 
 from app.db.sqlite.models.history_models import TestHistoryModel, ScenarioHistoryModel, StageHistoryModel
+from app.db.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, TagModel, EndpointModel, tags_endpoints
 from app.dto.load_test.load_test_request import LoadTestRequest
+from app.services.project_service import get_project_by_endpoint_id_simple
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +17,11 @@ def save_test_history(
     job_name: str,
     db: Session,
 ):
-    # 1. TestHistory 생성
+    # Project 조회 (반정규화)
+    first_endpoint_id = request.scenarios[0].endpoint_id
+    project = get_project_by_endpoint_id_simple(db, first_endpoint_id)
+
+    # TestHistory 생성
     test_history = TestHistoryModel(
         title=request.title,
         description=request.description,
@@ -23,6 +29,7 @@ def save_test_history(
         tested_at=datetime.utcnow(),
         job_name=job_name,
         k6_script_file_name=k6_script_file_name,
+        project_id=project.id,
     )
 
     # 3. Scenario + Stage 저장
@@ -174,3 +181,14 @@ def get_incomplete_test_histories(db: Session) -> List[TestHistoryModel]:
         .order_by(TestHistoryModel.tested_at.desc())
         .all()
     )
+
+
+def get_test_histories_with_project_info(db: Session, page: int = 0, size: int = 100):
+    """프로젝트 정보와 함께 테스트 기록을 조회합니다."""
+    # 서브쿼리로 프로젝트 정보를 가져옵니다
+    return db.query(TestHistoryModel) \
+        .join(TestHistoryModel.project) \
+        .options(joinedload(TestHistoryModel.project)) \
+        .offset(page * size) \
+        .limit(size) \
+        .all()
