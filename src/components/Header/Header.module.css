@@ -43,6 +43,17 @@
   color: var(--color-gray-300);
 }
 
+.navMenu {
+  display: flex;
+}
+
+.navButton {
+  border: none;
+  color: var(--color-gray-300);
+  padding-left: var(--spacing-xs);
+  padding-right: var(--spacing-xs);
+}
+
 .moonIcon {
   display: flex;
   align-items: center;
