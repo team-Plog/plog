@@ -21,12 +21,14 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-xs);
+  min-width: 0;
 }
 
 .database {
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
   color: var(--color-gray-200);
+  flex-shrink: 0;
 }
 
 /* 그룹 컨테이너 */
@@ -51,12 +53,14 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-xs);
+  min-width: 0;
 }
 
 .groupIcon {
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
   color: var(--color-gray-200);
+  flex-shrink: 0;
 }
 
 /* 엔드포인트 컨테이너 */
@@ -76,11 +80,14 @@
   margin: var(--spacing-xs) 0;
   cursor: pointer;
   user-select: none;
+  min-width: 0;
+  gap: var(--spacing-sm);
 }
 
 .endpointIcon {
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
+  flex-shrink: 0;
 }
 
 /* 공통 chevron 스타일 */
@@ -88,6 +95,7 @@
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
   color: var(--color-gray-200);
+  flex-shrink: 0;
 }
 
 /* HTTP 메서드별 색상 */
@@ -144,4 +152,37 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
+  min-width: 0;
+  flex: 1;
+}
+
+/* 텍스트 오버플로우 처리 */
+.textContent {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* HTTP 메서드 텍스트는 항상 보이도록 */
+.methodText {
+  flex-shrink: 0;
+  white-space: nowrap;
+  min-width: fit-content;
+}
+
+/* 엔드포인트 경로와 HTTP 메서드 사이의 간격 조정 */
+.endpointWrapper {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.endpointPath {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
 }

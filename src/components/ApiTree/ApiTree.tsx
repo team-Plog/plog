@@ -246,7 +246,9 @@ const ApiTree: React.FC<ApiTreeProps> = ({
             <div className={styles.serverContent}>
               <div className={styles.itemWrapper}>
                 <Database className={styles.database} />
-                <span className="CaptionLight">{server.name}</span>
+                <span className={`CaptionLight ${styles.textContent}`} title={server.name}>
+                  {server.name}
+                </span>
               </div>
 
               {expandedServers.has(server.id) ? (
@@ -274,7 +276,9 @@ const ApiTree: React.FC<ApiTreeProps> = ({
                       <div className={styles.groupContent}>
                         <div className={styles.itemWrapper}>
                           <Folder className={styles.groupIcon} />
-                          <span className="CaptionLight">{group.name}</span>
+                          <span className={`CaptionLight ${styles.textContent}`} title={group.name}>
+                            {group.name}
+                          </span>
                         </div>
                         {expandedGroups.has(groupKey) ? (
                           <ChevronDown className={styles.chevron} />
@@ -300,13 +304,16 @@ const ApiTree: React.FC<ApiTreeProps> = ({
                             }
                             onContextMenu={(e) => handleEndpointContextMenu(e, endpoint.id, endpoint.path)}>
                             <div className={styles.endpointContent}>
-                              <div className={styles.itemWrapper}>
+                              <div className={styles.endpointWrapper}>
                                 <Link
                                   className={`${
                                     styles.endpointIcon
                                   } ${getMethodColor(endpoint.method)}`}
                                 />
-                                <span className="CaptionLight">
+                                <span 
+                                  className={`CaptionLight ${styles.endpointPath}`}
+                                  title={endpoint.path}
+                                >
                                   {endpoint.path}
                                 </span>
                               </div>
@@ -314,7 +321,7 @@ const ApiTree: React.FC<ApiTreeProps> = ({
                               <span
                                 className={`CaptionLight ${getMethodColor(
                                   endpoint.method
-                                )}`}>
+                                )} ${styles.methodText}`}>
                                 {endpoint.method}
                               </span>
                             </div>
