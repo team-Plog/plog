@@ -1,7 +1,8 @@
+import pytz
+import logging
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session, joinedload
-import logging
 
 from app.db.sqlite.models.history_models import TestHistoryModel, ScenarioHistoryModel, StageHistoryModel
 from app.db.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, TagModel, EndpointModel, tags_endpoints
@@ -9,7 +10,7 @@ from app.dto.load_test.load_test_request import LoadTestRequest
 from app.services.project_service import get_project_by_endpoint_id_simple
 
 logger = logging.getLogger(__name__)
-
+kst = pytz.timezone('Asia/Seoul')
 
 def save_test_history(
     request: LoadTestRequest,
@@ -26,7 +27,7 @@ def save_test_history(
         title=request.title,
         description=request.description,
         target_tps=request.target_tps,
-        tested_at=datetime.utcnow(),
+        tested_at=datetime.now(kst),
         job_name=job_name,
         k6_script_file_name=k6_script_file_name,
         project_id=project.id,
