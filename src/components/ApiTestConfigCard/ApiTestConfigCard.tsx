@@ -222,27 +222,27 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
 
         {/* 단계별 설정 */}
         <div className={styles.stagesSection}>
-          <div className={styles.horizontalGroup}>
-            <div className={styles.configItem}>
+          <div className={styles.stagesHeader}>
+            <div className={styles.stageColumn}>
               <span className={`${styles.configLabel} CaptionBold`}>
                 가상 사용자 수
               </span>
             </div>
-            <div className={styles.configItem}>
-              <div className={styles.labelWithButton}>
-                <span className={`${styles.configLabel} CaptionBold`}>
-                  테스트 시간
-                </span>
-                {config.executor === 'ramping-vus' && (
-                  <button
-                    className={styles.addButton}
-                    onClick={addStage}
-                    type="button">
-                    <Plus />
-                  </button>
-                )}
-              </div>
+            <div className={styles.stageColumn}>
+              <span className={`${styles.configLabel} CaptionBold`}>
+                테스트 시간
+              </span>
             </div>
+            {config.executor === 'ramping-vus' && (
+              <div className={styles.stageButtonColumn}>
+                <button
+                  className={styles.addButton}
+                  onClick={addStage}
+                  type="button">
+                  <Plus />
+                </button>
+              </div>
+            )}
           </div>
 
           {(config.executor === 'constant-vus' ? [config.stages[0]] : config.stages).map((stage, index) => {
@@ -251,8 +251,8 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
             
             return (
               <div key={actualIndex} className={styles.stageItem}>
-                <div className={styles.horizontalGroup}>
-                  <div className={styles.configItem}>
+                <div className={styles.stageInputRow}>
+                  <div className={styles.stageColumn}>
                     <InputWithIcon
                       icon={<UserRound />}
                       value={stage.target.toString()}
@@ -260,28 +260,25 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
                       placeholder="10"
                     />
                   </div>
-                  <div className={styles.configItem}>
-                    <div className={styles.inputWithButton}>
-                      <InputWithIcon
-                        icon={<Clock />}
-                        value={stage.duration}
-                        onChange={(value) => handleDurationChange(actualIndex, value)}
-                        placeholder="10s (초: s, 분: m, 시: h)"
-                      />
-                      {config.executor === 'ramping-vus' && config.stages.length > 1 && (
-                        <button
-                          className={styles.removeStepButton}
-                          onClick={() => removeStage(actualIndex)}
-                          type="button">
-                          <Minus />
-                        </button>
-                      )}
-                    </div>
+                  <div className={styles.stageColumn}>
+                    <InputWithIcon
+                      icon={<Clock />}
+                      value={stage.duration}
+                      onChange={(value) => handleDurationChange(actualIndex, value)}
+                      placeholder="10s (초: s, 분: m, 시: h)"
+                    />
                   </div>
+                  {config.executor === 'ramping-vus' && config.stages.length > 1 && (
+                    <div className={styles.stageButtonColumn}>
+                      <button
+                        className={styles.removeStepButton}
+                        onClick={() => removeStage(actualIndex)}
+                        type="button">
+                        <Minus />
+                      </button>
+                    </div>
+                  )}
                 </div>
-                {actualIndex === 0 && config.executor === 'constant-vus' && (
-                  <div className={styles.stageHelperText} />
-                )}
               </div>
             );
           })}

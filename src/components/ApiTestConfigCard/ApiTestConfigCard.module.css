@@ -4,29 +4,39 @@
   box-shadow: var(--shadow-primary);
   padding: var(--spacing-lg);
   background-color: var(--color-background-secondary);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: var(--spacing-lg);
+  gap: var(--spacing-sm);
 }
 
 .headerLeft {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  min-width: 0;
+  flex: 1;
 }
 
 .linkIcon {
   width: var(--icon-size-md);
   height: var(--icon-size-md);
   color: var(--color-gray-200);
+  flex-shrink: 0;
 }
 
 .endpoint {
   color: var(--color-black);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .removeButton {
@@ -39,6 +49,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .removeButton:hover {
@@ -62,21 +73,54 @@
   flex-direction: column;
   gap: var(--spacing-sm);
   flex: 1;
+  min-width: 0;
 }
 
 .configLabel {
   color: var(--color-gray-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .horizontalGroup {
   display: flex;
   gap: var(--spacing-sm);
+  flex-wrap: nowrap;
 }
 
 .stagesSection {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
+}
+
+.stagesHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.stageColumn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  min-width: 0;
+}
+
+.stageButtonColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: fit-content;
+}
+
+.stageInputRow {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
 }
 
 .headerWithButton {
@@ -94,7 +138,7 @@
 .addButton {
   background: none;
   border: none;
-  padding: 0;
+  padding: var(--spacing-xs);
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition: background-color 0.2s ease;
@@ -118,6 +162,12 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
+  min-width: 0;
+}
+
+.inputWithButton > *:first-child {
+  flex: 1;
+  min-width: 0;
 }
 
 .removeStepButton {
@@ -141,4 +191,14 @@
   width: var(--icon-size-md);
   height: var(--icon-size-md);
   color: var(--color-gray-200);
+}
+
+.stageItem {
+  width: 100%;
+}
+
+/* 토글 버튼 컨테이너 반응형 처리 */
+.toggleContainer {
+  min-width: 0;
+  flex: 1;
 }
