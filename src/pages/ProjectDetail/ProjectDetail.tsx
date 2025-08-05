@@ -339,13 +339,14 @@ const ProjectDetail: React.FC = () => {
 
   // 로드 테스팅 실행
   const handleRunLoadTest = async () => {
-    if (apiTestConfigs.length === 0) {
-      alert("최소 1개 이상의 API 테스트를 구성해주세요.");
+    // 입력값 검증
+    if (!scenarioTitle.trim()) {
+      alert("테스트 시나리오 제목을 입력해주세요.");
       return;
     }
 
-    if (!scenarioTitle.trim()) {
-      alert("테스트 시나리오 제목을 입력해주세요.");
+    if (apiTestConfigs.length === 0) {
+      alert("최소 1개 이상의 API 테스트를 구성해주세요.");
       return;
     }
 
@@ -615,7 +616,7 @@ const ProjectDetail: React.FC = () => {
               variant="primaryGradient"
               icon={<Play />}
               onClick={handleRunLoadTest}
-              disabled={isSubmitting || apiTestConfigs.length === 0}>
+              disabled={isSubmitting}>
               {isSubmitting ? "테스트 시작 중..." : "테스트 실행하기"}
             </Button>
           </div>
