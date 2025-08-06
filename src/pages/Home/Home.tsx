@@ -19,16 +19,37 @@ interface Project {
   updated_at: string | null;
 }
 
+interface TestHistoryItem {
+  project_title: string;
+  test_title: string;
+  status_datetime: string;
+  test_status: string;
+}
+
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [testHistory, setTestHistory] = useState<any[]>([]);
+  const [testHistory, setTestHistory] = useState<TestHistoryItem[]>([]);
 
   const handleProjectClick = (projectId: number) => {
     navigate("/projectDetail", {state: {projectId}});
+  };
+
+  // 테스트 상태를 StatusBadge에서 사용할 수 있는 형태로 변환
+  const mapTestStatusToStatusBadge = (status: string): TestStatus => {
+    switch (status) {
+      case "실행 중":
+        return "running";
+      case "완료":
+        return "completed";
+      case "실패":
+        return "failed";
+      default:
+        return "before";
+    }
   };
 
   useEffect(() => {
@@ -46,7 +67,7 @@ const Home: React.FC = () => {
     getTestHistoryList(0, 5)
       .then((res) => {
         console.log("🕒 최근 실행 기록:", res.data);
-        setTestHistory(res.data);
+        setTestHistory(res.data.data);
       })
       .catch((err) => {
         console.error("❌ 최근 실행 기록 가져오기 실패:", err);
@@ -123,6 +144,7 @@ const Home: React.FC = () => {
             <EmptyProjectState />
           )}
         </main>
+        
         <div className={styles.recentRunning}>
           <div className={styles.leftGroup}>
             <button
@@ -133,14 +155,14 @@ const Home: React.FC = () => {
             <h1 className={`HeadingS ${styles.title}`}>최근 실행</h1>
           </div>
           {testHistory.length > 0 ? (
-            testHistory.map((item) => (
-              <div key={item.id} className={styles.runningList}>
+            testHistory.map((item, index) => (
+              <div key={index} className={styles.runningList}>
                 <div className={`TitleS ${styles.listTitle}`}>
-                  <StatusBadge status={"before"} />
-                  {item.title} / {item.scenarios[0]?.name || "시나리오 없음"}
+                  <StatusBadge status={mapTestStatusToStatusBadge(item.test_status)} />
+                  {item.project_title} / {item.test_title}
                 </div>
                 <div className={`CaptionBold ${styles.runningTime}`}>
-                  {new Date(item.tested_at).toLocaleDateString("ko-KR")}
+                  {new Date(item.status_datetime).toLocaleDateString("ko-KR")}
                 </div>
               </div>
             ))
