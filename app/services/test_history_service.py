@@ -193,3 +193,81 @@ def get_test_histories_with_project_info(db: Session, page: int = 0, size: int =
         .offset(page * size) \
         .limit(size) \
         .all()
+
+
+# === 스케줄러용 추가 함수들 ===
+
+def get_scenario_histories_by_test_id(db: Session, test_id: int) -> List[ScenarioHistoryModel]:
+    """test_id로 관련 scenario_history들 조회 (여러 개 가능)"""
+    return (
+        db.query(ScenarioHistoryModel)
+        .filter(ScenarioHistoryModel.test_history_id == test_id)
+        .all()
+    )
+
+
+def update_test_history_with_metrics(db: Session, test_history: TestHistoryModel, metrics: Dict[str, Any]) -> bool:
+    """test_history에 메트릭 업데이트"""
+    try:
+        test_history.actual_tps = metrics.get('actual_tps', 0.0)
+        test_history.avg_response_time = metrics.get('avg_response_time', 0.0)
+        test_history.max_response_time = metrics.get('max_response_time', 0.0)
+        test_history.min_response_time = metrics.get('min_response_time', 0.0)
+        test_history.p95_response_time = metrics.get('p95_response_time', 0.0)
+        test_history.error_rate = metrics.get('error_rate', 0.0)
+        test_history.total_requests = metrics.get('total_requests', 0)
+        test_history.failed_requests = metrics.get('failed_requests', 0)
+        test_history.max_vus = metrics.get('max_vus', 0)
+        test_history.test_duration = metrics.get('test_duration', 0.0)
+        
+        db.commit()
+        db.refresh(test_history)
+        
+        logger.info(f"Updated test_history metrics for job: {test_history.job_name}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error updating test_history metrics: {e}")
+        db.rollback()
+        return False
+
+
+def update_scenario_history_with_metrics(db: Session, scenario_history: ScenarioHistoryModel, metrics: Dict[str, Any]) -> bool:
+    """scenario_history에 메트릭 업데이트"""
+    try:
+        scenario_history.actual_tps = metrics.get('tps', 0.0)  # 키가 'tps'임에 주의
+        scenario_history.avg_response_time = metrics.get('avg_response_time', 0.0)
+        scenario_history.max_response_time = metrics.get('max_response_time', 0.0)
+        scenario_history.min_response_time = metrics.get('min_response_time', 0.0)
+        scenario_history.error_rate = metrics.get('error_rate', 0.0)
+        scenario_history.total_requests = metrics.get('total_requests', 0)
+        scenario_history.failed_requests = metrics.get('failed_requests', 0)
+        
+        db.commit()
+        db.refresh(scenario_history)
+        
+        logger.info(f"Updated scenario_history metrics for endpoint_id: {scenario_history.endpoint_id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error updating scenario_history metrics: {e}")
+        db.rollback()
+        return False
+
+
+def mark_test_as_completed(db: Session, test_history: TestHistoryModel) -> bool:
+    """테스트를 완료 상태로 마킹"""
+    try:
+        test_history.is_completed = True
+        test_history.completed_at = datetime.utcnow()
+        
+        db.commit()
+        db.refresh(test_history)
+        
+        logger.info(f"Marked test as completed for job: {test_history.job_name}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error marking test as completed: {e}")
+        db.rollback()
+        return False

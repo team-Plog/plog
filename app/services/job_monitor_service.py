@@ -149,6 +149,310 @@ class JobMonitorService:
             logger.error(f"Error getting pods for job {job_name}: {e}")
             return []
 
+    def list_jobs_by_prefix(self, prefix: str) -> list:
+        """
+        접두사로 Job 목록을 조회합니다.
+        
+        Args:
+            prefix: Job 이름 접두사
+            
+        Returns:
+            Job 정보 리스트
+        """
+        try:
+            jobs = v1_batch.list_namespaced_job(namespace=self.namespace)
+            matching_jobs = []
+            
+            for job in jobs.items:
+                if job.metadata.name.startswith(prefix):
+                    job_info = {
+                        'name': job.metadata.name,
+                        'status': self._determine_job_status(job.status),
+                        'start_time': job.status.start_time,
+                        'completion_time': job.status.completion_time,
+                        'labels': job.metadata.labels or {}
+                    }
+                    matching_jobs.append(job_info)
+            
+            logger.info(f"Found {len(matching_jobs)} jobs with prefix '{prefix}'")
+            return matching_jobs
+            
+        except Exception as e:
+            logger.error(f"Error listing jobs by prefix {prefix}: {e}")
+            return []
+
+    def list_jobs_by_label(self, label_selector: str) -> list:
+        """
+        라벨 셀렉터로 Job 목록을 조회합니다.
+        
+        Args:
+            label_selector: 라벨 셀렉터 (예: "original-job-name=load-testing")
+            
+        Returns:
+            Job 정보 리스트
+        """
+        try:
+            jobs = v1_batch.list_namespaced_job(
+                namespace=self.namespace,
+                label_selector=label_selector
+            )
+            job_list = []
+            
+            for job in jobs.items:
+                job_info = {
+                    'name': job.metadata.name,
+                    'status': self._determine_job_status(job.status),
+                    'start_time': job.status.start_time,
+                    'completion_time': job.status.completion_time,
+                    'labels': job.metadata.labels or {},
+                    'original_job_name': job.metadata.labels.get('original-job-name', '') if job.metadata.labels else ''
+                }
+                job_list.append(job_info)
+            
+            logger.info(f"Found {len(job_list)} jobs with label selector '{label_selector}'")
+            return job_list
+            
+        except Exception as e:
+            logger.error(f"Error listing jobs by label {label_selector}: {e}")
+            return []
+
+    def list_all_jobs(self) -> list:
+        """
+        네임스페이스의 모든 Job을 조회합니다.
+        
+        Returns:
+            모든 Job 정보 리스트
+        """
+        try:
+            jobs = v1_batch.list_namespaced_job(namespace=self.namespace)
+            job_list = []
+            
+            for job in jobs.items:
+                job_info = {
+                    'name': job.metadata.name,
+                    'status': self._determine_job_status(job.status),
+                    'start_time': job.status.start_time,
+                    'completion_time': job.status.completion_time,
+                    'labels': job.metadata.labels or {},
+                    'original_job_name': job.metadata.labels.get('original-job-name', '') if job.metadata.labels else ''
+                }
+                job_list.append(job_info)
+            
+            logger.info(f"Found {len(job_list)} total jobs in namespace '{self.namespace}'")
+            return job_list
+            
+        except Exception as e:
+            logger.error(f"Error listing all jobs: {e}")
+            return []
+
+    def get_jobs_by_original_name(self, original_name: str) -> list:
+        """
+        original-job-name 라벨로 Job을 찾습니다.
+        
+        Args:
+            original_name: 원본 Job 이름
+            
+        Returns:
+            해당하는 Job 정보 리스트
+        """
+        return self.list_jobs_by_label(f"original-job-name={original_name}")
+
+    def list_completed_jobs(self) -> list:
+        """
+        네임스페이스의 모든 완료된 Job을 조회합니다 (성공/실패 모두).
+        
+        Returns:
+            완료된 Job 정보 리스트
+        """
+        try:
+            all_jobs = self.list_all_jobs()
+            completed_jobs = []
+            
+            for job in all_jobs:
+                if job['status'] in [JobStatus.SUCCEEDED, JobStatus.FAILED]:
+                    completed_jobs.append(job)
+            
+            logger.info(f"Found {len(completed_jobs)} completed jobs")
+            return completed_jobs
+            
+        except Exception as e:
+            logger.error(f"Error listing completed jobs: {e}")
+            return []
+
+    def list_succeeded_jobs(self) -> list:
+        """
+        네임스페이스의 모든 성공한 Job을 조회합니다.
+        
+        Returns:
+            성공한 Job 정보 리스트
+        """
+        try:
+            all_jobs = self.list_all_jobs()
+            succeeded_jobs = []
+            
+            for job in all_jobs:
+                if job['status'] == JobStatus.SUCCEEDED:
+                    succeeded_jobs.append(job)
+            
+            logger.info(f"Found {len(succeeded_jobs)} succeeded jobs")
+            return succeeded_jobs
+            
+        except Exception as e:
+            logger.error(f"Error listing succeeded jobs: {e}")
+            return []
+
+    def list_failed_jobs(self) -> list:
+        """
+        네임스페이스의 모든 실패한 Job을 조회합니다.
+        
+        Returns:
+            실패한 Job 정보 리스트
+        """
+        try:
+            all_jobs = self.list_all_jobs()
+            failed_jobs = []
+            
+            for job in all_jobs:
+                if job['status'] == JobStatus.FAILED:
+                    failed_jobs.append(job)
+            
+            logger.info(f"Found {len(failed_jobs)} failed jobs")
+            return failed_jobs
+            
+        except Exception as e:
+            logger.error(f"Error listing failed jobs: {e}")
+            return []
+
+    def list_running_jobs(self) -> list:
+        """
+        네임스페이스의 모든 실행 중인 Job을 조회합니다.
+        
+        Returns:
+            실행 중인 Job 정보 리스트
+        """
+        try:
+            all_jobs = self.list_all_jobs()
+            running_jobs = []
+            
+            for job in all_jobs:
+                if job['status'] == JobStatus.RUNNING:
+                    running_jobs.append(job)
+            
+            logger.info(f"Found {len(running_jobs)} running jobs")
+            return running_jobs
+            
+        except Exception as e:
+            logger.error(f"Error listing running jobs: {e}")
+            return []
+
+    def force_delete_job(self, job_name: str) -> bool:
+        """
+        Job을 강제로 삭제합니다 (실행 중이어도 삭제).
+        
+        Args:
+            job_name: 삭제할 Job 이름
+            
+        Returns:
+            삭제 성공 여부
+        """
+        try:
+            v1_batch.delete_namespaced_job(
+                name=job_name,
+                namespace=self.namespace,
+                propagation_policy='Foreground'  # Pod들도 함께 삭제
+            )
+            logger.info(f"Force deleted job: {job_name}")
+            return True
+                
+        except ApiException as e:
+            if e.status == 404:
+                logger.warning(f"Job {job_name} not found for deletion")
+                return False
+            else:
+                logger.error(f"Error force deleting job {job_name}: {e}")
+                return False
+        except Exception as e:
+            logger.error(f"Unexpected error force deleting job {job_name}: {e}")
+            return False
+
+    def force_delete_jobs_by_original_name(self, original_name: str) -> int:
+        """
+        original-job-name 라벨로 모든 관련 Job들을 강제 삭제합니다.
+        
+        Args:
+            original_name: 원본 Job 이름
+            
+        Returns:
+            삭제된 Job 개수
+        """
+        try:
+            jobs = self.get_jobs_by_original_name(original_name)
+            deleted_count = 0
+            
+            for job in jobs:
+                if self.force_delete_job(job['name']):
+                    deleted_count += 1
+            
+            logger.info(f"Force deleted {deleted_count} jobs with original name '{original_name}'")
+            return deleted_count
+            
+        except Exception as e:
+            logger.error(f"Error force deleting jobs by original name {original_name}: {e}")
+            return 0
+
+    def stop_running_job(self, job_name: str) -> bool:
+        """
+        실행 중인 Job을 중지합니다 (완료되지 않은 Job만).
+        
+        Args:
+            job_name: 중지할 Job 이름
+            
+        Returns:
+            중지 성공 여부
+        """
+        try:
+            job_info = self.get_job_status(job_name)
+            
+            if job_info['status'] == JobStatus.RUNNING:
+                return self.force_delete_job(job_name)
+            elif job_info['status'] in [JobStatus.SUCCEEDED, JobStatus.FAILED]:
+                logger.info(f"Job {job_name} is already completed, no need to stop")
+                return True
+            else:
+                logger.warning(f"Job {job_name} status is {job_info['status']}, cannot determine if should stop")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error stopping job {job_name}: {e}")
+            return False
+
+    def stop_jobs_by_original_name(self, original_name: str) -> int:
+        """
+        original-job-name 라벨로 실행 중인 모든 Job들을 중지합니다.
+        
+        Args:
+            original_name: 원본 Job 이름
+            
+        Returns:
+            중지된 Job 개수
+        """
+        try:
+            jobs = self.get_jobs_by_original_name(original_name)
+            stopped_count = 0
+            
+            for job in jobs:
+                if job['status'] == JobStatus.RUNNING:
+                    if self.force_delete_job(job['name']):
+                        stopped_count += 1
+                        logger.info(f"Stopped running job: {job['name']}")
+            
+            logger.info(f"Stopped {stopped_count} running jobs with original name '{original_name}'")
+            return stopped_count
+            
+        except Exception as e:
+            logger.error(f"Error stopping jobs by original name {original_name}: {e}")
+            return 0
+
     def delete_completed_job(self, job_name: str) -> bool:
         """완료된 Job을 삭제합니다."""
         try:

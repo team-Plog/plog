@@ -47,7 +47,10 @@ def create_k6_job_with_dashboard(job_name: str, script_filename: str, pvc_name: 
         )
     )
 
-    labels = {"app": "k6-runner"}
+    labels = {
+        "app": "k6-runner",
+        "original-job-name": job_name
+    }
 
     # job 내부 pod spec
     pod_spec = client.V1PodSpec(
@@ -69,7 +72,10 @@ def create_k6_job_with_dashboard(job_name: str, script_filename: str, pvc_name: 
     )
 
     job = client.V1Job(
-        metadata=client.V1ObjectMeta(name=job_name),
+        metadata=client.V1ObjectMeta(
+            name=job_name, 
+            labels=labels  # Job 자체에도 라벨 추가
+        ),
         spec=job_spec
     )
 
