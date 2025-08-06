@@ -1,7 +1,10 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
+from pyasn1_modules.rfc5934 import StatusCode
 from sqlalchemy.orm import Session
 
+from app.common.response.code import SuccessCode
+from app.common.response.response_template import ResponseTemplate
 from app.db import get_db
 from app.services.test_history_service import get_test_histories, get_test_history_by_id, get_test_histories_with_project_info
 from app.dto.test_history.test_history_response import TestHistoryResponse
@@ -64,7 +67,7 @@ def get_test_history_simple_list(
             test_status=test_status
         ))
     
-    return simple_responses
+    return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, simple_responses)
 
 
 # @router.get(
