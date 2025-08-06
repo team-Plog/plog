@@ -5,6 +5,7 @@ import {ChevronLeft, ChevronRight, Moon} from "lucide-react";
 import {useNavigate, useLocation} from "react-router-dom";
 import {getProjectDetail} from "../../api";
 
+// Header.tsx
 const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -13,13 +14,15 @@ const Header: React.FC = () => {
   const goBack = () => window.history.back();
   const goForward = () => window.history.forward();
 
-  // 현재 경로가 프로젝트 상세 페이지인지 확인
+  // 현재 경로 상태
   const isProjectPage = location.pathname === "/projectDetail";
+  const isTestPage = location.pathname === "/test";
   const projectId = location.state?.projectId;
+  const testTitle = location.state?.testTitle; // 시나리오명 받기
 
-  // 프로젝트 상세 페이지에서 프로젝트 제목 가져오기
+  // 프로젝트 제목 로딩
   useEffect(() => {
-    if (isProjectPage && projectId) {
+    if ((isProjectPage || isTestPage) && projectId) {
       getProjectDetail(projectId)
         .then((res) => {
           setProjectTitle(res.data.data.title);
@@ -31,7 +34,7 @@ const Header: React.FC = () => {
     } else {
       setProjectTitle("");
     }
-  }, [isProjectPage, projectId]);
+  }, [isProjectPage, isTestPage, projectId]);
 
   const handleNavigateToMain = () => {
     navigate("/");
@@ -50,7 +53,9 @@ const Header: React.FC = () => {
           <ChevronLeft onClick={goBack} />
           <ChevronRight onClick={goForward} />
         </div>
-        {isProjectPage && projectId && (
+
+        {/* 프로젝트 상세 페이지 or 테스트 페이지일 때 메뉴 표시 */}
+        {(isProjectPage || isTestPage) && projectId && (
           <div className={styles.navMenu}>
             <button
               className={`${styles.navButton} Body`}
@@ -61,12 +66,30 @@ const Header: React.FC = () => {
             <button className={`${styles.navButton} Body`} onClick={() => {}}>
               {projectTitle || "프로젝트 타이틀"}
             </button>
-            <div className={`${styles.navButton} Body`}>/</div>
-            <button
-              className={`${styles.navButton} Body`}
-              onClick={handleNavigateToReport}>
-              보고서
-            </button>
+
+            {/* 테스트 페이지일 때 시나리오명 추가 */}
+            {isTestPage && (
+              <>
+                <div className={`${styles.navButton} Body`}>/</div>
+                <button
+                  className={`${styles.navButton} Body`}
+                  onClick={() => {}}>
+                  {testTitle || "시나리오명"}
+                </button>
+              </>
+            )}
+
+            {/* 보고서 버튼은 프로젝트 상세 페이지에서만 */}
+            {isProjectPage && (
+              <>
+                <div className={`${styles.navButton} Body`}>/</div>
+                <button
+                  className={`${styles.navButton} Body`}
+                  onClick={handleNavigateToReport}>
+                  보고서
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

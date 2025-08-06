@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useEffect, useState} from "react";
 import Header from "../../components/Header/Header";
 import styles from "./Test.module.css";
 import "../../assets/styles/typography.css";
@@ -23,10 +23,23 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import {useLocation} from "react-router-dom";
+import {getProjectDetail} from "../../api";
 
 const Test: React.FC = () => {
   const location = useLocation();
-  const {projectTitle, testTitle} = location.state || {};
+  const {projectId, testTitle} = location.state || {};
+  const [projectTitle, setProjectTitle] = useState<string>("");
+
+  useEffect(() => {
+    if (projectId) {
+      getProjectDetail(projectId)
+        .then((res) => setProjectTitle(res.data.data.title))
+        .catch((err) => {
+          console.error("프로젝트 타이틀 불러오기 실패:", err);
+          setProjectTitle("프로젝트명 없음");
+        });
+    }
+  }, [projectId]);
   const chartData = [
     {time: "00:00", tps: 800, responseTime: 140, errorRate: 1.2, users: 300},
     {time: "00:10", tps: 1200, responseTime: 150, errorRate: 1.5, users: 350},
