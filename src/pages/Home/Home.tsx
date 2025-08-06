@@ -1,15 +1,16 @@
 import React, {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
-import {Plus, Menu, History} from "lucide-react";
+import {Plus, Menu} from "lucide-react";
 import {SearchBar} from "../../components/Input";
 import {Button} from "../../components/Button/Button";
 import ProjectCard from "../../components/ProjectCard/ProjectCard";
 import MainModal from "../../components/MainModal/MainModal";
 import Header from "../../components/Header/Header";
 import EmptyProjectState from "../../components/EmptyState/EmptyProjectState";
+import TestHistoryTable from "../../components/TestHistoryTable/TestHistoryTable";
 import styles from "./Home.module.css";
 import {getProjectList, getTestHistoryList} from "../../api";
-import {StatusBadge, type TestStatus} from "../../components/Tag";
+import {type TestStatus} from "../../components/Tag";
 
 interface Project {
   id: number;
@@ -38,19 +39,7 @@ const Home: React.FC = () => {
     navigate("/projectDetail", {state: {projectId}});
   };
 
-  // 테스트 상태를 StatusBadge에서 사용할 수 있는 형태로 변환
-  const mapTestStatusToStatusBadge = (status: string): TestStatus => {
-    switch (status) {
-      case "실행 중":
-        return "running";
-      case "완료":
-        return "completed";
-      case "실패":
-        return "failed";
-      default:
-        return "before";
-    }
-  };
+
 
   useEffect(() => {
     getProjectList()
@@ -143,56 +132,10 @@ const Home: React.FC = () => {
         </main>
 
         {/* 최근 실행 섹션 */}
-        <div className={styles.recentRunning}>
-          <div className={styles.leftGroup}>
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className={styles.menuButton}>
-              <History className={styles.menuIcon} />
-            </button>
-            <h1 className={`HeadingS ${styles.title}`}>최근 실행</h1>
-          </div>
-
-          {/* 테이블 헤더 */}
-          <div className={styles.tableHeader}>
-            <div className={`Body ${styles.headerItem}`}>상태</div>
-            <div className={`Body ${styles.headerItem}`}>테스트명</div>
-            <div className={`Body ${styles.headerItem}`}>프로젝트명</div>
-            <div className={`Body ${styles.headerItem}`}>마지막 테스트</div>
-          </div>
-
-          {/* 테이블 내용 */}
-          {testHistory.length > 0 ? (
-            testHistory.map((item, index) => (
-              <div key={index} className={styles.tableRow}>
-                <div className={styles.statusCell}>
-                  <StatusBadge
-                    status={mapTestStatusToStatusBadge(item.test_status)}
-                  />
-                </div>
-                <div className={`Body ${styles.tableCell}`}>
-                  {item.project_title}
-                </div>
-                <div className={`Body ${styles.tableCell}`}>
-                  {item.test_title}
-                </div>
-                <div className={`Body ${styles.tableCell}`}>
-                  {new Date(item.status_datetime).toLocaleDateString("ko-KR", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit",
-                    hour12: false
-                  })}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className={styles.noHistory}>최근 실행 기록이 없습니다.</div>
-          )}
-        </div>
+        <TestHistoryTable
+          testHistory={testHistory}
+          onMenuToggle={() => setIsMenuOpen(!isMenuOpen)}
+        />
       </div>
     </div>
   );

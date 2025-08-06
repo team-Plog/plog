@@ -1,0 +1,137 @@
+.recentRunning {
+  margin-top: var(--spacing-xl);
+}
+
+.leftGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.menuButton {
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.2s;
+  padding: 4px;
+}
+
+.menuButton:hover {
+  background-color: var(--color-gray-100);
+}
+
+.menuIcon {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  color: var(--color-gray-200);
+}
+
+.title {
+  color: var(--color-black);
+  white-space: nowrap;
+  margin: 0;
+}
+
+/* 테이블 레이아웃 */
+.tableHeader {
+  display: grid;
+  grid-template-columns: 120px 1fr 1fr 200px;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background-color: var(--color-gray-50);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.headerItem {
+  color: var(--color-gray-300);
+  font-weight: 500;
+}
+
+.tableRow {
+  display: grid;
+  grid-template-columns: 120px 1fr 1fr 200px;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border-primary);
+  align-items: center;
+  transition: background-color 0.2s;
+}
+
+.tableRow:hover {
+  background-color: var(--color-gray-25);
+}
+
+.tableRow:last-child {
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+.statusCell {
+  display: flex;
+  align-items: center;
+}
+
+.tableCell {
+  color: var(--color-black);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.noHistory {
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--color-gray-300);
+  background-color: var(--color-background-primary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-primary);
+}
+
+/* 반응형 디자인 - TestHistoryTable 전용 */
+@media (max-width: 768px) {
+  /* 모바일에서 테이블을 세로 카드 형태로 변경 */
+  .tableHeader {
+    display: none;
+  }
+
+  .tableRow {
+    display: block;
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+    border: 1px solid var(--color-border-primary);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-background-primary);
+  }
+
+  .statusCell,
+  .tableCell {
+    display: block;
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .statusCell::before {
+    content: "상태: ";
+    font-weight: 500;
+    color: var(--color-gray-300);
+  }
+
+  .tableCell:nth-child(2)::before {
+    content: "테스트명: ";
+    font-weight: 500;
+    color: var(--color-gray-300);
+  }
+
+  .tableCell:nth-child(3)::before {
+    content: "프로젝트명: ";
+    font-weight: 500;
+    color: var(--color-gray-300);
+  }
+
+  .tableCell:nth-child(4)::before {
+    content: "마지막 테스트: ";
+    font-weight: 500;
+    color: var(--color-gray-300);
+  }
+}
