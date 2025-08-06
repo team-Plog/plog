@@ -4,7 +4,6 @@
   padding: var(--spacing-xxs) var(--spacing-xs);
   border-radius: var(--radius-sm);
   font-weight: 600;
-  line-height: 1;
   white-space: nowrap;
 }
 

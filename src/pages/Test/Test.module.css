@@ -11,6 +11,11 @@
   padding: 64px 20px 0 20px;
 }
 
+.title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 /* Header 스타일 */
 .header {
   margin-bottom: var(--spacing-lg);

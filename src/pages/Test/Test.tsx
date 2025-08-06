@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useEffect, useState} from "react";
 import Header from "../../components/Header/Header";
 import styles from "./Test.module.css";
 import "../../assets/styles/typography.css";
@@ -22,8 +22,24 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import {useLocation} from "react-router-dom";
+import {getProjectDetail} from "../../api";
 
 const Test: React.FC = () => {
+  const location = useLocation();
+  const {projectId, testTitle} = location.state || {};
+  const [projectTitle, setProjectTitle] = useState<string>("");
+
+  useEffect(() => {
+    if (projectId) {
+      getProjectDetail(projectId)
+        .then((res) => setProjectTitle(res.data.data.title))
+        .catch((err) => {
+          console.error("프로젝트 타이틀 불러오기 실패:", err);
+          setProjectTitle("프로젝트명 없음");
+        });
+    }
+  }, [projectId]);
   const chartData = [
     {time: "00:00", tps: 800, responseTime: 140, errorRate: 1.2, users: 300},
     {time: "00:10", tps: 1200, responseTime: 150, errorRate: 1.5, users: 350},
@@ -43,21 +59,25 @@ const Test: React.FC = () => {
 
         {/* Main Content */}
         <main className={styles.main}>
-          <div className={styles.progress}>
-            <div className={styles.status}>
-              <div className={styles.statusItem}>
-                <Timer className={styles.icon} />
-                <div className="Body">1분 23초</div>
+          <div className={styles.title}>
+            <div className="HeadingS">{projectTitle || "프로젝트명 없음"}</div>
+            <div className={styles.progress}>
+              <div className={styles.status}>
+                <div className={styles.statusItem}>
+                  <Timer className={styles.icon} />
+                  <div className="Body">1분 23초</div>
+                </div>
+                <div className={styles.statusItem}>
+                  <RotateCw className={styles.icon} />
+                  <div className="Body">30%</div>
+                </div>
               </div>
-              <div className={styles.statusItem}>
-                <RotateCw className={styles.icon} />
-                <div className="Body">30%</div>
+              <div className={styles.progressButton}>
+                <Button variant="primaryGradient">테스트 중단하기</Button>
               </div>
-            </div>
-            <div className={styles.progressButton}>
-              <Button variant="primaryGradient">테스트 중단하기</Button>
             </div>
           </div>
+
           <div className={styles.card}>
             <MetricCard label="현재 TPS" value="1,165" icon={<Activity />} />
             <MetricCard label="평균 응답시간" value="156ms" icon={<Clock />} />
