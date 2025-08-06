@@ -44,7 +44,6 @@ class ScenarioHistoryModel(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
-
     endpoint_id = Column(Integer, ForeignKey("endpoint.id"), nullable=False)
     endpoint = relationship("EndpointModel", back_populates="scenarios")
 
