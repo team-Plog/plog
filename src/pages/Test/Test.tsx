@@ -22,8 +22,11 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import {useLocation} from "react-router-dom";
 
 const Test: React.FC = () => {
+  const location = useLocation();
+  const {projectTitle, testTitle} = location.state || {};
   const chartData = [
     {time: "00:00", tps: 800, responseTime: 140, errorRate: 1.2, users: 300},
     {time: "00:10", tps: 1200, responseTime: 150, errorRate: 1.5, users: 350},
@@ -43,21 +46,25 @@ const Test: React.FC = () => {
 
         {/* Main Content */}
         <main className={styles.main}>
-          <div className={styles.progress}>
-            <div className={styles.status}>
-              <div className={styles.statusItem}>
-                <Timer className={styles.icon} />
-                <div className="Body">1분 23초</div>
+          <div className={styles.title}>
+            <div className="HeadingS">{projectTitle || "프로젝트명 없음"}</div>
+            <div className={styles.progress}>
+              <div className={styles.status}>
+                <div className={styles.statusItem}>
+                  <Timer className={styles.icon} />
+                  <div className="Body">1분 23초</div>
+                </div>
+                <div className={styles.statusItem}>
+                  <RotateCw className={styles.icon} />
+                  <div className="Body">30%</div>
+                </div>
               </div>
-              <div className={styles.statusItem}>
-                <RotateCw className={styles.icon} />
-                <div className="Body">30%</div>
+              <div className={styles.progressButton}>
+                <Button variant="primaryGradient">테스트 중단하기</Button>
               </div>
-            </div>
-            <div className={styles.progressButton}>
-              <Button variant="primaryGradient">테스트 중단하기</Button>
             </div>
           </div>
+
           <div className={styles.card}>
             <MetricCard label="현재 TPS" value="1,165" icon={<Activity />} />
             <MetricCard label="평균 응답시간" value="156ms" icon={<Clock />} />

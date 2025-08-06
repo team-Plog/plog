@@ -376,6 +376,8 @@ const ProjectDetail: React.FC = () => {
       // 테스트 페이지로 이동하면서 job_name을 전달
       navigate("/test", { 
         state: { 
+          projectId,
+          projectTitle: projectData?.title,
           jobName: response.data.job_name,
           fileName: response.data.file_name,
           testTitle: scenarioTitle
