@@ -447,7 +447,9 @@ const ProjectDetail: React.FC = () => {
             <Button
               variant="secondary"
               icon={<Plus />}
-              onClick={() => setIsModalOpen(true)}>
+              onClick={() => setIsModalOpen(true)}
+              responsive={true}
+            >
               API 서버 등록
             </Button>
           </div>
@@ -611,14 +613,20 @@ const ProjectDetail: React.FC = () => {
             </div>
           </div>
           <div className={styles.buttonGroup}>
-            <Button variant="secondary" icon={<Save />}>
+            <Button 
+              variant="secondary" 
+              icon={<Save />}
+              responsive={true}
+            >
               임시 저장
             </Button>
             <Button
               variant="primaryGradient"
               icon={<Play />}
               onClick={handleRunLoadTest}
-              disabled={isSubmitting}>
+              disabled={isSubmitting}
+              responsive={true}
+            >
               {isSubmitting ? "테스트 시작 중..." : "테스트 실행하기"}
             </Button>
           </div>
