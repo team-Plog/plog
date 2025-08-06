@@ -13,7 +13,6 @@ def get_endpoint_by_id(db: Session, endpoint_id: int):
 
 def generate_k6_script(payload: LoadTestRequest, job_name: str, db: Session) -> str:
     script_lines = []
-
     # K6 import
     script_lines.append("import http from 'k6/http';")
     script_lines.append("import { sleep } from 'k6';\n")
@@ -38,7 +37,7 @@ def generate_k6_script(payload: LoadTestRequest, job_name: str, db: Session) -> 
 
     for scenario in payload.scenarios:
         scenario_name = f"'{job_name}{scenario.endpoint_id}'"
-        script_lines.append(f"    {scenario_name}: {{")
+        script_lines.append(f"    {job_name}{scenario.endpoint_id}: {{")
         # executor 별 옵션 출력
         option_lines = generate_k6_scenario_options(scenario, scenario_name)
         for line in option_lines:
@@ -53,7 +52,7 @@ def generate_k6_script(payload: LoadTestRequest, job_name: str, db: Session) -> 
         method = endpoint.method.lower()
         full_url = f"{base_url}{endpoint.path}"
 
-        script_lines.append(f"export function {scenario.name}() {{")
+        script_lines.append(f"export function {job_name}{scenario.endpoint_id}() {{")
         script_lines.append(f"  http.{method}('{full_url}');")
         script_lines.append(f"  sleep({scenario.think_time});")
         script_lines.append("}\n")
@@ -83,6 +82,6 @@ def generate_k6_scenario_options(scenario: ScenarioConfig, scenario_name: str) -
             lines.append(f"        {{ duration: '{stage.duration}', target: {stage.target} }},")
         lines.append("      ],")
 
-    lines.append(f"      exec: '{scenario.name}',")
+    lines.append(f"      exec: {scenario_name},")
     return lines
 
