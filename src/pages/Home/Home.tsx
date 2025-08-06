@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
-import {Plus, Menu} from "lucide-react";
+import {Plus, Menu, History} from "lucide-react";
 import {SearchBar} from "../../components/Input";
 import {Button} from "../../components/Button/Button";
 import ProjectCard from "../../components/ProjectCard/ProjectCard";
@@ -150,7 +150,7 @@ const Home: React.FC = () => {
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className={styles.menuButton}>
-              <Menu className={styles.menuIcon} />
+              <History className={styles.menuIcon} />
             </button>
             <h1 className={`HeadingS ${styles.title}`}>최근 실행</h1>
           </div>
