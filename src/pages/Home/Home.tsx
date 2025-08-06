@@ -76,7 +76,6 @@ const Home: React.FC = () => {
 
   // 검색 필터링 로직
   const hasProjects = projects.length > 0;
-
   const filteredProjects = projects.filter(
     (project) =>
       project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -99,7 +98,6 @@ const Home: React.FC = () => {
               </button>
               <h1 className={`HeadingS ${styles.title}`}>내 프로젝트</h1>
             </div>
-
             {/* Right Group - Search Bar and Button */}
             <div className={styles.rightGroup}>
               <div className={styles.searchContainer}>
@@ -109,7 +107,6 @@ const Home: React.FC = () => {
                   placeholder="검색어를 입력하세요"
                 />
               </div>
-
               <Button
                 variant="primaryGradient"
                 onClick={() => setIsModalOpen(true)}
@@ -144,7 +141,8 @@ const Home: React.FC = () => {
             <EmptyProjectState />
           )}
         </main>
-        
+
+        {/* 최근 실행 섹션 */}
         <div className={styles.recentRunning}>
           <div className={styles.leftGroup}>
             <button
@@ -154,15 +152,40 @@ const Home: React.FC = () => {
             </button>
             <h1 className={`HeadingS ${styles.title}`}>최근 실행</h1>
           </div>
+
+          {/* 테이블 헤더 */}
+          <div className={styles.tableHeader}>
+            <div className={`Body ${styles.headerItem}`}>상태</div>
+            <div className={`Body ${styles.headerItem}`}>테스트명</div>
+            <div className={`Body ${styles.headerItem}`}>프로젝트명</div>
+            <div className={`Body ${styles.headerItem}`}>마지막 테스트</div>
+          </div>
+
+          {/* 테이블 내용 */}
           {testHistory.length > 0 ? (
             testHistory.map((item, index) => (
-              <div key={index} className={styles.runningList}>
-                <div className={`TitleS ${styles.listTitle}`}>
-                  <StatusBadge status={mapTestStatusToStatusBadge(item.test_status)} />
-                  {item.project_title} / {item.test_title}
+              <div key={index} className={styles.tableRow}>
+                <div className={styles.statusCell}>
+                  <StatusBadge
+                    status={mapTestStatusToStatusBadge(item.test_status)}
+                  />
                 </div>
-                <div className={`CaptionBold ${styles.runningTime}`}>
-                  {new Date(item.status_datetime).toLocaleDateString("ko-KR")}
+                <div className={`Body ${styles.tableCell}`}>
+                  {item.project_title}
+                </div>
+                <div className={`Body ${styles.tableCell}`}>
+                  {item.test_title}
+                </div>
+                <div className={`Body ${styles.tableCell}`}>
+                  {new Date(item.status_datetime).toLocaleDateString("ko-KR", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                    hour12: false
+                  })}
                 </div>
               </div>
             ))
