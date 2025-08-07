@@ -10,17 +10,21 @@ interface TestHistoryItem {
   status_datetime: string;
   test_status: string;
   project_id?: number;
-  job_name?: string; 
+  job_name?: string;
 }
 
 interface TestHistoryTableProps {
   testHistory: TestHistoryItem[];
   onMenuToggle: () => void;
+  titleText?: string;
+  hideProjectTitleColumn?: boolean;
 }
 
 const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
   testHistory,
   onMenuToggle,
+  titleText = "최근 실행", 
+  hideProjectTitleColumn = false, 
 }) => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
@@ -35,7 +39,7 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
     switch (status) {
       case "실행 중":
         return "running";
-      case "완료":
+      case "테스트 완료":
         return "completed";
       case "실패":
         return "failed";
@@ -45,14 +49,13 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
   };
 
   const handleRowClick = (item: TestHistoryItem) => {
-    // 테스트 페이지로 이동
     navigate("/test", {
       state: {
         projectId: item.project_id,
         testTitle: item.test_title,
         jobName: item.job_name,
-        projectTitle: item.project_title
-      }
+        projectTitle: item.project_title,
+      },
     });
   };
 
@@ -63,22 +66,24 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
         <button onClick={onMenuToggle} className={styles.menuButton}>
           <History className={styles.menuIcon} />
         </button>
-        <h1 className={`HeadingS ${styles.title}`}>최근 실행</h1>
+        <h1 className={`HeadingS ${styles.title}`}>{titleText}</h1> {/* ✅ 적용 */}
       </div>
 
       {/* 테이블 헤더 */}
       <div className={styles.tableHeader}>
         <div className={`Body ${styles.headerItem}`}>상태</div>
         <div className={`Body ${styles.headerItem}`}>테스트명</div>
-        <div className={`Body ${styles.headerItem}`}>프로젝트명</div>
+        {!hideProjectTitleColumn && (
+          <div className={`Body ${styles.headerItem}`}>프로젝트명</div>
+        )}
         <div className={`Body ${styles.headerItem}`}>마지막 테스트</div>
       </div>
 
       {/* 테이블 내용 */}
       {paginatedData.length > 0 ? (
         paginatedData.map((item, index) => (
-          <div 
-            key={index} 
+          <div
+            key={index}
             className={`${styles.tableRow} ${styles.clickableRow}`}
             onClick={() => handleRowClick(item)}
           >
@@ -87,12 +92,12 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
                 status={mapTestStatusToStatusBadge(item.test_status)}
               />
             </div>
-            <div className={`Body ${styles.tableCell}`}>
-              {item.test_title}
-            </div>
-            <div className={`Body ${styles.tableCell}`}>
-              {item.project_title}
-            </div>
+            <div className={`Body ${styles.tableCell}`}>{item.test_title}</div>
+            {!hideProjectTitleColumn && (
+              <div className={`Body ${styles.tableCell}`}>
+                {item.project_title}
+              </div>
+            )}
             <div className={`Body ${styles.tableCell}`}>
               {new Date(item.status_datetime).toLocaleDateString("ko-KR", {
                 year: "numeric",
@@ -117,7 +122,9 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
             <button
               key={i}
               onClick={() => setCurrentPage(i + 1)}
-              className={`${styles.pageButton} ${currentPage === i + 1 ? styles.active : ""}`}
+              className={`${styles.pageButton} ${
+                currentPage === i + 1 ? styles.active : ""
+              }`}
             >
               {i + 1}
             </button>

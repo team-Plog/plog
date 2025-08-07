@@ -25,6 +25,8 @@
   width: var(--icon-size-md);
   height: var(--icon-size-md);
   color: var(--color-gray-200);
+  display: flex;
+  justify-content: center;
 }
 
 .title {
