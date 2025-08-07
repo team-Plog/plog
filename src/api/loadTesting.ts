@@ -27,8 +27,15 @@ export interface LoadTestingResponse {
   job_name: string;
 }
 
+export interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+  status_code: number;
+}
+
 export const generateLoadTestScript = (data: LoadTestingRequest) =>
-  axios.post<LoadTestingResponse>('/load-testing', data);
+  axios.post<ApiResponse<LoadTestingResponse>>('/load-testing', data);
 
 // 테스트 상태 조회용 타입
 export interface TestStatus {

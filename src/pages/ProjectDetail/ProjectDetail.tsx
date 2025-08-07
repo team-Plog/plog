@@ -378,8 +378,8 @@ const ProjectDetail: React.FC = () => {
         state: { 
           projectId,
           projectTitle: projectData?.title,
-          jobName: response.data.job_name,
-          fileName: response.data.file_name,
+          jobName: response.data.data.job_name,
+          fileName: response.data.data.file_name,
           testTitle: scenarioTitle
         } 
       });
