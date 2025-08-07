@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { History } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { StatusBadge, type TestStatus } from "../Tag";
 import styles from "./TestHistoryTable.module.css";
 
@@ -8,6 +9,8 @@ interface TestHistoryItem {
   test_title: string;
   status_datetime: string;
   test_status: string;
+  project_id?: number;
+  job_name?: string; 
 }
 
 interface TestHistoryTableProps {
@@ -19,9 +22,9 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
   testHistory,
   onMenuToggle,
 }) => {
+  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
-
   const totalPages = Math.ceil(testHistory.length / itemsPerPage);
   const paginatedData = testHistory.slice(
     (currentPage - 1) * itemsPerPage,
@@ -39,6 +42,18 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
       default:
         return "before";
     }
+  };
+
+  const handleRowClick = (item: TestHistoryItem) => {
+    // 테스트 페이지로 이동
+    navigate("/test", {
+      state: {
+        projectId: item.project_id,
+        testTitle: item.test_title,
+        jobName: item.job_name,
+        projectTitle: item.project_title
+      }
+    });
   };
 
   return (
@@ -62,7 +77,11 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
       {/* 테이블 내용 */}
       {paginatedData.length > 0 ? (
         paginatedData.map((item, index) => (
-          <div key={index} className={styles.tableRow}>
+          <div 
+            key={index} 
+            className={`${styles.tableRow} ${styles.clickableRow}`}
+            onClick={() => handleRowClick(item)}
+          >
             <div className={styles.statusCell}>
               <StatusBadge
                 status={mapTestStatusToStatusBadge(item.test_status)}
@@ -98,7 +117,8 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
             <button
               key={i}
               onClick={() => setCurrentPage(i + 1)}
-              className={`${styles.pageButton} ${currentPage === i + 1 ? styles.active : ""}`}>
+              className={`${styles.pageButton} ${currentPage === i + 1 ? styles.active : ""}`}
+            >
               {i + 1}
             </button>
           ))}

@@ -53,7 +53,7 @@ const Home: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    getTestHistoryList(0, 5)
+    getTestHistoryList(0, 100)
       .then((res) => {
         console.log("🕒 최근 실행 기록:", res.data);
         setTestHistory(res.data.data);
