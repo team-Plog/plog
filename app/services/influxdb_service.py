@@ -72,13 +72,16 @@ class InfluxDBService:
             '''
             
             # 테스트 시작/종료 시간으로 duration 계산
-            # InfluxDB에서 time 집계를 위해 다른 필드와 함께 사용
-            duration_query = f'''
-                SELECT 
-                    FIRST("value") as first_value,
-                    LAST("value") as last_value
-                FROM "http_reqs"
+            start_time_query = f'''
+                SELECT * FROM "http_reqs"
                 WHERE "job_name" = '{job_name}'
+                ORDER BY time ASC LIMIT 1
+            '''
+            
+            end_time_query = f'''
+                SELECT * FROM "http_reqs"
+                WHERE "job_name" = '{job_name}'
+                ORDER BY time DESC LIMIT 1
             '''
             
             # 쿼리 실행
@@ -86,7 +89,8 @@ class InfluxDBService:
             failed_result = list(self.client.query(failed_requests_query).get_points())
             response_result = list(self.client.query(response_time_query).get_points())
             vus_result = list(self.client.query(vus_query).get_points())
-            duration_result = list(self.client.query(duration_query).get_points())
+            start_time_result = list(self.client.query(start_time_query).get_points())
+            end_time_result = list(self.client.query(end_time_query).get_points())
             
             if not total_result or not total_result[0]['total_requests']:
                 logger.warning(f"No metrics found for job: {job_name}")
@@ -106,43 +110,20 @@ class InfluxDBService:
             
             # Duration 계산 (초 단위)
             test_duration = 0.0
-            if duration_result and len(duration_result) > 0:
-                # FIRST/LAST 쿼리 결과에서 시간 정보 추출
-                duration_data = duration_result[0]
-                if 'time' in duration_data:
-                    # FIRST와 LAST의 time을 사용하여 duration 계산
-                    # InfluxDB의 FIRST/LAST는 자동으로 시작/끝 시간을 제공
-                    from datetime import datetime
-                    
-                    # 실제로는 전체 시간 범위를 다시 조회해야 함
-                    simple_duration_query = f'''
-                        SELECT "value" FROM "http_reqs" 
-                        WHERE "job_name" = '{job_name}' 
-                        ORDER BY time ASC LIMIT 1
-                    '''
-                    start_result = list(self.client.query(simple_duration_query).get_points())
-                    
-                    simple_end_query = f'''
-                        SELECT "value" FROM "http_reqs" 
-                        WHERE "job_name" = '{job_name}' 
-                        ORDER BY time DESC LIMIT 1
-                    '''
-                    end_result = list(self.client.query(simple_end_query).get_points())
-                    
-                    if start_result and end_result:
-                        start_time_str = start_result[0]['time']
-                        end_time_str = end_result[0]['time']
-                        
-                        start_time = datetime.fromisoformat(start_time_str.replace('Z', '+00:00'))
-                        end_time = datetime.fromisoformat(end_time_str.replace('Z', '+00:00'))
-                        test_duration = (end_time - start_time).total_seconds()
-                        
-                        # 디버깅 로그 추가
-                        logger.debug(f"Job {job_name} - Start: {start_time}, End: {end_time}, Duration: {test_duration}s")
-                    else:
-                        logger.warning(f"Job {job_name} - Could not get start/end times")
+            if start_time_result and end_time_result:
+                from datetime import datetime
+                
+                start_time_str = start_time_result[0]['time']
+                end_time_str = end_time_result[0]['time']
+                
+                start_time = datetime.fromisoformat(start_time_str.replace('Z', '+00:00'))
+                end_time = datetime.fromisoformat(end_time_str.replace('Z', '+00:00'))
+                test_duration = (end_time - start_time).total_seconds()
+                
+                # 디버깅 로그 추가
+                logger.debug(f"Job {job_name} - Start: {start_time}, End: {end_time}, Duration: {test_duration}s")
             else:
-                logger.warning(f"Job {job_name} - No duration data found: {duration_result}")
+                logger.warning(f"Job {job_name} - Could not get start/end times")
             
             # TPS 및 에러율 계산
             actual_tps = total_requests / test_duration if test_duration > 0 else 0.0
@@ -219,19 +200,24 @@ class InfluxDBService:
             '''
             
             # 테스트 시간 조회 (duration 계산용)
-            duration_query = f'''
-                SELECT 
-                    MIN(time) as start_time,
-                    MAX(time) as end_time
-                FROM "http_reqs"
+            start_time_query = f'''
+                SELECT * FROM "http_reqs"
                 WHERE "scenario" = '{scenario_identifier}'
+                ORDER BY time ASC LIMIT 1
+            '''
+            
+            end_time_query = f'''
+                SELECT * FROM "http_reqs"
+                WHERE "scenario" = '{scenario_identifier}'
+                ORDER BY time DESC LIMIT 1
             '''
             
             # 쿼리 실행
             total_result = list(self.client.query(total_requests_query).get_points())
             failed_result = list(self.client.query(failed_requests_query).get_points())
             response_result = list(self.client.query(response_time_query).get_points())
-            duration_result = list(self.client.query(duration_query).get_points())
+            start_time_result = list(self.client.query(start_time_query).get_points())
+            end_time_result = list(self.client.query(end_time_query).get_points())
             
             if not total_result or not total_result[0]['total_requests']:
                 logger.warning(f"No metrics found for scenario: {scenario_identifier}")
@@ -248,10 +234,14 @@ class InfluxDBService:
             
             # Duration 계산
             test_duration = 0.0
-            if duration_result and duration_result[0]['start_time'] and duration_result[0]['end_time']:
+            if start_time_result and end_time_result:
                 from datetime import datetime
-                start_time = datetime.fromisoformat(duration_result[0]['start_time'].replace('Z', '+00:00'))
-                end_time = datetime.fromisoformat(duration_result[0]['end_time'].replace('Z', '+00:00'))
+                
+                start_time_str = start_time_result[0]['time']
+                end_time_str = end_time_result[0]['time']
+                
+                start_time = datetime.fromisoformat(start_time_str.replace('Z', '+00:00'))
+                end_time = datetime.fromisoformat(end_time_str.replace('Z', '+00:00'))
                 test_duration = (end_time - start_time).total_seconds()
             
             # TPS 및 에러율 계산
