@@ -42,7 +42,7 @@ def save_test_history(
             think_time=scenario.think_time,
             response_time_target=scenario.response_time_target,
             error_rate_target=scenario.error_rate_target,
-            scenario_name=f'{job_name}#{scenario.endpoint_id}'
+            scenario_name=f'{job_name}{scenario.endpoint_id}'
         )
 
         for stage in scenario.stages:
