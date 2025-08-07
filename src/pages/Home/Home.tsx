@@ -21,6 +21,7 @@ interface Project {
 }
 
 interface TestHistoryItem {
+  test_history_id: number;
   project_title: string;
   test_title: string;
   status_datetime: string;

@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, {useEffect, useState} from "react";
 import Header from "../../components/Header/Header";
 import styles from "./Test.module.css";
 import "../../assets/styles/typography.css";
-import { Button } from "../../components/Button/Button";
+import {Button} from "../../components/Button/Button";
 import {
   Activity,
   CircleAlert,
@@ -22,8 +22,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { useLocation } from "react-router-dom";
-import { getProjectDetail } from "../../api";
+import {useLocation} from "react-router-dom";
+import {getProjectDetail, getTestHistoryDetail} from "../../api";
 
 const Test: React.FC = () => {
   const location = useLocation();
@@ -32,9 +32,14 @@ const Test: React.FC = () => {
     testTitle,
     jobName,
     projectTitle: passedProjectTitle,
+    testHistoryId: initialTestHistoryId, // 초기 testHistoryId를 받습니다.
   } = location.state || {};
   const [projectTitle, setProjectTitle] = useState<string>(
     passedProjectTitle || ""
+  );
+  // testHistoryId를 상태로 관리합니다.
+  const [testHistoryId, setTestHistoryId] = useState<number | null>(
+    initialTestHistoryId || null
   );
 
   const [chartData, setChartData] = useState<any[]>([]);
@@ -44,6 +49,10 @@ const Test: React.FC = () => {
     error_rate: 0,
     vus: 0,
   });
+
+  useEffect(() => {
+    console.log("✅ 선택된 testHistoryId:", testHistoryId);
+  }, [testHistoryId]);
 
   useEffect(() => {
     if (!jobName) return;
@@ -75,16 +84,18 @@ const Test: React.FC = () => {
 
         setMetrics(overall); // 메트릭 카드용 데이터 업데이트
 
-        setChartData((prev) => [
-          ...prev,
-          {
-            time: timestamp,
-            tps: overall.tps,
-            responseTime: overall.latency,
-            errorRate: overall.error_rate,
-            users: overall.vus,
-          },
-        ].slice(-20)); // 최근 20개만 유지
+        setChartData((prev) =>
+          [
+            ...prev,
+            {
+              time: timestamp,
+              tps: overall.tps,
+              responseTime: overall.latency,
+              errorRate: overall.error_rate,
+              users: overall.vus,
+            },
+          ].slice(-20)
+        ); // 최근 20개만 유지
       } catch (e) {
         console.error("⚠️ JSON 파싱 실패:", e);
       }
@@ -111,9 +122,21 @@ const Test: React.FC = () => {
     }
   }, [projectId, passedProjectTitle]);
 
+  useEffect(() => {
+    if (!testHistoryId) return;
+
+    getTestHistoryDetail(testHistoryId)
+      .then((res) => {
+        console.log("🧪 테스트 상세 정보:", res.data);
+      })
+      .catch((err) => {
+        console.error("❌ 테스트 상세 정보 조회 실패:", err);
+      });
+  }, [testHistoryId]);
+
   return (
     <div className={styles.container}>
-      <Header />
+      <Header testHistoryId={testHistoryId} />
       <div className={styles.content}>
         <header className={styles.header}>
           <div className={styles.headerInner}></div>
@@ -201,11 +224,7 @@ const Test: React.FC = () => {
                   <XAxis dataKey="time" />
                   <YAxis />
                   <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="errorRate"
-                    stroke="#f87171"
-                  />
+                  <Line type="monotone" dataKey="errorRate" stroke="#f87171" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
