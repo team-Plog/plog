@@ -1,0 +1,17 @@
+.container {
+  min-height: 100vh;
+  background-color: var(--color-background-secondary);
+  padding-top: 40px;
+  width: 100vw;
+}
+
+.content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  margin-bottom: 20px;
+  justify-content: flex-end;
+}
