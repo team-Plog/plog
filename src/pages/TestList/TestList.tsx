@@ -1,9 +1,9 @@
-import React from "react";
+import React, {useEffect} from "react";
 import styles from "./TestList.module.css";
 import "../../assets/styles/typography.css";
 import Header from "../../components/Header/Header";
 import {useLocation} from "react-router-dom";
-import TestHistoryTable from "../../components/TestHistoryTable/TestHistoryTable"; 
+import TestHistoryTable from "../../components/TestHistoryTable/TestHistoryTable";
 import {getTestHistoryByProject} from "../../api";
 
 const TestList: React.FC = () => {
@@ -11,14 +11,15 @@ const TestList: React.FC = () => {
   const {projectId, projectTitle} = location.state || {};
   const [testHistory, setTestHistory] = React.useState([]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (projectId) {
       getTestHistoryByProject(projectId)
         .then((res) => {
-          setTestHistory(res.data.data); // API 응답에 맞게 수정
+          console.log("📦 테스트 이력 API 응답:", res.data); // ✅ 여기 추가
+          setTestHistory(res.data.data);
         })
         .catch((err) => {
-          console.error("테스트 이력 불러오기 실패:", err);
+          console.error("❌ 테스트 이력 불러오기 실패:", err);
         });
     }
   }, [projectId]);

@@ -1,10 +1,11 @@
-import React, { useState } from "react";
-import { History } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { StatusBadge, type TestStatus } from "../Tag";
+import React, {useEffect, useState} from "react";
+import {History} from "lucide-react";
+import {useLocation, useNavigate} from "react-router-dom";
+import {StatusBadge, type TestStatus} from "../Tag";
 import styles from "./TestHistoryTable.module.css";
 
 interface TestHistoryItem {
+  test_history_id: number;
   project_title: string;
   test_title: string;
   status_datetime: string;
@@ -23,8 +24,8 @@ interface TestHistoryTableProps {
 const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
   testHistory,
   onMenuToggle,
-  titleText = "최근 실행", 
-  hideProjectTitleColumn = false, 
+  titleText = "최근 실행",
+  hideProjectTitleColumn = false,
 }) => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
@@ -55,6 +56,7 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
         testTitle: item.test_title,
         jobName: item.job_name,
         projectTitle: item.project_title,
+        testHistoryId: item.test_history_id,
       },
     });
   };
@@ -66,7 +68,8 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
         <button onClick={onMenuToggle} className={styles.menuButton}>
           <History className={styles.menuIcon} />
         </button>
-        <h1 className={`HeadingS ${styles.title}`}>{titleText}</h1> {/* ✅ 적용 */}
+        <h1 className={`HeadingS ${styles.title}`}>{titleText}</h1>{" "}
+        {/* ✅ 적용 */}
       </div>
 
       {/* 테이블 헤더 */}
@@ -85,8 +88,7 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
           <div
             key={index}
             className={`${styles.tableRow} ${styles.clickableRow}`}
-            onClick={() => handleRowClick(item)}
-          >
+            onClick={() => handleRowClick(item)}>
             <div className={styles.statusCell}>
               <StatusBadge
                 status={mapTestStatusToStatusBadge(item.test_status)}
@@ -118,14 +120,13 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
       {/* 페이지네이션 */}
       {totalPages > 1 && (
         <div className={styles.pagination}>
-          {Array.from({ length: totalPages }, (_, i) => (
+          {Array.from({length: totalPages}, (_, i) => (
             <button
               key={i}
               onClick={() => setCurrentPage(i + 1)}
               className={`${styles.pageButton} ${
                 currentPage === i + 1 ? styles.active : ""
-              }`}
-            >
+              }`}>
               {i + 1}
             </button>
           ))}

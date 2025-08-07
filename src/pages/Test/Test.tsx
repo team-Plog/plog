@@ -136,7 +136,6 @@ const Test: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      {/* testHistoryId를 props로 전달합니다. */}
       <Header testHistoryId={testHistoryId} />
       <div className={styles.content}>
         <header className={styles.header}>
