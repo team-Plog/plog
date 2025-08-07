@@ -2,6 +2,13 @@
   padding: var(--spacing-xl) 0;
 }
 
+.emptyStateContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+}
+
 .leftGroup {
   display: flex;
   align-items: center;
@@ -60,6 +67,7 @@
   border-bottom: 1px solid var(--color-border-primary);
   align-items: center;
   transition: background-color 0.2s;
+  cursor: pointer;
 }
 
 .tableRow:hover {
@@ -80,15 +88,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.noHistory {
-  padding: var(--spacing-xl);
-  text-align: center;
-  color: var(--color-gray-300);
-  background-color: var(--color-background-primary);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border-primary);
 }
 
 .pagination {

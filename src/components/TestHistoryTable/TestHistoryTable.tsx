@@ -2,6 +2,7 @@ import React, {useEffect, useState} from "react";
 import {History} from "lucide-react";
 import {useLocation, useNavigate} from "react-router-dom";
 import {StatusBadge, type TestStatus} from "../Tag";
+import EmptyState from "../EmptyState/EmptyState";
 import styles from "./TestHistoryTable.module.css";
 
 interface TestHistoryItem {
@@ -63,74 +64,77 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
 
   return (
     <div className={styles.recentRunning}>
-      {/* 헤더 */}
-      <div className={styles.leftGroup}>
-        <button onClick={onMenuToggle} className={styles.menuButton}>
-          <History className={styles.menuIcon} />
-        </button>
-        <h1 className={`HeadingS ${styles.title}`}>{titleText}</h1>{" "}
-        {/* ✅ 적용 */}
-      </div>
-
-      {/* 테이블 헤더 */}
-      <div className={styles.tableHeader}>
-        <div className={`Body ${styles.headerItem}`}>상태</div>
-        <div className={`Body ${styles.headerItem}`}>테스트명</div>
-        {!hideProjectTitleColumn && (
-          <div className={`Body ${styles.headerItem}`}>프로젝트명</div>
-        )}
-        <div className={`Body ${styles.headerItem}`}>마지막 테스트</div>
-      </div>
-
-      {/* 테이블 내용 */}
-      {paginatedData.length > 0 ? (
-        paginatedData.map((item, index) => (
-          <div
-            key={index}
-            className={`${styles.tableRow} ${styles.clickableRow}`}
-            onClick={() => handleRowClick(item)}>
-            <div className={styles.statusCell}>
-              <StatusBadge
-                status={mapTestStatusToStatusBadge(item.test_status)}
-              />
-            </div>
-            <div className={`Body ${styles.tableCell}`}>{item.test_title}</div>
-            {!hideProjectTitleColumn && (
-              <div className={`Body ${styles.tableCell}`}>
-                {item.project_title}
-              </div>
-            )}
-            <div className={`Body ${styles.tableCell}`}>
-              {new Date(item.status_datetime).toLocaleDateString("ko-KR", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-                hour12: false,
-              })}
-            </div>
-          </div>
-        ))
-      ) : (
-        <div className={styles.noHistory}>최근 실행 기록이 없습니다.</div>
-      )}
-
-      {/* 페이지네이션 */}
-      {totalPages > 1 && (
-        <div className={styles.pagination}>
-          {Array.from({length: totalPages}, (_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrentPage(i + 1)}
-              className={`${styles.pageButton} ${
-                currentPage === i + 1 ? styles.active : ""
-              }`}>
-              {i + 1}
-            </button>
-          ))}
+      {/* 테스트 이력이 없는 경우 EmptyState만 표시 */}
+      {testHistory.length === 0 ? (
+        <div className={styles.emptyStateContainer}>
+          <EmptyState type="test" />
         </div>
+      ) : (
+        <>
+          {/* 헤더 */}
+          <div className={styles.leftGroup}>
+            <button onClick={onMenuToggle} className={styles.menuButton}>
+              <History className={styles.menuIcon} />
+            </button>
+            <h1 className={`HeadingS ${styles.title}`}>{titleText}</h1>
+          </div>
+          {/* 테이블 헤더 */}
+          <div className={styles.tableHeader}>
+            <div className={`Body ${styles.headerItem}`}>상태</div>
+            <div className={`Body ${styles.headerItem}`}>테스트명</div>
+            {!hideProjectTitleColumn && (
+              <div className={`Body ${styles.headerItem}`}>프로젝트명</div>
+            )}
+            <div className={`Body ${styles.headerItem}`}>마지막 테스트</div>
+          </div>
+
+          {/* 테이블 내용 */}
+          {paginatedData.map((item, index) => (
+            <div
+              key={index}
+              className={`${styles.tableRow} ${styles.clickableRow}`}
+              onClick={() => handleRowClick(item)}>
+              <div className={styles.statusCell}>
+                <StatusBadge
+                  status={mapTestStatusToStatusBadge(item.test_status)}
+                />
+              </div>
+              <div className={`Body ${styles.tableCell}`}>{item.test_title}</div>
+              {!hideProjectTitleColumn && (
+                <div className={`Body ${styles.tableCell}`}>
+                  {item.project_title}
+                </div>
+              )}
+              <div className={`Body ${styles.tableCell}`}>
+                {new Date(item.status_datetime).toLocaleDateString("ko-KR", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                  hour12: false,
+                })}
+              </div>
+            </div>
+          ))}
+
+          {/* 페이지네이션 */}
+          {totalPages > 1 && (
+            <div className={styles.pagination}>
+              {Array.from({length: totalPages}, (_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={`${styles.pageButton} ${
+                    currentPage === i + 1 ? styles.active : ""
+                  }`}>
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
