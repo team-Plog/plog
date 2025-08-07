@@ -56,7 +56,12 @@
   cursor: pointer;
 }
 
-.moonIcon {
+.iconWrapper {
+  display: flex;
+  gap: var(--spacing-lg);
+}
+
+.icon {
   display: flex;
   align-items: center;
   justify-content: center;
