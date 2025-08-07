@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from "react";
 import styles from "./Header.module.css";
 import "../../assets/styles/typography.css";
-import {ChevronLeft, ChevronRight, Moon} from "lucide-react";
+import {ChevronLeft, ChevronRight, List, Moon} from "lucide-react";
 import {useNavigate, useLocation} from "react-router-dom";
 import {getProjectDetail} from "../../api";
 
@@ -93,8 +93,24 @@ const Header: React.FC = () => {
           </div>
         )}
       </div>
-      <div className={styles.moonIcon}>
-        <Moon />
+      <div className={styles.iconWrapper}>
+        {isProjectPage && (
+          <div
+            className={styles.icon}
+            onClick={() =>
+              navigate("/testList", {
+                state: {
+                  projectId,
+                  projectTitle,
+                },
+              })
+            }>
+            <List />
+          </div>
+        )}
+        <div className={styles.icon}>
+          <Moon />
+        </div>
       </div>
     </div>
   );

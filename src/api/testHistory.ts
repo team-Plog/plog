@@ -8,3 +8,11 @@ export const getTestHistoryList = (page: number, size: number) =>
       size
     }
   });
+
+  // 프로젝트별 테스트 기록 조회
+export const getTestHistoryByProject = (projectId: number) =>
+  axios.get(`/test-history/projects/${projectId}`);
+
+// 테스트 기록 상세 조회
+export const getTestHistoryDetail = (testHistoryId: number) =>
+  axios.get(`/test-history/${testHistoryId}/details`);
