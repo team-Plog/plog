@@ -1,0 +1,225 @@
+.container {
+  width: 100%;
+}
+
+.actions {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.pdfContainer {
+  width: 100%;
+  height: 800px;
+  overflow: hidden;
+  box-shadow: 0px 2px 16px rgba(0, 0, 0, 0.03);
+}
+
+.pdfViewer {
+  width: 100%;
+  height: 100%;
+}
+
+/* 편집 모드 - 미리보기 스타일 */
+.previewContainer {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.documentPreview {
+  background: white;
+  padding: 20px;
+  font-family: 'Arial', sans-serif;
+  line-height: 1.5;
+  color: #333;
+}
+
+.documentHeader {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.documentHeader h1 {
+  font-size: 24px;
+  font-weight: bold;
+  margin: 0 0 16px 0;
+  color: #111827;
+}
+
+.companyName {
+  font-size: 18px;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.reporterName {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.reportDate {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.section {
+  margin-bottom: 30px;
+}
+
+.section h2 {
+  font-size: 18px;
+  font-weight: bold;
+  color: #111827;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.summaryItem {
+  background: #f9fafb;
+  padding: 12px;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.label {
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.value {
+  font-weight: 600;
+  color: #111827;
+}
+
+.description {
+  font-size: 14px;
+  color: #6b7280;
+  margin-top: 12px;
+  line-height: 1.6;
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.metric {
+  background: #f3f4f6;
+  padding: 16px;
+  border-radius: 8px;
+  text-align: center;
+  border-left: 4px solid #3b82f6;
+}
+
+.metricLabel {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.metricValue {
+  font-size: 18px;
+  font-weight: bold;
+  color: #111827;
+}
+
+.scenarioCard {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.scenarioCard h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 16px 0;
+}
+
+.scenarioDetails {
+  margin-top: 12px;
+}
+
+.endpointInfo {
+  background: #1f2937;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 14px;
+  margin-bottom: 12px;
+  display: inline-block;
+}
+
+.scenarioMetrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.scenarioMetric {
+  background: white;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.stagesInfo {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.stagesInfo h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.stage {
+  background: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border-left: 3px solid #10b981;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: #374151;
+}
+
+@media (max-width: 768px) {
+  .summaryGrid,
+  .metricsGrid,
+  .scenarioMetrics {
+    grid-template-columns: 1fr;
+  }
+  
+  .documentHeader h1 {
+    font-size: 20px;
+  }
+  
+  .documentPreview {
+    padding: 16px;
+  }
+}
