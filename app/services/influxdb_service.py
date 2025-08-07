@@ -171,6 +171,7 @@ class InfluxDBService:
                 'avg_response_time': float,
                 'max_response_time': float,
                 'min_response_time': float,
+                'p95_response_time': float,
                 'error_rate': float
             }
         """
@@ -194,7 +195,8 @@ class InfluxDBService:
                 SELECT 
                     MEAN("value") as avg_response_time,
                     MAX("value") as max_response_time,
-                    MIN("value") as min_response_time
+                    MIN("value") as min_response_time,
+                    PERCENTILE("value", 95) as p95_response_time
                 FROM "http_req_duration"
                 WHERE "scenario" = '{scenario_identifier}'
             '''
@@ -231,6 +233,7 @@ class InfluxDBService:
             avg_response_time = float(response_data.get('avg_response_time', 0))
             max_response_time = float(response_data.get('max_response_time', 0))
             min_response_time = float(response_data.get('min_response_time', 0))
+            p95_response_time = float(response_data.get('p95_response_time', 0))
             
             # Duration 계산
             test_duration = 0.0
@@ -255,6 +258,7 @@ class InfluxDBService:
                 'avg_response_time': round(avg_response_time, 2),
                 'max_response_time': round(max_response_time, 2),
                 'min_response_time': round(min_response_time, 2),
+                'p95_response_time': round(p95_response_time, 2),
                 'error_rate': round(error_rate, 2)
             }
             

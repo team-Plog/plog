@@ -195,6 +195,18 @@ def get_test_histories_with_project_info(db: Session, page: int = 0, size: int =
         .all()
 
 
+def get_test_histories_by_project_id(db: Session, project_id: int) -> List[TestHistoryModel]:
+    """특정 프로젝트의 테스트 기록을 조회합니다."""
+    return (
+        db.query(TestHistoryModel)
+        .join(TestHistoryModel.project)
+        .options(joinedload(TestHistoryModel.project))
+        .filter(TestHistoryModel.project_id == project_id)
+        .order_by(TestHistoryModel.tested_at.desc())
+        .all()
+    )
+
+
 # === 스케줄러용 추가 함수들 ===
 
 def get_scenario_histories_by_test_id(db: Session, test_id: int) -> List[ScenarioHistoryModel]:
@@ -239,6 +251,7 @@ def update_scenario_history_with_metrics(db: Session, scenario_history: Scenario
         scenario_history.avg_response_time = metrics.get('avg_response_time', 0.0)
         scenario_history.max_response_time = metrics.get('max_response_time', 0.0)
         scenario_history.min_response_time = metrics.get('min_response_time', 0.0)
+        scenario_history.p95_response_time = metrics.get('p95_response_time', 0.0)  # p95 응답시간 추가
         scenario_history.error_rate = metrics.get('error_rate', 0.0)
         scenario_history.total_requests = metrics.get('total_requests', 0)
         scenario_history.failed_requests = metrics.get('failed_requests', 0)
