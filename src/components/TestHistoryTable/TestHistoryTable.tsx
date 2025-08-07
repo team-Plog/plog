@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { History } from "lucide-react";
 import { StatusBadge, type TestStatus } from "../Tag";
 import styles from "./TestHistoryTable.module.css";
@@ -19,7 +19,15 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
   testHistory,
   onMenuToggle,
 }) => {
-  // 테스트 상태를 StatusBadge에서 사용할 수 있는 형태로 변환
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  const totalPages = Math.ceil(testHistory.length / itemsPerPage);
+  const paginatedData = testHistory.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const mapTestStatusToStatusBadge = (status: string): TestStatus => {
     switch (status) {
       case "실행 중":
@@ -52,8 +60,8 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
       </div>
 
       {/* 테이블 내용 */}
-      {testHistory.length > 0 ? (
-        testHistory.map((item, index) => (
+      {paginatedData.length > 0 ? (
+        paginatedData.map((item, index) => (
           <div key={index} className={styles.tableRow}>
             <div className={styles.statusCell}>
               <StatusBadge
@@ -81,6 +89,20 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
         ))
       ) : (
         <div className={styles.noHistory}>최근 실행 기록이 없습니다.</div>
+      )}
+
+      {/* 페이지네이션 */}
+      {totalPages > 1 && (
+        <div className={styles.pagination}>
+          {Array.from({ length: totalPages }, (_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentPage(i + 1)}
+              className={`${styles.pageButton} ${currentPage === i + 1 ? styles.active : ""}`}>
+              {i + 1}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
