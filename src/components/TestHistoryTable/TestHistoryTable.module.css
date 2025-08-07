@@ -1,5 +1,5 @@
 .recentRunning {
-  margin-top: var(--spacing-xl);
+  padding: var(--spacing-xl) 0;
 }
 
 .leftGroup {
@@ -87,6 +87,30 @@
   background-color: var(--color-background-primary);
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border-primary);
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--spacing-md);
+  gap: var(--spacing-md);
+}
+
+.pageButton {
+  padding: var(--spacing-sm);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.pageButton:hover {
+  background-color: var(--color-gray-100);
+}
+
+.active {
+  background-color: var(--color-primary);
+  font-weight: bold;
 }
 
 /* 반응형 디자인 - TestHistoryTable 전용 */
