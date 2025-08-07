@@ -1,8 +1,8 @@
-import React, {useEffect, useState} from "react";
+import React, { useEffect, useState } from "react";
 import Header from "../../components/Header/Header";
 import styles from "./Test.module.css";
 import "../../assets/styles/typography.css";
-import {Button} from "../../components/Button/Button";
+import { Button } from "../../components/Button/Button";
 import {
   Activity,
   CircleAlert,
@@ -22,16 +22,86 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import {useLocation} from "react-router-dom";
-import {getProjectDetail} from "../../api";
+import { useLocation } from "react-router-dom";
+import { getProjectDetail } from "../../api";
 
 const Test: React.FC = () => {
   const location = useLocation();
-  const {projectId, testTitle} = location.state || {};
-  const [projectTitle, setProjectTitle] = useState<string>("");
+  const {
+    projectId,
+    testTitle,
+    jobName,
+    projectTitle: passedProjectTitle,
+  } = location.state || {};
+  const [projectTitle, setProjectTitle] = useState<string>(
+    passedProjectTitle || ""
+  );
+
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [metrics, setMetrics] = useState({
+    tps: 0,
+    latency: 0,
+    error_rate: 0,
+    vus: 0,
+  });
 
   useEffect(() => {
-    if (projectId) {
+    if (!jobName) return;
+
+    const eventSource = new EventSource(
+      `http://35.216.24.11:30002/sse/k6data/${jobName}`
+    );
+
+    eventSource.onmessage = (event) => {
+      try {
+        const parsedData = JSON.parse(event.data);
+        console.log("📡 실시간 k6 데이터:", parsedData);
+
+        const timestamp = new Date(parsedData.timestamp).toLocaleTimeString(
+          "ko-KR",
+          {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }
+        );
+
+        const overall = parsedData.overall || {
+          tps: 0,
+          latency: 0,
+          error_rate: 0,
+          vus: 0,
+        };
+
+        setMetrics(overall); // 메트릭 카드용 데이터 업데이트
+
+        setChartData((prev) => [
+          ...prev,
+          {
+            time: timestamp,
+            tps: overall.tps,
+            responseTime: overall.latency,
+            errorRate: overall.error_rate,
+            users: overall.vus,
+          },
+        ].slice(-20)); // 최근 20개만 유지
+      } catch (e) {
+        console.error("⚠️ JSON 파싱 실패:", e);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error("❌ SSE 연결 오류:", error);
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [jobName]);
+
+  useEffect(() => {
+    if (projectId && !passedProjectTitle) {
       getProjectDetail(projectId)
         .then((res) => setProjectTitle(res.data.data.title))
         .catch((err) => {
@@ -39,25 +109,16 @@ const Test: React.FC = () => {
           setProjectTitle("프로젝트명 없음");
         });
     }
-  }, [projectId]);
-  const chartData = [
-    {time: "00:00", tps: 800, responseTime: 140, errorRate: 1.2, users: 300},
-    {time: "00:10", tps: 1200, responseTime: 150, errorRate: 1.5, users: 350},
-    {time: "00:20", tps: 1500, responseTime: 160, errorRate: 2.3, users: 400},
-    {time: "00:30", tps: 1000, responseTime: 170, errorRate: 2.8, users: 420},
-    {time: "00:40", tps: 1165, responseTime: 156, errorRate: 2.3, users: 450},
-  ];
+  }, [projectId, passedProjectTitle]);
 
   return (
     <div className={styles.container}>
       <Header />
       <div className={styles.content}>
-        {/* Header */}
         <header className={styles.header}>
           <div className={styles.headerInner}></div>
         </header>
 
-        {/* Main Content */}
         <main className={styles.main}>
           <div className={styles.title}>
             <div className="HeadingS">{projectTitle || "프로젝트명 없음"}</div>
@@ -79,11 +140,28 @@ const Test: React.FC = () => {
           </div>
 
           <div className={styles.card}>
-            <MetricCard label="현재 TPS" value="1,165" icon={<Activity />} />
-            <MetricCard label="평균 응답시간" value="156ms" icon={<Clock />} />
-            <MetricCard label="에러율" value="2.3%" icon={<CircleAlert />} />
-            <MetricCard label="활성 사용자" value="450" icon={<Users />} />
+            <MetricCard
+              label="현재 TPS"
+              value={metrics.tps.toLocaleString()}
+              icon={<Activity />}
+            />
+            <MetricCard
+              label="평균 응답시간"
+              value={`${metrics.latency.toFixed(0)}ms`}
+              icon={<Clock />}
+            />
+            <MetricCard
+              label="에러율"
+              value={`${metrics.error_rate.toFixed(1)}%`}
+              icon={<CircleAlert />}
+            />
+            <MetricCard
+              label="활성 사용자"
+              value={metrics.vus.toLocaleString()}
+              icon={<Users />}
+            />
           </div>
+
           <div className={styles.chartWrap}>
             <div className={styles.chart}>
               <h3 className="TitleS">TPS 변화 추이</h3>
@@ -123,7 +201,11 @@ const Test: React.FC = () => {
                   <XAxis dataKey="time" />
                   <YAxis />
                   <Tooltip />
-                  <Line type="monotone" dataKey="errorRate" stroke="#f87171" />
+                  <Line
+                    type="monotone"
+                    dataKey="errorRate"
+                    stroke="#f87171"
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
