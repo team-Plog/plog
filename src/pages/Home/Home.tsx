@@ -6,7 +6,7 @@ import {Button} from "../../components/Button/Button";
 import ProjectCard from "../../components/ProjectCard/ProjectCard";
 import MainModal from "../../components/MainModal/MainModal";
 import Header from "../../components/Header/Header";
-import EmptyProjectState from "../../components/EmptyState/EmptyProjectState";
+import EmptyState from "../../components/EmptyState/EmptyState";
 import TestHistoryTable from "../../components/TestHistoryTable/TestHistoryTable";
 import styles from "./Home.module.css";
 import {getProjectList, getTestHistoryList} from "../../api";
@@ -128,7 +128,7 @@ const Home: React.FC = () => {
             </div>
           ) : (
             /* Empty State */
-            <EmptyProjectState />
+            <EmptyState type="project" />
           )}
         </main>
 
