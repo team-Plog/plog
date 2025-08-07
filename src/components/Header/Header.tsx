@@ -5,8 +5,11 @@ import {ChevronLeft, ChevronRight, List, Moon} from "lucide-react";
 import {useNavigate, useLocation} from "react-router-dom";
 import {getProjectDetail} from "../../api";
 
-// Header.tsx
-const Header: React.FC = () => {
+interface HeaderProps {
+  testHistoryId?: number | null;
+}
+
+const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [projectTitle, setProjectTitle] = useState<string>("");
@@ -41,7 +44,7 @@ const Header: React.FC = () => {
   };
 
   const handleNavigateToReport = () => {
-    navigate("/report", {state: {projectId}});
+    navigate("/report", {state: {projectId, testHistoryId}});
   };
 
   return (
@@ -79,8 +82,7 @@ const Header: React.FC = () => {
               </>
             )}
 
-            {/* 보고서 버튼은 프로젝트 상세 페이지에서만 */}
-            {isProjectPage && (
+            {(isProjectPage || isTestPage) && testHistoryId && (
               <>
                 <div className={`${styles.navButton} Body`}>/</div>
                 <button
