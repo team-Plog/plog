@@ -3,9 +3,14 @@
 }
 
 .actions {
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-xl);
   display: flex;
   justify-content: flex-end;
+}
+
+.button {
+  display: flex;
+  gap: var(--spacing-md);
 }
 
 .pdfContainer {
@@ -28,17 +33,18 @@
 
 .documentPreview {
   background: white;
-  padding: 20px;
-  font-family: 'Arial', sans-serif;
+  padding: var(--spacing-xxl);
+  font-family: "Arial", sans-serif;
   line-height: 1.5;
   color: #333;
 }
 
 .documentHeader {
+  display: flex;
+  justify-content: space-between;
   text-align: center;
   margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: var(--spacing-xxl);
 }
 
 .documentHeader h1 {
@@ -67,6 +73,16 @@
 
 .section {
   margin-bottom: 30px;
+}
+
+.section h1 {
+  display: flex;
+  padding: var(--spacing-lg) 0 var(--spacing-xxl) 0;
+  align-items: flex-start;
+  gap: var(--spacing-xxl);
+  align-self: stretch;
+  border-top: 1px solid var(--color-border-primary);
+  color: var(--color-accent-primary);
 }
 
 .section h2 {
@@ -214,11 +230,11 @@
   .scenarioMetrics {
     grid-template-columns: 1fr;
   }
-  
+
   .documentHeader h1 {
     font-size: 20px;
   }
-  
+
   .documentPreview {
     padding: 16px;
   }
