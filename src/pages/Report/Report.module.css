@@ -11,7 +11,27 @@
   padding: 20px;
 }
 
+
 .header {
-  margin-bottom: 20px;
-  justify-content: flex-end;
+  display: flex;
+  justify-content: space-between; 
+  align-items: center;
+  margin-top: var(--spacing-xxl);
+  margin-bottom: var(--spacing-xl);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px; 
+}
+
+.headerLeft > h1 {
+  margin: 0;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md); 
 }
