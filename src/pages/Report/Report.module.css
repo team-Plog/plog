@@ -35,3 +35,21 @@
   align-items: center;
   gap: var(--spacing-md); 
 }
+.customToggleButton {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+.icon {
+  width: var(--iconSize-md);
+  height: var(--iconSize-md);
+  color: var(--color-gray-200);
+}
+
+.dropdown {
+  display: flex;
+  align-items: center;
+}
+
+.dropdown button {
+  border: none;
+}

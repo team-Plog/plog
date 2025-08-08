@@ -7,7 +7,7 @@ import {useLocation} from "react-router-dom";
 import {getTestHistoryDetail} from "../../api";
 import ReportEditor from "../../components/Report/ReportEditor";
 import ReportViewer from "../../components/Report/ReportViewer";
-import {Download, Printer} from "lucide-react";
+import {ChevronDown, Download, Eye, Pen, Pencil, Printer} from "lucide-react";
 import {PDFDownloadLink} from "@react-pdf/renderer";
 import PDFDocument from "../../components/Report/PDFDocument";
 
@@ -84,6 +84,7 @@ const Report: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
   const [reportConfig, setReportConfig] = useState<ReportConfig>({
     includeExecutiveSummary: true,
     includeDetailedMetrics: true,
@@ -130,13 +131,13 @@ const Report: React.FC = () => {
 
   const toggleEditMode = () => {
     setIsEditing(!isEditing);
+    setDropdownOpen(false);
   };
 
   if (loading) {
     return (
       <div className={styles.container}>
         <Header />
-
       </div>
     );
   }
@@ -145,8 +146,7 @@ const Report: React.FC = () => {
     return (
       <div className={styles.container}>
         <Header />
-        <div className={styles.content}>
-        </div>
+        <div className={styles.content}></div>
       </div>
     );
   }
@@ -166,9 +166,31 @@ const Report: React.FC = () => {
         <div className={styles.header}>
           {/* --- 헤더 왼쪽 영역 --- */}
           <div className={styles.headerLeft}>
-            <Button variant="primaryGradient" onClick={toggleEditMode}>
-              {isEditing ? "미리보기" : "편집 모드"}
-            </Button>
+            <div className={styles.modeToggle}>
+              <div
+                className={styles.customToggleButton}
+                onClick={() => setDropdownOpen((prev) => !prev)}>
+                <div className={styles.icon}>
+                  {isEditing ? <Pen /> : <Eye />}
+                </div>
+                <span className="HeadingS">
+                  {isEditing ? "편집 모드" : "미리보기"}
+                </span>
+                <div className={styles.icon}>
+                  <ChevronDown />
+                </div>
+              </div>
+              {dropdownOpen && (
+                <div className={styles.dropdown}>
+                  <div className={styles.icon}>
+                    {isEditing ? <Eye /> : <Pen />}
+                  </div>
+                  <button className="HeadingS" onClick={toggleEditMode}>
+                    {isEditing ? "미리보기" : "편집 모드"}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* --- 헤더 오른쪽 영역 --- */}
