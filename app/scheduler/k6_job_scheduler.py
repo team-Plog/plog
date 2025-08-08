@@ -116,9 +116,9 @@ class K6JobScheduler:
                 # TODO: 3. 조회한 test_history에 업데이트
                 update_test_history_with_metrics(db, test_history, overall_metrics)
 
-                # TODO: 4. scenario_history.scenario_name을 통해 influxdb에서 시나리오별 메트릭 조회 및 업데이트
+                # TODO: 4. scenario_history.scenario_tag를 통해 influxdb에서 시나리오별 메트릭 조회 및 업데이트
                 for scenario_history in scenario_histories:
-                    scenario_identifier = scenario_history.scenario_name  # 예: "job-name#endpoint-id"
+                    scenario_identifier = scenario_history.scenario_tag  # 테스트 시나리오 태그(쿼리할 때 사용하는 내부 식별자)
                     scenario_metrics = self.influxdb_service.get_scenario_metrics(scenario_identifier)
                     if scenario_metrics:
                         update_scenario_history_with_metrics(db, scenario_history, scenario_metrics)

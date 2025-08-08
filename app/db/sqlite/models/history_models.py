@@ -25,15 +25,28 @@ class TestHistoryModel(Base):
     project = relationship("ProjectModel", back_populates="test_histories")
     
     # 전체 테스트 결과 메트릭
-    actual_tps = Column(Float, nullable=True)
-    avg_response_time = Column(Float, nullable=True)  # ms
+    max_tps = Column(Float, nullable=True)
+    min_tps = Column(Float, nullable=True)
+    avg_tps = Column(Float, nullable=True)
+
     max_response_time = Column(Float, nullable=True)  # ms
     min_response_time = Column(Float, nullable=True)  # ms
+    avg_response_time = Column(Float, nullable=True)  # ms
+
+    p50_response_time = Column(Float, nullable=True)  # ms
     p95_response_time = Column(Float, nullable=True)  # ms
-    error_rate = Column(Float, nullable=True)  # %
+    p99_response_time = Column(Float, nullable=True)  # ms
+
+    max_error_rate = Column(Float, nullable=True)  # %
+    min_error_rate = Column(Float, nullable=True)  # %
+    avg_error_rate = Column(Float, nullable=True)  # %
+
+    max_vus = Column(Integer, nullable=True)
+    min_vus = Column(Integer, nullable=True)
+    avg_vus = Column(Integer, nullable=True)
+
     total_requests = Column(Integer, nullable=True)
     failed_requests = Column(Integer, nullable=True)
-    max_vus = Column(Integer, nullable=True)
     test_duration = Column(Float, nullable=True)  # seconds
 
     scenarios = relationship("ScenarioHistoryModel", back_populates="test_history", cascade="all, delete-orphan")
@@ -44,26 +57,41 @@ class ScenarioHistoryModel(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
+    # k6 실시간 데이터 추적용
+    scenario_tag = Column(String(255), nullable=False)
+
     endpoint_id = Column(Integer, ForeignKey("endpoint.id"), nullable=False)
     endpoint = relationship("EndpointModel", back_populates="scenarios")
 
-    executor = Column(String(50), nullable=False)
     think_time = Column(Float, default=1.0)
+    executor = Column(String(50), nullable=False)
     response_time_target = Column(Float, nullable=True)
     error_rate_target = Column(Float, nullable=True)
 
-    # k6 실시간 데이터 추적용
-    scenario_name = Column(String(255), nullable=False)
-    
-    # 시나리오별 결과 메트릭
-    actual_tps = Column(Float, nullable=True)
-    avg_response_time = Column(Float, nullable=True)  # ms
-    max_response_time = Column(Float, nullable=True)  # ms
-    min_response_time = Column(Float, nullable=True)  # ms
-    p95_response_time = Column(Float, nullable=True)  # ms
-    error_rate = Column(Float, nullable=True)  # %
     total_requests = Column(Integer, nullable=True)
     failed_requests = Column(Integer, nullable=True)
+    test_duration = Column(Float, nullable=True)  # seconds
+
+    # 시나리오 테스트 결과 메트릭
+    max_tps = Column(Float, nullable=True)
+    min_tps = Column(Float, nullable=True)
+    avg_tps = Column(Float, nullable=True)
+
+    max_response_time = Column(Float, nullable=True)  # ms
+    min_response_time = Column(Float, nullable=True)  # ms
+    avg_response_time = Column(Float, nullable=True)  # ms
+
+    p50_response_time = Column(Float, nullable=True)  # ms
+    p95_response_time = Column(Float, nullable=True)  # ms
+    p99_response_time = Column(Float, nullable=True)  # ms
+
+    max_error_rate = Column(Float, nullable=True)  # %
+    min_error_rate = Column(Float, nullable=True)  # %
+    avg_error_rate = Column(Float, nullable=True)  # %
+
+    max_vus = Column(Integer, nullable=True)
+    min_vus = Column(Integer, nullable=True)
+    avg_vus = Column(Integer, nullable=True)
 
     test_history_id = Column(Integer, ForeignKey("test_history.id"))
     test_history = relationship("TestHistoryModel", back_populates="scenarios")
