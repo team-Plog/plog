@@ -61,9 +61,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                 <h1 className="HeadingS">1. 요약 정보</h1>
                 <div className={styles.sectionContent}>
                   <h2 className="Body">
-                    웹 기반의 CRM 솔루션으로 전신은 Centric-CRM 이며, 공식적으로
-                    데이터베이스는 PostgreSQL 8.x를사용하고, 애플리케이션
-                    서버로는 Apache Tomcat6.0을 사용함
+                    {reportConfig.customDescription || reportData.description || "테스트 설명이 제공되지 않았습니다."}
                   </h2>
                 </div>
               </div>

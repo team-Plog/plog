@@ -100,9 +100,10 @@
 .pageButton {
   padding: var(--spacing-sm);
   border: none;
-  border-radius: 4px;
-  cursor: pointer;
+  background: transparent;
   transition: background-color 0.2s;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
 }
 
 .pageButton:hover {
