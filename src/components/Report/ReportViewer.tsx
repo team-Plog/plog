@@ -1,10 +1,8 @@
 import React from "react";
 import styles from "./ReportViewer.module.css";
-import {Download, Printer} from "lucide-react";
 import type {TestData, ReportConfig} from "../../pages/Report/Report";
 import PDFDocument from "./PDFDocument";
-import {Button} from "../Button/Button";
-import {PDFDownloadLink, PDFViewer} from "@react-pdf/renderer";
+import {PDFViewer} from "@react-pdf/renderer";
 
 interface ReportViewerProps {
   reportData: TestData;
@@ -54,150 +52,63 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
               )}
               <div className={styles.reportDate}>
                 작성일: {formatDate(new Date().toISOString())}
+                <div className="HeadingS">● Plog</div>
               </div>
             </div>
 
             {reportConfig.includeExecutiveSummary && (
               <div className={styles.section}>
                 <h1 className="HeadingS">1. 요약 정보</h1>
+                <div className={styles.sectionContent}>
+                  <h2 className="Body">
+                    웹 기반의 CRM 솔루션으로 전신은 Centric-CRM 이며, 공식적으로
+                    데이터베이스는 PostgreSQL 8.x를사용하고, 애플리케이션
+                    서버로는 Apache Tomcat6.0을 사용함
+                  </h2>
+                </div>
               </div>
             )}
             <div className={styles.section}>
               <h1 className="HeadingS">2. 테스트 대상 소개 </h1>
+              <div className={styles.sectionContent}>
+                <h2 className="Body">
+                  웹 기반의 CRM 솔루션으로 전신은 Centric-CRM 이며, 공식적으로
+                  데이터베이스는 PostgreSQL 8.x를사용하고, 애플리케이션 서버로는
+                  Apache Tomcat6.0을 사용함
+                </h2>
+              </div>
             </div>
             <div className={styles.section}>
               <h1 className="HeadingS">3. 테스트 케이스 및 시나리오 </h1>
+              <div className={styles.sectionContent}>
+                <h2 className="Body">
+                  ConcourseSuite의 신뢰성을 검증하기 위하여 테스트케이스에
+                  기반을 둔 기능 테스트와 테스트 시나리오에 기반을 둔 비 기능
+                  테스트를 수행한다.
+                </h2>
+                <h1 className="TitleS">가. 기능별 테스트케이스 현황</h1>
+                <h1 className="TitleS">나. 비 기능 테스트 시나리오</h1>
+              </div>
             </div>
             <div className={styles.section}>
               <h1 className="HeadingS">4. 기능 테스트 수행 결과</h1>
-              <div className={styles.summaryGrid}>
-                <div className={styles.summaryItem}>
-                  <span className={styles.label}>테스트 상태:</span>
-                  <span className={styles.value}>
-                    {reportData.is_completed ? "완료" : "진행 중"}
-                  </span>
-                </div>
-                <div className={styles.summaryItem}>
-                  <span className={styles.label}>총 요청 수:</span>
-                  <span className={styles.value}>
-                    {reportData.total_requests}개
-                  </span>
-                </div>
-                <div className={styles.summaryItem}>
-                  <span className={styles.label}>실패 요청 수:</span>
-                  <span className={styles.value}>
-                    {reportData.failed_requests}개
-                  </span>
-                </div>
-                <div className={styles.summaryItem}>
-                  <span className={styles.label}>에러율:</span>
-                  <span className={styles.value}>
-                    {formatNumber(reportData.error_rate)}%
-                  </span>
-                </div>
+              <div className={styles.sectionContent}>
+                <h2 className="Body">
+                  기능 테스트 수행 관련 세부 절차 및 결과는 별첨 ⌜Concoursesuite
+                  테스트 케이스⌟를 참고한다.
+                </h2>
+                <h1 className="TitleS">가. 기능 테스트 결과</h1>
+                <h1 className="TitleS">나. 결함 내역</h1>
+                <h1 className="TitleS">다. 특이사항</h1>
               </div>
-              <p className={styles.description}>
-                {reportConfig.customDescription}
-              </p>
             </div>
-
-            {reportConfig.includeDetailedMetrics && (
-              <div className={styles.section}>
-                <h2>상세 메트릭</h2>
-                <div className={styles.metricsGrid}>
-                  <div className={styles.metric}>
-                    <div className={styles.metricLabel}>실제 TPS</div>
-                    <div className={styles.metricValue}>
-                      {formatNumber(reportData.actual_tps)}
-                    </div>
-                  </div>
-                  <div className={styles.metric}>
-                    <div className={styles.metricLabel}>평균 응답시간</div>
-                    <div className={styles.metricValue}>
-                      {formatNumber(reportData.avg_response_time)}ms
-                    </div>
-                  </div>
-                  <div className={styles.metric}>
-                    <div className={styles.metricLabel}>최대 응답시간</div>
-                    <div className={styles.metricValue}>
-                      {formatNumber(reportData.max_response_time)}ms
-                    </div>
-                  </div>
-                  <div className={styles.metric}>
-                    <div className={styles.metricLabel}>최소 응답시간</div>
-                    <div className={styles.metricValue}>
-                      {formatNumber(reportData.min_response_time)}ms
-                    </div>
-                  </div>
-                  <div className={styles.metric}>
-                    <div className={styles.metricLabel}>P95 응답시간</div>
-                    <div className={styles.metricValue}>
-                      {formatNumber(reportData.p95_response_time)}ms
-                    </div>
-                  </div>
-                  <div className={styles.metric}>
-                    <div className={styles.metricLabel}>테스트 지속시간</div>
-                    <div className={styles.metricValue}>
-                      {formatNumber(reportData.test_duration)}초
-                    </div>
-                  </div>
-                </div>
+            <div className={styles.section}>
+              <h1 className="HeadingS">5. 비 기능 테스트 수행 결과 </h1>
+              <div className={styles.sectionContent}>
+                <h1 className="TitleS">가. 비 기능 테스트 결과</h1>
+                <h1 className="TitleS">나. 비 기능 테스트 상세내역</h1>
               </div>
-            )}
-
-            {reportConfig.includeScenarioBreakdown && reportData.scenarios && (
-              <div className={styles.section}>
-                <h2>시나리오 분석</h2>
-                {reportData.scenarios.map((scenario, index) => (
-                  <div key={scenario.id} className={styles.scenarioCard}>
-                    <h3>
-                      시나리오 {index + 1}: {scenario.endpoint.summary}
-                    </h3>
-                    <div className={styles.scenarioDetails}>
-                      <div className={styles.endpointInfo}>
-                        <strong>{scenario.endpoint.method}</strong>{" "}
-                        {scenario.endpoint.path}
-                      </div>
-                      <p>{scenario.endpoint.description}</p>
-
-                      <div className={styles.scenarioMetrics}>
-                        <div className={styles.scenarioMetric}>
-                          <span>
-                            실제 TPS: {formatNumber(scenario.actual_tps)}
-                          </span>
-                        </div>
-                        <div className={styles.scenarioMetric}>
-                          <span>
-                            평균 응답시간:{" "}
-                            {formatNumber(scenario.avg_response_time)}ms
-                          </span>
-                        </div>
-                        <div className={styles.scenarioMetric}>
-                          <span>
-                            에러율: {formatNumber(scenario.error_rate)}%
-                          </span>
-                        </div>
-                        <div className={styles.scenarioMetric}>
-                          <span>총 요청: {scenario.total_requests}개</span>
-                        </div>
-                      </div>
-
-                      {scenario.stages && scenario.stages.length > 0 && (
-                        <div className={styles.stagesInfo}>
-                          <h4>부하 단계</h4>
-                          {scenario.stages.map((stage, stageIndex) => (
-                            <div key={stage.id} className={styles.stage}>
-                              단계 {stageIndex + 1}: {stage.duration} 동안{" "}
-                              {stage.target} VU
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            </div>
           </div>
         </div>
       ) : (

@@ -67,12 +67,17 @@
 }
 
 .reportDate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--color-gray-300);
 }
 
 .section {
-  margin-bottom: 30px;
+  border-top: 1px solid var(--color-border-primary);
+  display: flex;
+  gap: var(--spacing-xxl);
 }
 
 .section h1 {
@@ -81,17 +86,12 @@
   align-items: flex-start;
   gap: var(--spacing-xxl);
   align-self: stretch;
-  border-top: 1px solid var(--color-border-primary);
   color: var(--color-accent-primary);
+  width: 200px;
 }
 
 .section h2 {
-  font-size: 18px;
-  font-weight: bold;
-  color: #111827;
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: var(--spacing-lg) 0 var(--spacing-xxl) 0;
 }
 
 .summaryGrid {
