@@ -7,9 +7,10 @@ import {useLocation} from "react-router-dom";
 import {getTestHistoryDetail} from "../../api";
 import ReportEditor from "../../components/Report/ReportEditor";
 import ReportViewer from "../../components/Report/ReportViewer";
-import {ChevronDown, Download, Eye, Pen, Pencil, Printer} from "lucide-react";
+import {Download, Printer, Eye, Pen} from "lucide-react";
 import {PDFDownloadLink} from "@react-pdf/renderer";
 import PDFDocument from "../../components/Report/PDFDocument";
+import ModeToggleDropdown,{ type DropdownOption } from "../../components/ModeToggleDropdown/ModeToggleDropdown";
 
 export interface TestData {
   target_tps: number | null;
@@ -84,7 +85,6 @@ const Report: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
   const [reportConfig, setReportConfig] = useState<ReportConfig>({
     includeExecutiveSummary: true,
     includeDetailedMetrics: true,
@@ -95,6 +95,24 @@ const Report: React.FC = () => {
     companyName: "",
     reporterName: "",
   });
+
+  // 드롭다운 옵션 정의
+  const modeOptions: DropdownOption[] = [
+    {
+      id: 'preview',
+      label: '미리보기',
+      icon: <Eye />,
+      value: false
+    },
+    {
+      id: 'edit',
+      label: '편집 모드',
+      icon: <Pen />,
+      value: true
+    }
+  ];
+
+  const currentModeOption = modeOptions.find(option => option.value === isEditing) || modeOptions[0];
 
   useEffect(() => {
     if (!testHistoryId) {
@@ -129,9 +147,8 @@ const Report: React.FC = () => {
     setReportConfig(newConfig);
   };
 
-  const toggleEditMode = () => {
-    setIsEditing(!isEditing);
-    setDropdownOpen(false);
+  const handleModeChange = (selectedOption: DropdownOption) => {
+    setIsEditing(selectedOption.value);
   };
 
   if (loading) {
@@ -166,31 +183,11 @@ const Report: React.FC = () => {
         <div className={styles.header}>
           {/* --- 헤더 왼쪽 영역 --- */}
           <div className={styles.headerLeft}>
-            <div className={styles.modeToggle}>
-              <div
-                className={styles.customToggleButton}
-                onClick={() => setDropdownOpen((prev) => !prev)}>
-                <div className={styles.icon}>
-                  {isEditing ? <Pen /> : <Eye />}
-                </div>
-                <span className="HeadingS">
-                  {isEditing ? "편집 모드" : "미리보기"}
-                </span>
-                <div className={styles.icon}>
-                  <ChevronDown />
-                </div>
-              </div>
-              {dropdownOpen && (
-                <div className={styles.dropdown}>
-                  <div className={styles.icon}>
-                    {isEditing ? <Eye /> : <Pen />}
-                  </div>
-                  <button className="HeadingS" onClick={toggleEditMode}>
-                    {isEditing ? "미리보기" : "편집 모드"}
-                  </button>
-                </div>
-              )}
-            </div>
+            <ModeToggleDropdown
+              currentOption={currentModeOption}
+              options={modeOptions}
+              onSelect={handleModeChange}
+            />
           </div>
 
           {/* --- 헤더 오른쪽 영역 --- */}
