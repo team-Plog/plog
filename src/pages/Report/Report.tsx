@@ -7,6 +7,9 @@ import {useLocation} from "react-router-dom";
 import {getTestHistoryDetail} from "../../api";
 import ReportEditor from "../../components/Report/ReportEditor";
 import ReportViewer from "../../components/Report/ReportViewer";
+import {Download, Printer} from "lucide-react";
+import {PDFDownloadLink} from "@react-pdf/renderer";
+import PDFDocument from "../../components/Report/PDFDocument";
 
 export interface TestData {
   target_tps: number | null;
@@ -89,7 +92,7 @@ const Report: React.FC = () => {
     customTitle: "",
     customDescription: "",
     companyName: "",
-    reporterName: ""
+    reporterName: "",
   });
 
   useEffect(() => {
@@ -104,10 +107,10 @@ const Report: React.FC = () => {
         const res = await getTestHistoryDetail(testHistoryId);
         const data = res.data.data;
         setReportData(data);
-        setReportConfig(prev => ({
+        setReportConfig((prev) => ({
           ...prev,
           customTitle: data.title || "성능 테스트 리포트",
-          customDescription: data.description || "설명 없음"
+          customDescription: data.description || "설명 없음",
         }));
         console.log("✅ 테스트 리포트 데이터:", data);
       } catch (err) {
@@ -133,10 +136,7 @@ const Report: React.FC = () => {
     return (
       <div className={styles.container}>
         <Header />
-        <div className={styles.content}>
-          <h1 className="HeadingS">📄 테스트 리포트</h1>
-          <p className="Body">로딩 중...</p>
-        </div>
+
       </div>
     );
   }
@@ -146,10 +146,6 @@ const Report: React.FC = () => {
       <div className={styles.container}>
         <Header />
         <div className={styles.content}>
-          <h1 className="HeadingS">📄 테스트 리포트</h1>
-          <p className="Body" style={{color: "red"}}>
-            {error}
-          </p>
         </div>
       </div>
     );
@@ -159,10 +155,6 @@ const Report: React.FC = () => {
     return (
       <div className={styles.container}>
         <Header />
-        <div className={styles.content}>
-          <h1 className="HeadingS">📄 테스트 리포트</h1>
-          <p className="Body">리포트 데이터를 찾을 수 없습니다.</p>
-        </div>
       </div>
     );
   }
@@ -172,12 +164,41 @@ const Report: React.FC = () => {
       <Header />
       <div className={styles.content}>
         <div className={styles.header}>
-          <Button 
-            variant="primaryGradient"
-            onClick={toggleEditMode}
-          >
-            {isEditing ? "미리보기 모드로 전환" : "편집 모드로 전환"}
-          </Button>
+          {/* --- 헤더 왼쪽 영역 --- */}
+          <div className={styles.headerLeft}>
+            <Button variant="primaryGradient" onClick={toggleEditMode}>
+              {isEditing ? "미리보기" : "편집 모드"}
+            </Button>
+          </div>
+
+          {/* --- 헤더 오른쪽 영역 --- */}
+          <div className={styles.headerRight}>
+            {/* 미리보기 상태일 때만 저장/인쇄 버튼 표시 */}
+            {!isEditing && (
+              <>
+                <PDFDownloadLink
+                  document={
+                    <PDFDocument
+                      reportData={reportData}
+                      reportConfig={reportConfig}
+                    />
+                  }
+                  fileName={`${
+                    reportConfig.customTitle || "성능테스트리포트"
+                  }_${new Date().toISOString().split("T")[0]}.pdf`}>
+                  {({loading}) => (
+                    <Button icon={<Download />}>
+                      {loading ? "PDF 생성 중..." : "저장하기"}
+                    </Button>
+                  )}
+                </PDFDownloadLink>
+
+                <Button icon={<Printer />} onClick={() => window.print()}>
+                  인쇄하기
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         {isEditing ? (
@@ -190,6 +211,7 @@ const Report: React.FC = () => {
           <ReportViewer
             reportData={reportData}
             reportConfig={reportConfig}
+            isPreview={!isEditing}
           />
         )}
       </div>
