@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useState, useRef} from "react";
 import styles from "./Report.module.css";
 import "../../assets/styles/typography.css";
 import Header from "../../components/Header/Header";
@@ -8,9 +8,9 @@ import {getTestHistoryDetail} from "../../api";
 import ReportEditor from "../../components/Report/ReportEditor";
 import ReportViewer from "../../components/Report/ReportViewer";
 import {Download, Printer, Eye, Pen} from "lucide-react";
-import {PDFDownloadLink} from "@react-pdf/renderer";
-import PDFDocument from "../../components/Report/PDFDocument";
 import ModeToggleDropdown,{ type DropdownOption } from "../../components/ModeToggleDropdown/ModeToggleDropdown";
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 export interface TestData {
   target_tps: number | null;
@@ -85,6 +85,9 @@ const Report: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [pdfGenerating, setPdfGenerating] = useState<boolean>(false);
+  const reportViewerRef = useRef<HTMLDivElement>(null);
+
   const [reportConfig, setReportConfig] = useState<ReportConfig>({
     includeExecutiveSummary: true,
     includeDetailedMetrics: true,
@@ -151,6 +154,70 @@ const Report: React.FC = () => {
     setIsEditing(selectedOption.value);
   };
 
+  const generatePDF = async () => {
+    if (!reportViewerRef.current || pdfGenerating) return;
+
+    setPdfGenerating(true);
+    try {
+      // ReportViewer 컴포넌트를 캡처
+      const element = reportViewerRef.current;
+      
+      // 고해상도로 캡처
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        height: element.scrollHeight,
+        width: element.scrollWidth,
+        onclone: (clonedDoc) => {
+          // 클론된 문서에서 스크롤 컨테이너의 스타일을 조정
+          const clonedElement = clonedDoc.querySelector('[data-pdf-capture]') as HTMLElement;
+          if (clonedElement) {
+            clonedElement.style.maxHeight = 'none';
+            clonedElement.style.overflow = 'visible';
+          }
+        }
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      
+      // PDF 생성
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      const imgWidth = pdfWidth - 20; // 좌우 10mm 여백
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      let heightLeft = imgHeight;
+      let position = 10; // 상단 10mm 여백
+
+      // 첫 번째 페이지
+      pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+      heightLeft -= (pdfHeight - 20); // 상하 여백 20mm 제외
+
+      // 여러 페이지가 필요한 경우
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight + 10;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+        heightLeft -= (pdfHeight - 20);
+      }
+
+      // PDF 다운로드
+      const fileName = `${reportConfig.customTitle || "성능테스트리포트"}_${new Date().toISOString().split("T")[0]}.pdf`;
+      pdf.save(fileName);
+
+    } catch (error) {
+      console.error('PDF 생성 실패:', error);
+      alert('PDF 생성 중 오류가 발생했습니다.');
+    } finally {
+      setPdfGenerating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className={styles.container}>
@@ -195,22 +262,13 @@ const Report: React.FC = () => {
             {/* 미리보기 상태일 때만 저장/인쇄 버튼 표시 */}
             {!isEditing && (
               <>
-                <PDFDownloadLink
-                  document={
-                    <PDFDocument
-                      reportData={reportData}
-                      reportConfig={reportConfig}
-                    />
-                  }
-                  fileName={`${
-                    reportConfig.customTitle || "성능테스트리포트"
-                  }_${new Date().toISOString().split("T")[0]}.pdf`}>
-                  {({loading}) => (
-                    <Button icon={<Download />}>
-                      {loading ? "PDF 생성 중..." : "저장하기"}
-                    </Button>
-                  )}
-                </PDFDownloadLink>
+                <Button 
+                  icon={<Download />} 
+                  onClick={generatePDF}
+                  disabled={pdfGenerating}
+                >
+                  {pdfGenerating ? "PDF 생성 중..." : "저장하기"}
+                </Button>
 
                 <Button icon={<Printer />} onClick={() => window.print()}>
                   인쇄하기
@@ -227,11 +285,13 @@ const Report: React.FC = () => {
             onConfigChange={handleConfigChange}
           />
         ) : (
-          <ReportViewer
-            reportData={reportData}
-            reportConfig={reportConfig}
-            isPreview={!isEditing}
-          />
+          <div ref={reportViewerRef} data-pdf-capture>
+            <ReportViewer
+              reportData={reportData}
+              reportConfig={reportConfig}
+              isPreview={!isEditing}
+            />
+          </div>
         )}
       </div>
     </div>

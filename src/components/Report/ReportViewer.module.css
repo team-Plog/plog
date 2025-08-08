@@ -27,8 +27,13 @@
 
 /* 편집 모드 - 미리보기 스타일 */
 .previewContainer {
-  max-height: 600px;
   overflow-y: auto;
+}
+
+/* PDF 캡처를 위한 전체 화면 미리보기 스타일 */
+.fullPreviewContainer {
+  width: 100%;
+  overflow: visible;
   box-shadow: 0px 4px 40px rgba(0, 0, 0, 0.1);
 }
 
@@ -38,6 +43,21 @@
   font-family: "Arial", sans-serif;
   line-height: 1.5;
   color: #333;
+  min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* PDF 캡처 시 페이지 브레이크 최적화 */
+.documentPreview[data-pdf-capture] {
+  padding: 40px;
+  background: white;
+  width: 210mm; /* A4 width */
+  min-height: 297mm; /* A4 height */
+  margin: 0 auto;
+  box-shadow: none;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .documentHeader {
@@ -53,6 +73,11 @@
   font-weight: bold;
   margin: 0 0 16px 0;
   color: #111827;
+}
+
+/* PDF 캡처 시 헤더 크기 조정 */
+.documentPreview[data-pdf-capture] .documentHeader h1 {
+  font-size: 20px;
 }
 
 .companyName {
@@ -79,6 +104,8 @@
   border-top: 1px solid var(--color-border-primary);
   display: flex;
   gap: var(--spacing-xxl);
+  page-break-inside: avoid;
+  margin-bottom: 20px;
 }
 
 .section h1 {
@@ -89,9 +116,15 @@
   align-self: stretch;
   color: var(--color-accent-primary);
   width: 200px;
+  flex-shrink: 0;
 }
 
 .section h2 {
+  padding: var(--spacing-lg) 0 var(--spacing-xxl) 0;
+}
+
+.sectionContent {
+  flex: 1;
   padding: var(--spacing-lg) 0 var(--spacing-xxl) 0;
 }
 
@@ -238,5 +271,19 @@
 
   .documentPreview {
     padding: 16px;
+  }
+}
+
+/* 인쇄 시 최적화 */
+@media print {
+  .documentPreview {
+    background: white !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 20px !important;
+  }
+  
+  .section {
+    page-break-inside: avoid;
   }
 }
