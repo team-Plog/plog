@@ -1,8 +1,8 @@
-import React, {useEffect, useState} from "react";
+import React, { useEffect, useState } from "react";
 import Header from "../../components/Header/Header";
 import styles from "./Test.module.css";
 import "../../assets/styles/typography.css";
-import {Button} from "../../components/Button/Button";
+import { Button } from "../../components/Button/Button";
 import {
   Activity,
   CircleAlert,
@@ -22,8 +22,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import {useLocation} from "react-router-dom";
-import {getProjectDetail, getTestHistoryDetail} from "../../api";
+import { useLocation } from "react-router-dom";
+import { getProjectDetail, getTestHistoryDetail } from "../../api";
 
 const Test: React.FC = () => {
   const location = useLocation();
@@ -32,12 +32,11 @@ const Test: React.FC = () => {
     testTitle,
     jobName,
     projectTitle: passedProjectTitle,
-    testHistoryId: initialTestHistoryId, // 초기 testHistoryId를 받습니다.
+    testHistoryId: initialTestHistoryId,
   } = location.state || {};
   const [projectTitle, setProjectTitle] = useState<string>(
     passedProjectTitle || ""
   );
-  // testHistoryId를 상태로 관리합니다.
   const [testHistoryId, setTestHistoryId] = useState<number | null>(
     initialTestHistoryId || null
   );
@@ -77,12 +76,17 @@ const Test: React.FC = () => {
 
         const overall = parsedData.overall || {
           tps: 0,
-          latency: 0,
-          error_rate: 0,
           vus: 0,
+          response_time: 0,
+          error_rate: 0,
         };
 
-        setMetrics(overall); // 메트릭 카드용 데이터 업데이트
+        setMetrics({
+          tps: overall.tps,
+          latency: overall.response_time,
+          error_rate: overall.error_rate,
+          vus: overall.vus,
+        });
 
         setChartData((prev) =>
           [
@@ -90,12 +94,12 @@ const Test: React.FC = () => {
             {
               time: timestamp,
               tps: overall.tps,
-              responseTime: overall.latency,
+              responseTime: overall.response_time,
               errorRate: overall.error_rate,
               users: overall.vus,
             },
           ].slice(-20)
-        ); // 최근 20개만 유지
+        );
       } catch (e) {
         console.error("⚠️ JSON 파싱 실패:", e);
       }
@@ -165,22 +169,22 @@ const Test: React.FC = () => {
           <div className={styles.card}>
             <MetricCard
               label="현재 TPS"
-              value={metrics.tps.toLocaleString()}
+              value={metrics.tps?.toLocaleString() || "0"}
               icon={<Activity />}
             />
             <MetricCard
               label="평균 응답시간"
-              value={`${metrics.latency.toFixed(0)}ms`}
+              value={`${metrics.latency?.toFixed(0) || "0"}ms`}
               icon={<Clock />}
             />
             <MetricCard
               label="에러율"
-              value={`${metrics.error_rate.toFixed(1)}%`}
+              value={`${metrics.error_rate?.toFixed(1) || "0.0"}%`}
               icon={<CircleAlert />}
             />
             <MetricCard
               label="활성 사용자"
-              value={metrics.vus.toLocaleString()}
+              value={metrics.vus?.toLocaleString() || "0"}
               icon={<Users />}
             />
           </div>
