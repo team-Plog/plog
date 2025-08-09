@@ -95,81 +95,101 @@
 }
 
 .section {
-  border-top: 1px solid var(--color-border-primary);
   display: flex;
   gap: var(--spacing-xxl);
+  padding: var(--spacing-lg) 0 var(--spacing-xxl) 0;
   page-break-inside: avoid;
-  margin-bottom: 20px;
 }
 
-.section h1 {
-  display: flex;
-  padding: var(--spacing-lg) 0 var(--spacing-xxl) 0;
-  align-items: flex-start;
-  gap: var(--spacing-xxl);
-  align-self: stretch;
-  color: var(--color-accent-primary);
+.sectionTitle {
   width: 200px;
   flex-shrink: 0;
-}
-
-.section h2 {
-  padding: var(--spacing-lg) 0 var(--spacing-xxl) 0;
+  color: var(--color-accent-primary);
 }
 
 .sectionContent {
   flex: 1;
-  padding: var(--spacing-lg) 0 var(--spacing-xxl) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
 }
 
-/* 섹션 간격 스타일 */
-.sectionGroup {
-  margin-bottom: var(--spacing-xl);
+.contentGroup {
+  display: flex;
+  flex-direction: column;
 }
 
-.groupContent {
-  margin-top: var(--spacing-lg);
+.subTitleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.textGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.subTitle {
+  color: var(--color-accent-primary);
+}
+
+.contentText {
+}
+
+/* textGroup 내부의 contentText에 불릿 포인트 */
+.textGroup .contentText {
+  position: relative;
+  padding-left: 16px;
+}
+
+.textGroup .contentText::before {
+  content: '・';
+  position: absolute;
+  left: 0;
+  color: var(--color-black);
+  font-weight: bold;
+}
+
+.tableContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
 }
 
 /* 표 섹션 */
 .tableSection {
-  margin-bottom: var(--spacing-xl);
-}
-
-.tableTitle {
   margin-bottom: var(--spacing-md);
 }
 
-.tableContainer {
-  margin: 20px 0;
+.tableTitle {
+  color: var(--color-gray-300);
+  text-align: center;
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 20px;
   font-size: 14px;
 }
 
 .table th,
 .table td {
-  border: 1px solid #dee2e6;
-  padding: 12px;
+  padding: var(--spacing-xs) var(--spacing-sm);
   text-align: left;
+  font-size: var(--caption-light-font-size);
+  font-family: var(--caption-light-font-family);
+  font-weight: var(--caption-light-font-weight);
+  line-height: var(--caption-light-line-height);
+}
+
+.table td {
+  color: var(--color-black);
 }
 
 .table th {
-  background-color: #f8f9fa;
-  font-weight: 600;
-  color: #495057;
-}
-
-.table tbody tr:nth-child(even) {
-  background-color: #f8f9fa;
-}
-
-.table tbody tr:hover {
-  background-color: #e9ecef;
+  background-color: var(--color-gray-100);
+  color: var(--color-gray-300);
 }
 
 @media (max-width: 768px) {
