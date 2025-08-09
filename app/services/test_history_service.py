@@ -406,35 +406,27 @@ def update_test_history_with_metrics(db: Session, test_history: TestHistoryModel
     try:
         # InfluxDB에서 반환하는 플랫 구조를 처리
         # TPS 메트릭 (현재는 단일 값만 있으므로 max/min/avg에 동일값 설정)
-        if 'actual_tps' in metrics:
-            tps_value = float(metrics['actual_tps'])
-            test_history.max_tps = tps_value
-            test_history.min_tps = tps_value
-            test_history.avg_tps = tps_value
+        test_history.max_tps = float(metrics.get('max_tps', 0.0))
+        test_history.min_tps = float(metrics.get('min_tps', 0.0))
+        test_history.avg_tps = float(metrics.get('avg_tps', 0.0))
         
-        # Response Time 메트릭
+        # Response Time 메트릭 업데이트
         test_history.avg_response_time = float(metrics.get('avg_response_time', 0.0))
         test_history.max_response_time = float(metrics.get('max_response_time', 0.0))
         test_history.min_response_time = float(metrics.get('min_response_time', 0.0))
-        test_history.p95_response_time = float(metrics.get('p95_response_time', 0.0))
-        
-        # p50, p99는 InfluxDB에서 현재 제공하지 않으므로 0으로 설정하거나 계산된 값 사용
         test_history.p50_response_time = float(metrics.get('p50_response_time', 0.0))
+        test_history.p95_response_time = float(metrics.get('p95_response_time', 0.0))
         test_history.p99_response_time = float(metrics.get('p99_response_time', 0.0))
         
-        # Error Rate 메트릭 (현재는 단일 값만 있으므로 max/min/avg에 동일값 설정)
-        if 'error_rate' in metrics:
-            error_rate_value = float(metrics['error_rate'])
-            test_history.max_error_rate = error_rate_value
-            test_history.min_error_rate = error_rate_value
-            test_history.avg_error_rate = error_rate_value
+        # Error Rate 메트릭
+        test_history.max_error_rate = float(metrics.get('max_error_rate', 0.0))
+        test_history.min_error_rate = float(metrics.get('min_error_rate', 0.0))
+        test_history.avg_error_rate = float(metrics.get('avg_error_rate', 0.0))
         
-        # VUS 메트릭 (현재는 max_vus만 있음)
-        if 'max_vus' in metrics:
-            vus_value = int(metrics['max_vus'])
-            test_history.max_vus = vus_value
-            test_history.min_vus = vus_value  # 임시로 동일값 설정
-            test_history.avg_vus = float(vus_value)  # 임시로 동일값 설정
+        # VUS 메트릭
+        test_history.max_vus = float(metrics.get('max_vus', 0.0))
+        test_history.min_vus = float(metrics.get('min_vus', 0.0))
+        test_history.avg_vus = float(metrics.get('avg_vus', 0.0))
         
         # 기타 메트릭
         test_history.total_requests = int(metrics.get('total_requests', 0))

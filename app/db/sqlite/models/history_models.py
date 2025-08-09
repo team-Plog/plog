@@ -41,9 +41,9 @@ class TestHistoryModel(Base):
     min_error_rate = Column(Float, nullable=True)  # %
     avg_error_rate = Column(Float, nullable=True)  # %
 
-    max_vus = Column(Integer, nullable=True)
-    min_vus = Column(Integer, nullable=True)
-    avg_vus = Column(Integer, nullable=True)
+    max_vus = Column(Float, nullable=True)
+    min_vus = Column(Float, nullable=True)
+    avg_vus = Column(Float, nullable=True)
 
     total_requests = Column(Integer, nullable=True)
     failed_requests = Column(Integer, nullable=True)
@@ -89,9 +89,9 @@ class ScenarioHistoryModel(Base):
     min_error_rate = Column(Float, nullable=True)  # %
     avg_error_rate = Column(Float, nullable=True)  # %
 
-    max_vus = Column(Integer, nullable=True)
-    min_vus = Column(Integer, nullable=True)
-    avg_vus = Column(Integer, nullable=True)
+    max_vus = Column(Float, nullable=True)
+    min_vus = Column(Float, nullable=True)
+    avg_vus = Column(Float, nullable=True)
 
     test_history_id = Column(Integer, ForeignKey("test_history.id"))
     test_history = relationship("TestHistoryModel", back_populates="scenarios")
