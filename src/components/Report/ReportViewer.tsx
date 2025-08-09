@@ -5,13 +5,11 @@ import type {TestData, ReportConfig} from "../../pages/Report/Report";
 interface ReportViewerProps {
   reportData: TestData;
   reportConfig: ReportConfig;
-  isPreview?: boolean;
 }
 
 const ReportViewer: React.FC<ReportViewerProps> = ({
   reportData,
   reportConfig,
-  isPreview = false,
 }) => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString("ko-KR", {
@@ -30,8 +28,6 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
   return (
     <div className={styles.container}>
       <div className={styles.actions}></div>
-
-      {isPreview ? (
         <div className={styles.previewContainer}>
           <div className={styles.documentPreview} data-pdf-capture>
             <div className={styles.documentHeader}>
@@ -107,88 +103,6 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
             </div>
           </div>
         </div>
-      ) : (
-        // 전체 화면 미리보기 (PDF 저장용)
-        <div className={styles.fullPreviewContainer}>
-          <div className={styles.documentPreview} data-pdf-capture>
-            <div className={styles.documentHeader}>
-              <div>
-                <h1>{reportConfig.customTitle || "성능 테스트 리포트"}</h1>
-                {reportConfig.companyName && (
-                  <div className={styles.companyName}>
-                    {reportConfig.companyName}
-                  </div>
-                )}
-                {reportConfig.reporterName && (
-                  <div className={styles.reporterName}>
-                    작성자: {reportConfig.reporterName}
-                  </div>
-                )}
-              </div>
-              <div className={styles.reportDate}>
-                <div>작성일: {formatDate(new Date().toISOString())}</div>
-                <div>● Plog</div>
-              </div>
-            </div>
-
-            {reportConfig.includeExecutiveSummary && (
-              <div className={styles.section}>
-                <h1>1. 요약 정보</h1>
-                <div className={styles.sectionContent}>
-                  <h2>
-                    {reportConfig.customDescription || reportData.description || "테스트 설명이 제공되지 않았습니다."}
-                  </h2>
-                </div>
-              </div>
-            )}
-            
-            <div className={styles.section}>
-              <h1>2. 테스트 대상 소개</h1>
-              <div className={styles.sectionContent}>
-                <h2>
-                  웹 기반의 CRM 솔루션으로 전신은 Centric-CRM 이며, 공식적으로
-                  데이터베이스는 PostgreSQL 8.x를사용하고, 애플리케이션 서버로는
-                  Apache Tomcat6.0을 사용함
-                </h2>
-              </div>
-            </div>
-            
-            <div className={styles.section}>
-              <h1>3. 테스트 케이스 및 시나리오</h1>
-              <div className={styles.sectionContent}>
-                <h2>
-                  ConcourseSuite의 신뢰성을 검증하기 위하여 테스트케이스에
-                  기반을 둔 기능 테스트와 테스트 시나리오에 기반을 둔 비 기능
-                  테스트를 수행한다.
-                </h2>
-                <h3>가. 기능별 테스트케이스 현황</h3>
-                <h3>나. 비 기능 테스트 시나리오</h3>
-              </div>
-            </div>
-            
-            <div className={styles.section}>
-              <h1>4. 기능 테스트 수행 결과</h1>
-              <div className={styles.sectionContent}>
-                <h2>
-                  기능 테스트 수행 관련 세부 절차 및 결과는 별첨 ⌜Concoursesuite
-                  테스트 케이스⌟를 참고한다.
-                </h2>
-                <h3>가. 기능 테스트 결과</h3>
-                <h3>나. 결함 내역</h3>
-                <h3>다. 특이사항</h3>
-              </div>
-            </div>
-            
-            <div className={styles.section}>
-              <h1>5. 비 기능 테스트 수행 결과</h1>
-              <div className={styles.sectionContent}>
-                <h3>가. 비 기능 테스트 결과</h3>
-                <h3>나. 비 기능 테스트 상세내역</h3>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

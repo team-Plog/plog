@@ -317,7 +317,6 @@ const Report: React.FC = () => {
             <ReportViewer
               reportData={reportData}
               reportConfig={reportConfig}
-              isPreview={!isEditing}
             />
           </div>
         )}
