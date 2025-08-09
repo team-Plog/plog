@@ -21,6 +21,14 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
     });
   };
 
+  const formatDateOnly = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).replace(/\//g, '.');
+  };
+
   const formatNumber = (num: number, decimals: number = 2) => {
     return num.toFixed(decimals);
   };
@@ -34,19 +42,11 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
               <div className="HeadingL">
                 {reportConfig.customTitle || "성능 테스트 리포트"}
               </div>
-              {reportConfig.companyName && (
-                <div className={styles.companyName}>
-                  {reportConfig.companyName}
+              <div className={styles.reportDataContainer}>
+                <div className={`${styles.reportDate} Body`}>
+                  작성일: {formatDateOnly(new Date().toISOString())}
                 </div>
-              )}
-              {reportConfig.reporterName && (
-                <div className={styles.reporterName}>
-                  작성자: {reportConfig.reporterName}
-                </div>
-              )}
-              <div className={styles.reportDate}>
-                작성일: {formatDate(new Date().toISOString())}
-                <div className="HeadingS">● Plog</div>
+                <div className={`${styles.reportLogo} HeadingS`}>● Plog</div>
               </div>
             </div>
 

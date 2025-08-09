@@ -74,28 +74,29 @@
   font-size: 20px;
 }
 
-.companyName {
-  font-size: 18px;
-  color: #6b7280;
-  margin-bottom: 8px;
+
+.reportTitle{
+  color: var(--color-black);
 }
 
-.reporterName {
-  font-size: 14px;
-  color: #6b7280;
-  margin-bottom: 4px;
-}
-
-.reportDate {
+.reportDataContainer {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  font-size: 14px;
+  gap: var(--spacing-md);
+}
+
+.reportDate {
+  color: var(--color-black);
+}
+
+.reportLogo {
   color: var(--color-gray-300);
 }
 
 .section {
   display: flex;
+  border-top: 1px solid var(--color-border-primary);
   gap: var(--spacing-xxl);
   padding: var(--spacing-lg) 0 var(--spacing-xxl) 0;
   page-break-inside: avoid;
@@ -135,6 +136,7 @@
 }
 
 .contentText {
+  color: var(--color-black);
 }
 
 /* textGroup 내부의 contentText에 불릿 포인트 */
