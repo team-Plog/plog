@@ -404,6 +404,10 @@ def get_scenario_histories_by_test_id(db: Session, test_id: int) -> List[Scenari
 def update_test_history_with_metrics(db: Session, test_history: TestHistoryModel, metrics: Dict[str, Any]) -> bool:
     """test_history에 메트릭 업데이트 - InfluxDB 플랫 구조에 맞게 수정"""
     try:
+        # metrics가 None인 경우 안전한 처리
+        if metrics is None:
+            logger.warning(f"Metrics is None for test_history: {test_history.job_name} - skipping update")
+            return False
         # InfluxDB에서 반환하는 플랫 구조를 처리
         # TPS 메트릭 (현재는 단일 값만 있으므로 max/min/avg에 동일값 설정)
         test_history.max_tps = float(metrics.get('max_tps', 0.0))
@@ -446,39 +450,50 @@ def update_test_history_with_metrics(db: Session, test_history: TestHistoryModel
 
 
 def update_scenario_history_with_metrics(db: Session, scenario_history: ScenarioHistoryModel, metrics: Dict[str, Any]) -> bool:
-    """scenario_history에 메트릭 업데이트 - InfluxDB 플랫 구조에 맞게 수정"""
+    """
+    scenario_history에 모든 메트릭 정보를 업데이트
+    
+    Args:
+        db: 데이터베이스 세션
+        scenario_history: 업데이트할 시나리오 히스토리 모델
+        metrics: InfluxDB에서 조회한 메트릭 데이터 딕셔너리
+                - total_requests: 총 요청 수
+                - failed_requests: 실패한 요청 수
+                - max_tps, min_tps, avg_tps: TPS 통계
+                - avg_response_time, max_response_time, min_response_time: 응답 시간 통계
+                - p50_response_time, p95_response_time, p99_response_time: 응답 시간 백분위수
+                - max_error_rate, min_error_rate, avg_error_rate: 에러율 통계
+                - max_vus, min_vus, avg_vus: 가상 사용자 수 통계
+                - test_duration: 테스트 지속 시간
+                
+    Returns:
+        bool: 업데이트 성공 여부
+    """
     try:
-        # InfluxDB에서 반환하는 플랫 구조를 처리
-        # TPS 메트릭 (현재는 단일 값만 있으므로 max/min/avg에 동일값 설정)
-        if 'tps' in metrics:
-            tps_value = float(metrics['tps'])
-            scenario_history.max_tps = tps_value
-            scenario_history.min_tps = tps_value
-            scenario_history.avg_tps = tps_value
+        # metrics가 None인 경우 안전한 처리
+        if metrics is None:
+            logger.warning(f"Metrics is None for scenario_history endpoint_id: {scenario_history.endpoint_id} - skipping update")
+            return False
+            
+        # TPS 메트릭
+        scenario_history.max_tps = float(metrics.get('max_tps', 0.0))
+        scenario_history.min_tps = float(metrics.get('min_tps', 0.0))
+        scenario_history.avg_tps = float(metrics.get('avg_tps', 0.0))
         
-        # Response Time 메트릭
+        # Response Time 메트릭 - 모든 백분위수 포함
         scenario_history.avg_response_time = float(metrics.get('avg_response_time', 0.0))
         scenario_history.max_response_time = float(metrics.get('max_response_time', 0.0))
         scenario_history.min_response_time = float(metrics.get('min_response_time', 0.0))
-        scenario_history.p95_response_time = float(metrics.get('p95_response_time', 0.0))
-        
-        # p50, p99는 InfluxDB에서 현재 제공하지 않으므로 0으로 설정하거나 계산된 값 사용
         scenario_history.p50_response_time = float(metrics.get('p50_response_time', 0.0))
+        scenario_history.p95_response_time = float(metrics.get('p95_response_time', 0.0))
         scenario_history.p99_response_time = float(metrics.get('p99_response_time', 0.0))
         
-        # Error Rate 메트릭 (현재는 단일 값만 있으므로 max/min/avg에 동일값 설정)
-        if 'error_rate' in metrics:
-            error_rate_value = float(metrics['error_rate'])
-            scenario_history.max_error_rate = error_rate_value
-            scenario_history.min_error_rate = error_rate_value
-            scenario_history.avg_error_rate = error_rate_value
+        # Error Rate 메트릭 - 통계적 정보 포함
+        scenario_history.max_error_rate = float(metrics.get('max_error_rate', 0.0))
+        scenario_history.min_error_rate = float(metrics.get('min_error_rate', 0.0))
+        scenario_history.avg_error_rate = float(metrics.get('avg_error_rate', 0.0))
         
-        # VUS 메트릭 (시나리오별 VUS는 InfluxDB에서 현재 제공하지 않음 - 0으로 설정)
-        scenario_history.max_vus = int(metrics.get('max_vus', 0))
-        scenario_history.min_vus = int(metrics.get('min_vus', 0))
-        scenario_history.avg_vus = float(metrics.get('avg_vus', 0.0))
-        
-        # 기타 메트릭
+        # 기타 메트릭 정보
         scenario_history.total_requests = int(metrics.get('total_requests', 0))
         scenario_history.failed_requests = int(metrics.get('failed_requests', 0))
         scenario_history.test_duration = float(metrics.get('test_duration', 0.0))
@@ -486,7 +501,7 @@ def update_scenario_history_with_metrics(db: Session, scenario_history: Scenario
         db.commit()
         db.refresh(scenario_history)
         
-        logger.info(f"Updated scenario_history metrics for endpoint_id: {scenario_history.endpoint_id}")
+        logger.info(f"Updated scenario_history metrics for endpoint_id: {scenario_history.endpoint_id} with all metric types")
         return True
         
     except Exception as e:

@@ -18,7 +18,7 @@ class InfluxDBService:
     
     def get_overall_metrics(self, job_name: str) -> Optional[Dict]:
         """
-        전체 테스트 메트릭 조회
+        전체 테스트 메트릭 조회 - 모든 메트릭 통계 정보 포함
         
         Args:
             job_name: Kubernetes Job 이름
@@ -26,18 +26,25 @@ class InfluxDBService:
         Returns:
             전체 테스트 메트릭 딕셔너리 또는 None
             {
-                'total_requests': int,
-                'failed_requests': int,
-                'actual_tps': float,
-                'avg_response_time': float,
-                'max_response_time': float,
-                'min_response_time': float,
-                'p50_response_time': float,
-                'p95_response_time': float,
-                'p99_response_time': float,
-                'error_rate': float,
-                'max_vus': int,
-                'test_duration': float
+                'total_requests': int,           # 총 요청 수
+                'failed_requests': int,          # 실패한 요청 수
+                'actual_tps': float,             # 실제 계산된 TPS (total_requests/duration)
+                'max_tps': float,                # 최대 TPS (5초 단위 집계)
+                'min_tps': float,                # 최소 TPS (5초 단위 집계)
+                'avg_tps': float,                # 평균 TPS (5초 단위 집계)
+                'avg_response_time': float,      # 평균 응답 시간 (ms)
+                'max_response_time': float,      # 최대 응답 시간 (ms)
+                'min_response_time': float,      # 최소 응답 시간 (ms)
+                'p50_response_time': float,      # 50번째 백분위수 응답 시간 (ms)
+                'p95_response_time': float,      # 95번째 백분위수 응답 시간 (ms)
+                'p99_response_time': float,      # 99번째 백분위수 응답 시간 (ms)
+                'max_error_rate': float,         # 최대 에러율 (%)
+                'min_error_rate': float,         # 최소 에러율 (%)
+                'avg_error_rate': float,         # 평균 에러율 (%)
+                'max_vus': int,                  # 최대 가상 사용자 수
+                'min_vus': int,                  # 최소 가상 사용자 수
+                'avg_vus': float,                # 평균 가상 사용자 수
+                'test_duration': float           # 테스트 지속 시간 (seconds)
             }
         """
         try:
@@ -60,7 +67,7 @@ class InfluxDBService:
                 SELECT 
                     MAX(tps) as max_tps,
                     MIN(tps) as min_tps,
-                    AVG(tps) as avg_tps,
+                    MEAN(tps) as avg_tps
                 FROM (
                     SELECT SUM("value")/5 as tps
                     FROM "http_reqs"
@@ -75,27 +82,27 @@ class InfluxDBService:
                     MEAN("value") as avg_response_time,
                     MAX("value") as max_response_time,
                     MIN("value") as min_response_time,
-                    PERCENTILE("value", 50) as p95_response_time,
+                    PERCENTILE("value", 50) as p50_response_time,
                     PERCENTILE("value", 95) as p95_response_time,
-                    PERCENTILE("value", 99) as p95_response_time
+                    PERCENTILE("value", 99) as p99_response_time
                 FROM "http_req_duration"
                 WHERE "job_name" = '{job_name}'
             '''
             
             # VU (Virtual Users) 최대값 조회
             vus_query = f'''
-                SELECT MAX("value") as max_vus, MIN("value") as min_vus, AVG("value") as avg_vus,
+                SELECT MAX("value") as max_vus, MIN("value") as min_vus, MEAN("value") as avg_vus
                 FROM "vus"
                 WHERE "job_name" = '{job_name}'
             '''
 
             # 에러율 통계 조회
             error_query = f'''
-                SELECT MIN("err") AS min_err, MAX("err") AS max_err, AVG("err") AS avg_err
+                SELECT MIN("err") AS min_err, MAX("err") AS max_err, MEAN("err") AS avg_err
                 FROM (
-                    SELECT MEAN("value") as error
+                    SELECT MEAN("value") as err
                     FROM "http_req_failed"
-                    WEHRE "job_name" = '{job_name}'
+                    WHERE "job_name" = '{job_name}'
                     GROUP BY time(5s) fill(none)
                 )
             '''
@@ -229,12 +236,22 @@ class InfluxDBService:
             {
                 'total_requests': int,
                 'failed_requests': int,
-                'tps': float,
+                'max_tps': float,
+                'min_tps': float,
+                'avg_tps': float,
                 'avg_response_time': float,
                 'max_response_time': float,
                 'min_response_time': float,
+                'p50_response_time': float,
                 'p95_response_time': float,
-                'error_rate': float
+                'p99_response_time': float,
+                'max_error_rate': float,
+                'min_error_rate': float,
+                'avg_error_rate': float,
+                'max_vus': int,
+                'min_vus': int,
+                'avg_vus': float,
+                'test_duration': float
             }
         """
         try:
@@ -251,6 +268,20 @@ class InfluxDBService:
                 FROM "http_reqs"
                 WHERE "scenario" = '{scenario_identifier}' AND "status" !~ /^2../
             '''
+
+            # min, max, avg tps 조회
+            tps_query = f'''
+                SELECT 
+                    MAX(tps) as max_tps,
+                    MIN(tps) as min_tps,
+                    MEAN(tps) as avg_tps
+                FROM (
+                    SELECT SUM("value")/5 as tps
+                    FROM "http_reqs"
+                    WHERE "scenario" = '{scenario_identifier}'
+                    GROUP BY time(5s) fill(none)
+                )
+            '''
             
             # 응답 시간 통계 조회
             response_time_query = f'''
@@ -258,9 +289,22 @@ class InfluxDBService:
                     MEAN("value") as avg_response_time,
                     MAX("value") as max_response_time,
                     MIN("value") as min_response_time,
-                    PERCENTILE("value", 95) as p95_response_time
+                    PERCENTILE("value", 50) as p50_response_time,
+                    PERCENTILE("value", 95) as p95_response_time,
+                    PERCENTILE("value", 99) as p99_response_time
                 FROM "http_req_duration"
                 WHERE "scenario" = '{scenario_identifier}'
+            '''
+
+            # 에러율 통계 조회
+            error_query = f'''
+                SELECT MIN("err") AS min_err, MAX("err") AS max_err, MEAN("err") AS avg_err
+                FROM (
+                    SELECT MEAN("value") as err
+                    FROM "http_req_failed"
+                    WHERE "scenario" = '{scenario_identifier}'
+                    GROUP BY time(5s) fill(none)
+                )
             '''
             
             # 테스트 시간 조회 (duration 계산용)
@@ -279,7 +323,9 @@ class InfluxDBService:
             # 쿼리 실행
             total_result = list(self.client.query(total_requests_query).get_points())
             failed_result = list(self.client.query(failed_requests_query).get_points())
+            tps_result = list(self.client.query(tps_query).get_points())
             response_result = list(self.client.query(response_time_query).get_points())
+            error_result = list(self.client.query(error_query).get_points())
             start_time_result = list(self.client.query(start_time_query).get_points())
             end_time_result = list(self.client.query(end_time_query).get_points())
             
@@ -288,16 +334,30 @@ class InfluxDBService:
                 return None
             
             # 결과 조합
+            # 요청 수 조합
             total_requests = int(total_result[0]['total_requests'] or 0)
             failed_requests = int(failed_result[0]['failed_requests'] or 0) if failed_result else 0
-            
+
+            # TPS 조합
+            max_tps = float(tps_result[0]['max_tps'] or 0) if tps_result else 0.0
+            min_tps = float(tps_result[0]['min_tps'] or 0) if tps_result else 0.0
+            avg_tps = float(tps_result[0]['avg_tps'] or 0) if tps_result else 0.0
+
+            # 응답시간 조합
             response_data = response_result[0] if response_result else {}
             avg_response_time = float(response_data.get('avg_response_time', 0))
             max_response_time = float(response_data.get('max_response_time', 0))
             min_response_time = float(response_data.get('min_response_time', 0))
+            p50_response_time = float(response_data.get('p50_response_time', 0))
             p95_response_time = float(response_data.get('p95_response_time', 0))
+            p99_response_time = float(response_data.get('p99_response_time', 0))
+
+            # 에러율 조합
+            max_err = float(error_result[0]['max_err'] or 0) if error_result else 0.0
+            min_err = float(error_result[0]['min_err'] or 0) if error_result else 0.0
+            avg_err = float(error_result[0]['avg_err'] or 0) if error_result else 0.0
             
-            # Duration 계산
+            # Duration 계산 (초 단위)
             test_duration = 0.0
             if start_time_result and end_time_result:
                 from datetime import datetime
@@ -308,23 +368,46 @@ class InfluxDBService:
                 start_time = datetime.fromisoformat(start_time_str.replace('Z', '+00:00'))
                 end_time = datetime.fromisoformat(end_time_str.replace('Z', '+00:00'))
                 test_duration = (end_time - start_time).total_seconds()
+                
+                # 디버깅 로그 추가
+                logger.debug(f"Scenario {scenario_identifier} - Start: {start_time}, End: {end_time}, Duration: {test_duration}s")
+            else:
+                logger.warning(f"Scenario {scenario_identifier} - Could not get start/end times")
             
-            # TPS 및 에러율 계산
-            tps = total_requests / test_duration if test_duration > 0 else 0.0
+            # TPS 및 에러율 계산 (Fallback for actual_tps)
+            actual_tps = total_requests / test_duration if test_duration > 0 else 0.0
             error_rate = (failed_requests / total_requests * 100) if total_requests > 0 else 0.0
+            
+            # 디버깅 로그 추가
+            logger.debug(f"Scenario {scenario_identifier} - Total Requests: {total_requests}, Duration: {test_duration}s, TPS: {actual_tps}")
+            
+            if actual_tps == 0.0:
+                logger.warning(f"Scenario {scenario_identifier} - TPS is 0! Check: total_requests={total_requests}, test_duration={test_duration}")
             
             metrics = {
                 'total_requests': total_requests,
                 'failed_requests': failed_requests,
-                'tps': round(tps, 2),
+
+                'actual_tps': round(actual_tps, 2),  # Calculated TPS as fallback
+                'max_tps': round(max_tps, 2),
+                'min_tps': round(min_tps, 2),
+                'avg_tps': round(avg_tps, 2),
+
                 'avg_response_time': round(avg_response_time, 2),
                 'max_response_time': round(max_response_time, 2),
                 'min_response_time': round(min_response_time, 2),
+                'p50_response_time': round(p50_response_time, 2),
                 'p95_response_time': round(p95_response_time, 2),
-                'error_rate': round(error_rate, 2)
+                'p99_response_time': round(p99_response_time, 2),
+
+                'max_error_rate': round(max_err, 2),
+                'min_error_rate': round(min_err, 2),
+                'avg_error_rate': round(avg_err, 2),
+
+                'test_duration': round(test_duration, 2)
             }
             
-            logger.info(f"Retrieved scenario metrics for scenario '{scenario_identifier}': TPS={tps:.2f}")
+            logger.info(f"Retrieved scenario metrics for scenario '{scenario_identifier}': TPS={actual_tps:.2f}, Error Rate={error_rate:.2f}%")
             return metrics
             
         except Exception as e:
