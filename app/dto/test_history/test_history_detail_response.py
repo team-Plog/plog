@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -12,8 +13,8 @@ class MetricGroupResponse(BaseModel):
 
 class VusMetricResponse(BaseModel):
     """VUS 메트릭 (정수형)"""
-    max: Optional[int] = None
-    min: Optional[int] = None
+    max: Optional[float] = None
+    min: Optional[float] = None
     avg: Optional[float] = None  # 평균은 소수점 가능
 
 
@@ -40,7 +41,7 @@ class OverallMetricsResponse(BaseModel):
 
 
 class StageHistoryDetailResponse(BaseModel):
-    stage_history_id: int = Field(alias="id")
+    stage_history_id: int
     duration: str
     target: int
 
@@ -49,7 +50,7 @@ class StageHistoryDetailResponse(BaseModel):
 
 
 class EndpointDetailResponse(BaseModel):
-    endpoint_id: int = Field(alias="id")
+    endpoint_id: int
     method: Optional[str] = None
     path: Optional[str] = None
     description: Optional[str] = None
@@ -60,7 +61,7 @@ class EndpointDetailResponse(BaseModel):
 
 
 class ScenarioHistoryDetailResponse(BaseModel):
-    scenario_history_id: int = Field(alias="id")
+    scenario_history_id: int
     name: str
     scenario_tag: str
     total_requests: Optional[int] = None
@@ -74,25 +75,25 @@ class ScenarioHistoryDetailResponse(BaseModel):
     tps: Optional[MetricGroupResponse] = None
     response_time: Optional[ResponseTimeMetricResponse] = None
     error_rate: Optional[MetricGroupResponse] = None
-    vus: Optional[VusMetricResponse] = None
-    stages: List[StageHistoryDetailResponse] = []
+    stages: List[StageHistoryDetailResponse] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
 
 
 class TestHistoryDetailResponse(BaseModel):
-    test_history_id: int = Field(alias="id")
+    test_history_id: int
     project_id: int
     title: str
     description: Optional[str] = None
     is_completed: bool = False
     completed_at: Optional[datetime] = None
-    tested_at: datetime
+    tested_at: Optional[datetime] = None
     job_name: Optional[str] = None
     k6_script_file_name: Optional[str] = None
+
     overall: Optional[OverallMetricsResponse] = None
-    scenarios: List[ScenarioHistoryDetailResponse] = []
+    scenarios: List[ScenarioHistoryDetailResponse] = Field(default_factory=list)
 
     class Config:
         from_attributes = True

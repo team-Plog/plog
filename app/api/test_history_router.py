@@ -138,7 +138,7 @@ def get_test_histories_by_project(
 
 @router.get(
     "/{test_history_id}/details",
-response_model=TestHistoryDetailResponse,
+    response_model=TestHistoryDetailResponse,
     summary="테스트 기록 상세 조회",
     description="""
     ## 개요
@@ -228,11 +228,6 @@ response_model=TestHistoryDetailResponse,
                         "min": 0.0,
                         "avg": 0.015
                     },
-                    "vus": {
-                        "max": 25,
-                        "min": 5,
-                        "avg": 15.3
-                    },
                     "stages": [
                         {
                             "stage_history_id": 1,
@@ -280,7 +275,7 @@ response_model=TestHistoryDetailResponse,
     - **think_time**: 사고 시간 (초)
     - **executor**: k6 실행자 타입
     - **endpoint**: 연결된 엔드포인트 상세 정보 (method, path, description, summary)
-    - **tps/response_time/error_rate/vus**: 시나리오별 메트릭 (overall과 동일한 구조)
+    - **tps/response_time/error_rate**: 시나리오별 메트릭 (overall과 동일한 구조)
     - **stages**: 시나리오의 스테이지 설정 목록 (duration, target)
     
     ## 에러 응답
@@ -302,8 +297,7 @@ def get_test_history_details(
     if not test_history:
         raise HTTPException(status_code=404, detail="Test history not found")
     
-    # 새로운 응답 구조로 변환
-    response_data = build_test_history_detail_response(test_history)
+    response_data:TestHistoryDetailResponse = build_test_history_detail_response(test_history)
     
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response_data)
 

@@ -270,8 +270,8 @@ def get_test_histories_by_project_id(db: Session, project_id: int) -> List[TestH
 
 
 def build_test_history_detail_response(test_history: TestHistoryModel) -> TestHistoryDetailResponse:
-    """TestHistoryModel을 새로운 API 응답 형식으로 변환합니다."""
-    
+    """TestHistoryModel을 응답 형식으로 변환합니다."""
+
     # Overall 메트릭 구성
     overall = OverallMetricsResponse(
         target_tps=test_history.target_tps,
@@ -291,7 +291,7 @@ def build_test_history_detail_response(test_history: TestHistoryModel) -> TestHi
             p95=test_history.p95_response_time,
             p99=test_history.p99_response_time
         ) if any([
-            test_history.max_response_time, test_history.min_response_time, 
+            test_history.max_response_time, test_history.min_response_time,
             test_history.avg_response_time, test_history.p50_response_time,
             test_history.p95_response_time, test_history.p99_response_time
         ]) else None,
@@ -299,14 +299,14 @@ def build_test_history_detail_response(test_history: TestHistoryModel) -> TestHi
             max=test_history.max_error_rate,
             min=test_history.min_error_rate,
             avg=test_history.avg_error_rate
-        ) if any([test_history.max_error_rate, test_history.min_error_rate, test_history.avg_error_rate]) else None,
+        ) if any([x is not None for x in [test_history.max_error_rate, test_history.min_error_rate, test_history.avg_error_rate]]) else None,
         vus=VusMetricResponse(
             max=test_history.max_vus,
             min=test_history.min_vus,
             avg=test_history.avg_vus
         ) if any([test_history.max_vus, test_history.min_vus, test_history.avg_vus]) else None
     )
-    
+
     # 시나리오 목록 구성
     scenarios = []
     for scenario in test_history.scenarios:
@@ -314,25 +314,25 @@ def build_test_history_detail_response(test_history: TestHistoryModel) -> TestHi
         endpoint = None
         if scenario.endpoint:
             endpoint = EndpointDetailResponse(
-                id=scenario.endpoint.id,
+                endpoint_id=scenario.endpoint.id,
                 method=scenario.endpoint.method,
                 path=scenario.endpoint.path,
                 description=scenario.endpoint.description,
                 summary=scenario.endpoint.summary
             )
-        
+
         # 스테이지 목록
         stages = [
             StageHistoryDetailResponse(
-                id=stage.id,
+                stage_history_id=stage.id,
                 duration=stage.duration,
                 target=stage.target
             ) for stage in scenario.stages
         ]
-        
+
         # 시나리오 응답 구성
         scenario_response = ScenarioHistoryDetailResponse(
-            id=scenario.id,
+            scenario_history_id=scenario.id,
             name=scenario.name,
             scenario_tag=scenario.scenario_tag,
             total_requests=scenario.total_requests,
@@ -364,19 +364,14 @@ def build_test_history_detail_response(test_history: TestHistoryModel) -> TestHi
                 max=scenario.max_error_rate,
                 min=scenario.min_error_rate,
                 avg=scenario.avg_error_rate
-            ) if any([scenario.max_error_rate, scenario.min_error_rate, scenario.avg_error_rate]) else None,
-            vus=VusMetricResponse(
-                max=scenario.max_vus,
-                min=scenario.min_vus,
-                avg=scenario.avg_vus
-            ) if any([scenario.max_vus, scenario.min_vus, scenario.avg_vus]) else None,
+            ) if any([x is not None for x in [scenario.max_error_rate, scenario.min_error_rate, scenario.avg_error_rate]]) else None,
             stages=stages
         )
         scenarios.append(scenario_response)
-    
+
     # 최종 응답 구성
     return TestHistoryDetailResponse(
-        id=test_history.id,
+        test_history_id=test_history.id,
         project_id=test_history.project_id,
         title=test_history.title,
         description=test_history.description,
