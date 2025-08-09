@@ -13,57 +13,85 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 export interface TestData {
-  target_tps: number | null;
-  is_completed: boolean;
-  error_rate: number;
-  description: string;
-  completed_at: string;
-  total_requests: number;
-  id: number;
+  test_history_id: number;
   project_id: number;
-  failed_requests: number;
-  actual_tps: number;
-  max_vus: number;
   title: string;
-  avg_response_time: number;
-  test_duration: number;
+  description: string;
+  is_completed: boolean;
+  completed_at: string;
   tested_at: string;
-  max_response_time: number;
   job_name: string;
-  min_response_time: number;
   k6_script_file_name: string;
-  p95_response_time: number;
-  scenarios: Array<{
-    name: string;
-    scenario_name: string;
-    failed_requests: number;
-    id: number;
-    actual_tps: number;
-    test_history_id: number;
-    endpoint_id: number;
-    avg_response_time: number;
-    executor: string;
-    max_response_time: number;
-    think_time: number;
-    min_response_time: number;
-    response_time_target: number | null;
-    p95_response_time: number;
-    error_rate_target: number | null;
-    error_rate: number;
+  overall: {
+    target_tps: number;
     total_requests: number;
-    stages: Array<{
-      id: number;
-      scenario_id: number;
-      duration: string;
-      target: number;
-    }>;
+    failed_requests: number;
+    test_duration: number;
+    tps: {
+      max: number;
+      min: number;
+      avg: number;
+    };
+    response_time: {
+      max: number;
+      min: number;
+      avg: number;
+      p50: number;
+      p95: number;
+      p99: number;
+    };
+    error_rate: {
+      max: number;
+      min: number;
+      avg: number;
+    };
+    vus: {
+      max: number;
+      min: number;
+      avg: number;
+    };
+  };
+  scenarios: Array<{
+    scenario_history_id: number;
+    name: string;
+    scenario_tag: string;
+    total_requests: number;
+    failed_requests: number;
+    test_duration: number;
+    response_time_target: number;
+    error_rate_target: number;
+    think_time: number;
+    executor: string;
     endpoint: {
+      endpoint_id: number;
       method: string;
       path: string;
       description: string;
-      id: number;
       summary: string;
     };
+    tps: {
+      max: number;
+      min: number;
+      avg: number;
+    };
+    response_time: {
+      max: number;
+      min: number;
+      avg: number;
+      p50: number;
+      p95: number;
+      p99: number;
+    };
+    error_rate: {
+      max: number;
+      min: number;
+      avg: number;
+    };
+    stages: Array<{
+      stage_history_id: number;
+      duration: string;
+      target: number;
+    }>;
   }>;
 }
 
@@ -127,7 +155,7 @@ const Report: React.FC = () => {
     const fetchReportData = async () => {
       try {
         const res = await getTestHistoryDetail(testHistoryId);
-        const data = res.data.data;
+        const data = res.data.data; // API 응답에서 실제 데이터 추출
         setReportData(data);
         setReportConfig((prev) => ({
           ...prev,
