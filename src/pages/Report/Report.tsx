@@ -102,8 +102,6 @@ export interface ReportConfig {
   includeCharts: boolean;
   customTitle: string;
   customDescription: string;
-  companyName: string;
-  reporterName: string;
 }
 
 const Report: React.FC = () => {
@@ -123,8 +121,6 @@ const Report: React.FC = () => {
     includeCharts: true,
     customTitle: "",
     customDescription: "",
-    companyName: "",
-    reporterName: "",
   });
 
   // 드롭다운 옵션 정의
