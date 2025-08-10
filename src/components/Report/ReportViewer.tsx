@@ -1,5 +1,6 @@
 import React from "react";
 import styles from "./ReportViewer.module.css";
+import {Sparkle} from "lucide-react";
 import type {TestData, ReportConfig} from "../../pages/Report/Report";
 
 interface ReportViewerProps {
@@ -308,6 +309,16 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                       </tbody>
                     </table>
                   </div>
+                  <div className={styles.summaryBox}>
+                    <div className={`${styles.summaryHeader} Body`}>
+                      <Sparkle style={{ width: 'var(--icon-size-md)', height: 'var(--icon-size-md)' }} />
+                      <span>요약</span>
+                    </div>
+                    <div className={`${styles.summaryContent} Body`}>
+                      최소, 평균 응답 시간은 목표를 달성하였으나, P95의 경우 약간 못 미치는 결과 발생하였음.
+                      약 92% 사용자에게 원활한 서비스 제공 가능할 것으로 예상.
+                    </div>
+                  </div>
                 </div>
 
                 <div className={styles.subTitleGroup}>
@@ -353,6 +364,17 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                       </tbody>
                     </table>
                   </div>
+                    <div className={styles.summaryBox}>
+                    <div className={`${styles.summaryHeader} Body`}>
+                      <Sparkle style={{ width: 'var(--icon-size-md)', height: 'var(--icon-size-md)' }} />
+                      <span>요약</span>
+                    </div>
+                    <div className={`${styles.summaryContent} Body`}>
+                      테스트 시나리오별 TPS는 참고값으로만 사용하며, 전체 TPS에 대해서 목표를 비교하였음.
+                      전체 평균 TPS는 목표에 거의 유사하게 근접하였음.
+                      (TPS의 경우 테스트 초반 가상 사용자 수가 부족한 경우도 존재. 최소 TPS에 대해서는 참고값으로만 사용하였음.)
+                    </div>
+                  </div>
                 </div>
 
                 <div className={styles.subTitleGroup}>
@@ -394,6 +416,16 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                         }
                       </tbody>
                     </table>
+                  </div>
+                    <div className={styles.summaryBox}>
+                    <div className={`${styles.summaryHeader} Body`}>
+                      <Sparkle style={{ width: 'var(--icon-size-md)', height: 'var(--icon-size-md)' }} />
+                      <span>요약</span>
+                    </div>
+                    <div className={`${styles.summaryContent} Body`}>
+                      대부분의 경우 목표 에러율보다 안정적이었으나, 최대 에러율의 경우 목표치보다 높은 것으로 추정.
+                      요청 수가 많아질 때 시스템 위험성을 고려해야 함.
+                    </div>
                   </div>
                 </div>
                 <div className={`${styles.subTitle} TitleS`}>다. 자원 사용량 분석</div>
