@@ -5,7 +5,13 @@ from sqlalchemy.orm import Session
 from app.common.response.code import SuccessCode
 from app.common.response.response_template import ResponseTemplate
 from app.db import get_db
-from app.services.test_history_service import get_test_histories, get_test_history_by_id, get_test_histories_with_project_info, get_test_histories_by_project_id
+from app.services.test_history_service import (
+    get_test_histories, 
+    get_test_history_by_id, 
+    get_test_histories_with_project_info, 
+    get_test_histories_by_project_id,
+    build_test_history_detail_response
+)
 from app.dto.test_history.test_history_response import TestHistoryResponse
 from app.dto.test_history.test_history_simple_response import TestHistorySimpleResponse
 from app.dto.test_history.test_history_detail_response import TestHistoryDetailResponse
@@ -132,7 +138,7 @@ def get_test_histories_by_project(
 
 @router.get(
     "/{test_history_id}/details",
-response_model=TestHistoryDetailResponse,
+    response_model=TestHistoryDetailResponse,
     summary="테스트 기록 상세 조회",
     description="""
     ## 개요
@@ -144,63 +150,95 @@ response_model=TestHistoryDetailResponse,
     ## 응답 형식
     ```json
     {
-        "code": "SUCCESS_CODE",
-        "message": "성공적으로 처리되었습니다.",
+        "success": true,
+        "message": "요청 처리에 성공하였습니다.",
         "data": {
             "test_history_id": 1,
-            "title": "API 성능 테스트",
-            "description": "사용자 인증 API 로드테스트",
-            "target_tps": 100.0,
-            "tested_at": "2024-01-01T10:00:00.000Z",
+            "project_id": 3,
+            "title": "테스트 제목",
+            "description": "테스트 상세 내용",
             "is_completed": true,
-            "completed_at": "2024-01-01T10:30:00.000Z",
-            "project_id": 1,
-            "actual_tps": 95.5,
-            "avg_response_time": 120.5,
-            "max_response_time": 850.2,
-            "min_response_time": 45.1,
-            "p95_response_time": 320.8,
-            "error_rate": 0.02,
-            "total_requests": 18000,
-            "failed_requests": 360,
-            "max_vus": 50,
-            "test_duration": 1800.0,
+            "completed_at": "2025-08-07T15:07:08.300036",
+            "tested_at": "2025-08-08T00:06:42.954398",
+            "job_name": "job20250807150642466f45",
+            "k6_script_file_name": "load_test_20250807_150642_0aced0.js",
+            "overall": {
+                "target_tps": 100,
+                "total_requests": 18000,
+                "failed_requests": 360,
+                "test_duration": 1800.0,
+                "tps": {
+                    "max": 98.7,
+                    "min": 30,
+                    "avg": 70
+                },
+                "response_time": {
+                    "max": 850.2,
+                    "min": 45.1,
+                    "avg": 120.5,
+                    "p50": 95.3,
+                    "p95": 320.8,
+                    "p99": 450.2
+                },
+                "error_rate": {
+                    "max": 0.05,
+                    "min": 0.0,
+                    "avg": 0.02
+                },
+                "vus": {
+                    "max": 50,
+                    "min": 10,
+                    "avg": 30.5
+                }
+            },
             "scenarios": [
                 {
-                    "id": 1,
-                    "name": "로그인 시나리오",
-                    "endpoint_id": 1,
-                    "endpoint": {
-                        "id": 1,
-                        "path": "/api/auth/login",
-                        "method": "POST",
-                        "summary": "사용자 로그인",
-                        "description": "이메일과 패스워드로 로그인"
-                    },
-                    "executor": "ramping-vus",
-                    "think_time": 1.0,
-                    "scenario_name": "login-scenario-1",
-                    "actual_tps": 48.2,
-                    "avg_response_time": 115.3,
-                    "p95_response_time": 290.1,
-                    "error_rate": 0.015,
+                    "scenario_history_id": 1,
+                    "name": "시나리오 제목",
+                    "scenario_tag": "테스트 시나리오 태그",
                     "total_requests": 8640,
                     "failed_requests": 130,
+                    "test_duration": 900.0,
+                    "response_time_target": 1.0,
+                    "error_rate_target": 1.0,
+                    "think_time": 1,
+                    "executor": "constant-vus",
+                    "endpoint": {
+                        "endpoint_id": 5,
+                        "method": "GET",
+                        "path": "/api/io/sleep/500",
+                        "description": "500ms 지연을 줘서 실제 I/O 작업을 모방하는 테스트 API",
+                        "summary": "I/O 지연 테스트"
+                    },
+                    "tps": {
+                        "max": 48.7,
+                        "min": 20,
+                        "avg": 35.2
+                    },
+                    "response_time": {
+                        "max": 650.1,
+                        "min": 480.3,
+                        "avg": 520.8,
+                        "p50": 515.2,
+                        "p95": 580.3,
+                        "p99": 620.7
+                    },
+                    "error_rate": {
+                        "max": 0.02,
+                        "min": 0.0,
+                        "avg": 0.015
+                    },
                     "stages": [
                         {
-                            "id": 1,
-                            "duration": "5m",
+                            "stage_history_id": 1,
+                            "duration": "10s",
                             "target": 10
-                        },
-                        {
-                            "id": 2,
-                            "duration": "10m",
-                            "target": 50
                         }
                     ]
                 }
             ]
-        }
+        },
+        "status_code": 200
     }
     ```
     
@@ -208,29 +246,37 @@ response_model=TestHistoryDetailResponse,
     
     ### 테스트 기본 정보
     - **test_history_id**: 테스트 기록 고유 ID
+    - **project_id**: 프로젝트 ID
     - **title**: 테스트 제목
     - **description**: 테스트 설명
-    - **target_tps**: 목표 TPS (초당 트랜잭션)
-    - **tested_at**: 테스트 시작 시간
     - **is_completed**: 테스트 완료 여부
     - **completed_at**: 테스트 완료 시간
+    - **tested_at**: 테스트 시작 시간
+    - **job_name**: k6 Job 이름
+    - **k6_script_file_name**: k6 스크립트 파일명
     
-    ### 전체 테스트 메트릭
-    - **actual_tps**: 실제 달성한 TPS
-    - **avg_response_time**: 평균 응답시간 (ms)
-    - **max_response_time**: 최대 응답시간 (ms)
-    - **min_response_time**: 최소 응답시간 (ms)
-    - **p95_response_time**: 95 퍼센타일 응답시간 (ms)
-    - **error_rate**: 에러율 (0.0 ~ 1.0)
+    ### Overall 섹션 (전체 테스트 메트릭)
+    - **target_tps**: 목표 TPS (초당 트랜잭션)
     - **total_requests**: 총 요청 수
     - **failed_requests**: 실패한 요청 수
-    - **max_vus**: 최대 가상 사용자 수
     - **test_duration**: 테스트 지속 시간 (초)
+    - **tps**: TPS 메트릭 {max, min, avg}
+    - **response_time**: 응답시간 메트릭 {max, min, avg, p50, p95, p99} (ms)
+    - **error_rate**: 에러율 메트릭 {max, min, avg} (0.0 ~ 1.0)
+    - **vus**: 가상 사용자 수 메트릭 {max, min, avg}
     
-    ### 시나리오별 상세 정보
-    - 각 시나리오의 개별 메트릭
-    - 연결된 엔드포인트의 상세 정보 (경로, 메서드, 설명)
-    - 시나리오별 스테이지 설정 (지속시간, 목표 사용자 수)
+    ### Scenarios 섹션 (시나리오별 상세 정보)
+    - **scenario_history_id**: 시나리오 기록 고유 ID
+    - **name**: 시나리오 제목
+    - **scenario_tag**: 테스트 시나리오 태그 (쿼리용 내부 식별자)
+    - **total_requests/failed_requests**: 시나리오별 요청 통계
+    - **test_duration**: 시나리오 테스트 시간 (초)
+    - **response_time_target/error_rate_target**: 목표 메트릭
+    - **think_time**: 사고 시간 (초)
+    - **executor**: k6 실행자 타입
+    - **endpoint**: 연결된 엔드포인트 상세 정보 (method, path, description, summary)
+    - **tps/response_time/error_rate**: 시나리오별 메트릭 (overall과 동일한 구조)
+    - **stages**: 시나리오의 스테이지 설정 목록 (duration, target)
     
     ## 에러 응답
     - **404 Not Found**: 해당 ID의 테스트 기록이 존재하지 않음
@@ -251,5 +297,7 @@ def get_test_history_details(
     if not test_history:
         raise HTTPException(status_code=404, detail="Test history not found")
     
-    return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, test_history)
+    response_data:TestHistoryDetailResponse = build_test_history_detail_response(test_history)
+    
+    return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response_data)
 
