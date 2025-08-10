@@ -279,50 +279,51 @@ const Report: React.FC = () => {
       <Header />
       <div className={styles.content}>
         <div className={styles.reportContainer}>
-          <div className={styles.header}>
-            {/* --- 헤더 왼쪽 영역 --- */}
-            <div className={styles.headerLeft}>
-              <ModeToggleDropdown
-                currentOption={currentModeOption}
-                options={modeOptions}
-                onSelect={handleModeChange}
-              />
+          <div className={styles.headerAndContentContainer}>
+            <div className={styles.header}>
+              <div className={styles.headerLeft}>
+                <ModeToggleDropdown
+                  currentOption={currentModeOption}
+                  options={modeOptions}
+                  onSelect={handleModeChange}
+                />
+              </div>
+              <div className={styles.headerRight}>
+                {/* 미리보기 상태일 때만 저장/인쇄 버튼 표시 */}
+                {!isEditing && (
+                  <>
+                    <Button
+                      icon={<Download />}
+                      onClick={generatePDF}
+                      disabled={pdfGenerating}>
+                      {pdfGenerating ? "PDF 생성 중..." : "저장하기"}
+                    </Button>
+
+                    <Button icon={<Printer />} onClick={() => window.print()}>
+                      인쇄하기
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
 
-            {/* --- 헤더 오른쪽 영역 --- */}
-            <div className={styles.headerRight}>
-              {/* 미리보기 상태일 때만 저장/인쇄 버튼 표시 */}
-              {!isEditing && (
-                <>
-                  <Button
-                    icon={<Download />}
-                    onClick={generatePDF}
-                    disabled={pdfGenerating}>
-                    {pdfGenerating ? "PDF 생성 중..." : "저장하기"}
-                  </Button>
-
-                  <Button icon={<Printer />} onClick={() => window.print()}>
-                    인쇄하기
-                  </Button>
-                </>
+            <div className={styles.contentContainer}>
+              {isEditing ? (
+                <ReportEditor
+                  reportData={reportData}
+                  reportConfig={reportConfig}
+                  onConfigChange={handleConfigChange}
+                />
+              ) : (
+                <div ref={reportViewerRef} data-pdf-capture>
+                  <ReportViewer
+                    reportData={reportData}
+                    reportConfig={reportConfig}
+                  />
+                </div>
               )}
             </div>
           </div>
-
-          {isEditing ? (
-            <ReportEditor
-              reportData={reportData}
-              reportConfig={reportConfig}
-              onConfigChange={handleConfigChange}
-            />
-          ) : (
-            <div ref={reportViewerRef} data-pdf-capture>
-              <ReportViewer
-                reportData={reportData}
-                reportConfig={reportConfig}
-              />
-            </div>
-          )}
         </div>
       </div>
     </div>
