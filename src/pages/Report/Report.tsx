@@ -182,72 +182,141 @@ const Report: React.FC = () => {
     setIsEditing(Boolean((selected as {value: unknown}).value));
   };
 
-  const generatePDF = async () => {
-    if (!reportViewerRef.current || pdfGenerating) return;
+  // Report.tsx의 generatePDF 함수를 이것으로 교체하세요
 
-    setPdfGenerating(true);
-    try {
-      // ReportViewer 컴포넌트를 캡처
-      const element = reportViewerRef.current;
+const generatePDF = async () => {
+  if (!reportViewerRef.current || pdfGenerating) return;
 
-      // 고해상도로 캡처
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-        height: element.scrollHeight,
-        width: element.scrollWidth,
-        onclone: (clonedDoc) => {
-          // 클론된 문서에서 스크롤 컨테이너의 스타일을 조정
-          const clonedElement = clonedDoc.querySelector(
-            "[data-pdf-capture]"
-          ) as HTMLElement;
-          if (clonedElement) {
-            clonedElement.style.maxHeight = "none";
-            clonedElement.style.overflow = "visible";
-          }
-        },
-      });
+  setPdfGenerating(true);
+  try {
+    const element = reportViewerRef.current;
+    
+    // 1. 캡처 전 요소 스타일 최적화
+    const originalStyles = {
+      maxHeight: element.style.maxHeight,
+      overflow: element.style.overflow,
+      height: element.style.height
+    };
+    
+    // 캡처를 위한 임시 스타일 적용
+    element.style.maxHeight = 'none';
+    element.style.overflow = 'visible';
+    element.style.height = 'auto';
 
-      const imgData = canvas.toDataURL("image/png");
+    // 2. 더 정확한 캡처 설정
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+      scrollX: 0,
+      scrollY: 0,
+      windowWidth: element.scrollWidth,
+      windowHeight: element.scrollHeight,
+      onclone: (clonedDoc) => {
+        // 클론된 문서에서 PDF 캡처용 스타일 적용
+        const clonedElement = clonedDoc.querySelector("[data-pdf-capture]") as HTMLElement;
+        if (clonedElement) {
+          clonedElement.style.maxHeight = "none";
+          clonedElement.style.overflow = "visible";
+          clonedElement.style.height = "auto";
+          clonedElement.style.transform = "none";
+        }
+        
+        // 스크롤 컨테이너 정리
+        const scrollContainers = clonedDoc.querySelectorAll('.previewContainer');
+        scrollContainers.forEach(container => {
+          (container as HTMLElement).style.overflow = 'visible';
+          (container as HTMLElement).style.maxHeight = 'none';
+        });
+      },
+    });
 
-      // PDF 생성
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
+    // 3. 원본 스타일 복원
+    element.style.maxHeight = originalStyles.maxHeight;
+    element.style.overflow = originalStyles.overflow;
+    element.style.height = originalStyles.height;
 
-      const imgWidth = pdfWidth - 20; // 좌우 10mm 여백
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const imgData = canvas.toDataURL("image/png", 0.95); // 압축률 조정
 
-      let heightLeft = imgHeight;
-      let position = 10; // 상단 10mm 여백
-
-      // 첫 번째 페이지
-      pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight - 20; // 상하 여백 20mm 제외
-
-      // 여러 페이지가 필요한 경우
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight + 10;
+    // 4. PDF 생성 with 정확한 페이지 분할
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    
+    // 여백 설정
+    const margin = 10;
+    const contentWidth = pdfWidth - (margin * 2);
+    const contentHeight = pdfHeight - (margin * 2);
+    
+    // 이미지 크기 계산
+    const imgWidth = contentWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    
+    // 페이지당 콘텐츠 높이
+    const pageContentHeight = contentHeight;
+    
+    let yPosition = 0;
+    let pageCount = 0;
+    
+    while (yPosition < imgHeight) {
+      if (pageCount > 0) {
         pdf.addPage();
-        pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight - 20;
       }
-
-      // PDF 다운로드
-      const fileName = `${reportConfig.customTitle || "성능테스트리포트"}_${
-        new Date().toISOString().split("T")[0]
-      }.pdf`;
-      pdf.save(fileName);
-    } catch (error) {
-      console.error("PDF 생성 실패:", error);
-      alert("PDF 생성 중 오류가 발생했습니다.");
-    } finally {
-      setPdfGenerating(false);
+      
+      // 현재 페이지에 들어갈 이미지의 높이 계산
+      const remainingHeight = imgHeight - yPosition;
+      const currentPageHeight = Math.min(pageContentHeight, remainingHeight);
+      
+      // 소스 이미지에서 현재 페이지 부분의 시작 y 좌표 계산
+      const sourceY = (yPosition / imgHeight) * canvas.height;
+      const sourceHeight = (currentPageHeight / imgHeight) * canvas.height;
+      
+      // 캔버스에서 현재 페이지 부분만 추출
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = sourceHeight;
+      
+      const pageCtx = pageCanvas.getContext('2d');
+      if (pageCtx) {
+        pageCtx.drawImage(
+          canvas, 
+          0, sourceY, canvas.width, sourceHeight,  // 소스 영역
+          0, 0, canvas.width, sourceHeight         // 대상 영역
+        );
+        
+        const pageImgData = pageCanvas.toDataURL("image/png", 0.95);
+        
+        // PDF에 현재 페이지 이미지 추가
+        pdf.addImage(
+          pageImgData, 
+          "PNG", 
+          margin, 
+          margin, 
+          imgWidth, 
+          currentPageHeight
+        );
+      }
+      
+      yPosition += pageContentHeight;
+      pageCount++;
     }
-  };
+
+    // 5. PDF 저장
+    const fileName = `${reportConfig.customTitle || "성능테스트리포트"}_${
+      new Date().toISOString().split("T")[0]
+    }.pdf`;
+    
+    pdf.save(fileName);
+    
+  } catch (error) {
+    console.error("PDF 생성 실패:", error);
+    alert("PDF 생성 중 오류가 발생했습니다.");
+  } finally {
+    setPdfGenerating(false);
+  }
+};
 
   if (loading) {
     return (

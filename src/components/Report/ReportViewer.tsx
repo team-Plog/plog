@@ -12,16 +12,6 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
   reportData,
   reportConfig,
 }) => {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   const formatDateOnly = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("ko-KR", {
       year: "numeric",
@@ -401,7 +391,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                                 <td>{formatNumber(scenario.error_rate.avg * 100, 1)}</td>
                                 <td>{formatNumber(scenario.error_rate.min * 100, 1)}</td>
                                 <td>{formatNumber(scenario.error_rate.max * 100, 1)}</td>
-                                <td>{scenario.error_rate_target ? `${formatNumber(parseFloat(scenario.error_rate_target) * 100, 1)}%` : 'X'}</td>
+                                <td>{scenario.error_rate_target ? `${formatNumber(parseFloat(String(scenario.error_rate_target)) * 100, 1)}%` : 'X'}</td>
                               </tr>
                             ))
                           : (
