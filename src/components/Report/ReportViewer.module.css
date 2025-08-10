@@ -30,7 +30,7 @@
   overflow-y: auto;
 }
 
-/* PDF 캡처를 위한 전체 화면 미리보기 스타일 */
+/* 기본 문서 미리보기 스타일 */
 .documentPreview {
   background: white;
   padding: var(--spacing-xxl);
@@ -40,18 +40,6 @@
   min-height: 100vh;
   width: 100%;
   box-sizing: border-box;
-}
-
-/* PDF 캡처 시 페이지 브레이크 최적화 */
-.documentPreview[data-pdf-capture] {
-  padding: 40px;
-  background: white;
-  width: 210mm; /* A4 width */
-  min-height: 297mm; /* A4 height */
-  margin: 0 auto;
-  box-shadow: none;
-  font-size: 12px;
-  line-height: 1.4;
 }
 
 .documentHeader {
@@ -68,12 +56,6 @@
   margin: 0 0 16px 0;
   color: #111827;
 }
-
-/* PDF 캡처 시 헤더 크기 조정 */
-.documentPreview[data-pdf-capture] .documentHeader h1 {
-  font-size: 20px;
-}
-
 
 .reportTitle{
   color: var(--color-black);
@@ -99,7 +81,6 @@
   border-top: 1px solid var(--color-border-primary);
   gap: var(--spacing-xxl);
   padding: var(--spacing-lg) 0 var(--spacing-xxl) 0;
-  page-break-inside: avoid;
 }
 
 .sectionTitle {
@@ -194,6 +175,26 @@
   color: var(--color-gray-300);
 }
 
+/* 요약 박스 스타일 */
+.summaryBox {
+  position: relative;
+  padding: var(--spacing-xs) var(--spacing-lg);
+  border-left: 3px solid var(--color-accent-primary);
+}
+
+.summaryHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-accent-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.summaryContent {
+  color: var(--color-black);
+}
+
+/* 모바일 반응형 */
 @media (max-width: 768px) {
   .documentHeader h1 {
     font-size: 20px;
@@ -213,13 +214,89 @@
   }
 }
 
-@media (max-width: 768px) {
-  .documentHeader h1 {
-    font-size: 20px;
-  }
+/* PDF 캡처를 위한 전체 화면 미리보기 스타일 */
+.documentPreview[data-pdf-capture] {
+  padding: 40px;
+  background: white;
+  width: 210mm; /* A4 width */
+  min-height: 297mm; /* A4 height */
+  margin: 0 auto;
+  box-shadow: none;
+  font-size: 12px;
+  line-height: 1.4;
+  
+  /* PDF 캡처 최적화 */
+  transform: none !important;
+  position: relative;
+  overflow: visible !important;
+  max-height: none !important;
+}
 
-  .documentPreview {
-    padding: 16px;
+/* PDF 캡처 시 헤더 크기 조정 */
+.documentPreview[data-pdf-capture] .documentHeader {
+  page-break-after: avoid;
+  margin-bottom: 25px;
+}
+
+.documentPreview[data-pdf-capture] .documentHeader h1 {
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+/* PDF 캡처 시 섹션별 페이지 브레이크 방지 */
+.documentPreview[data-pdf-capture] .section {
+  page-break-inside: avoid;
+  break-inside: avoid;
+  margin-bottom: 20px;
+}
+
+/* PDF 캡처 시 테이블 페이지 브레이크 방지 */
+.documentPreview[data-pdf-capture] .tableContainer {
+  page-break-inside: avoid;
+  break-inside: avoid;
+  margin-bottom: 15px;
+}
+
+/* PDF 캡처 시 요약 박스 최적화 */
+.documentPreview[data-pdf-capture] .summaryBox {
+  page-break-inside: avoid;
+  break-inside: avoid;
+  margin: 15px 0;
+  padding: 12px 16px;
+}
+
+/* PDF 캡처 시 텍스트 그룹 최적화 */
+.documentPreview[data-pdf-capture] .textGroup {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+/* PDF 캡처 시 서브 타이틀 그룹 최적화 */
+.documentPreview[data-pdf-capture] .subTitleGroup {
+  page-break-inside: avoid;
+  break-inside: avoid;
+  margin-bottom: 20px;
+}
+
+/* 스크롤 컨테이너 PDF 최적화 */
+.previewContainer[data-pdf-capture] {
+  overflow: visible !important;
+  max-height: none !important;
+  height: auto !important;
+}
+
+/* 인쇄 및 PDF 캡처 공통 최적화 */
+@media print, screen and (min-width: 0) {
+  .documentPreview[data-pdf-capture] {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  .documentPreview[data-pdf-capture] * {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
 
