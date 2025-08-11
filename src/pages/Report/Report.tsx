@@ -7,6 +7,7 @@ import {useLocation} from "react-router-dom";
 import {getTestHistoryDetail} from "../../api";
 import ReportEditor from "../../components/Report/ReportEditor";
 import ReportViewer from "../../components/Report/ReportViewer";
+import EmptyState from "../../components/EmptyState/EmptyState";
 import {Download, Printer, Eye, Pen} from "lucide-react";
 import ModeToggleDropdown, {
   type DropdownOption,
@@ -339,6 +340,20 @@ const generatePDF = async () => {
     return (
       <div className={styles.container}>
         <Header />
+      </div>
+    );
+  }
+
+  // 테스트가 완료되지 않았을 때 EmptyState 표시
+  if (!reportData.is_completed) {
+    return (
+      <div className={styles.container}>
+        <Header />
+        <div className={styles.content}>
+          <div className={styles.emptyStateContainer}>
+            <EmptyState type="report" />
+          </div>
+        </div>
       </div>
     );
   }

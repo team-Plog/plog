@@ -1,8 +1,8 @@
 import React from "react";
-import { CirclePlus } from "lucide-react";
+import { CirclePlus, AlertCircle } from "lucide-react";
 import styles from "./EmptyState.module.css";
 
-type EmptyStateType = "project" | "test" | "history" | "custom";
+type EmptyStateType = "project" | "test" | "history" | "report" | "custom";
 
 interface EmptyStateProps {
   type?: EmptyStateType;
@@ -31,6 +31,12 @@ const EmptyState: React.FC<EmptyStateProps> = ({
           title: "이 프로젝트에 등록된 테스트가 없습니다.",
           description: "API를 선택해 부하테스트를 시작해보세요.",
           icon: <CirclePlus className={styles.emptyIcon} />
+        };
+      case "report":
+        return {
+          title: "테스트가 완료되지 않았습니다.",
+          description: "테스트 실행이 완료된 후 보고서를 생성할 수 있습니다.",
+          icon: <AlertCircle className={styles.emptyIcon} />
         };
       default:
         return {
