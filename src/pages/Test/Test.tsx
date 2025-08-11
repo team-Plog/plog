@@ -12,16 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import MetricCard from "../../components/MetricCard/MetricCard";
-
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import MetricChart from "../../components/MetricChart/MetricChart";
 import { useLocation } from "react-router-dom";
 import { getProjectDetail, getTestHistoryDetail } from "../../api";
 
@@ -138,6 +129,29 @@ const Test: React.FC = () => {
       });
   }, [testHistoryId]);
 
+  const chartConfigs = [
+    {
+      title: "TPS 변화 추이",
+      dataKey: "tps",
+      color: "#60a5fa",
+    },
+    {
+      title: "평균 응답시간(ms)",
+      dataKey: "responseTime",
+      color: "#82ca9d",
+    },
+    {
+      title: "에러율(%)",
+      dataKey: "errorRate",
+      color: "#f87171",
+    },
+    {
+      title: "활성 사용자 수",
+      dataKey: "users",
+      color: "#8884d8",
+    },
+  ];
+
   return (
     <div className={styles.container}>
       <Header testHistoryId={testHistoryId} />
@@ -190,61 +204,15 @@ const Test: React.FC = () => {
           </div>
 
           <div className={styles.chartWrap}>
-            <div className={styles.chart}>
-              <h3 className="TitleS">TPS 변화 추이</h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="time" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="tps" stroke="#60a5fa" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className={styles.chart}>
-              <h3 className="TitleS">평균 응답시간(ms)</h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="time" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="responseTime"
-                    stroke="#82ca9d"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className={styles.chart}>
-              <h3 className="TitleS">에러율(%)</h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="time" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="errorRate" stroke="#f87171" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className={styles.chart}>
-              <h3 className="TitleS">활성 사용자 수</h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="time" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="users" stroke="#8884d8" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {chartConfigs.map((config, index) => (
+              <MetricChart
+                key={index}
+                title={config.title}
+                data={chartData}
+                dataKey={config.dataKey}
+                color={config.color}
+              />
+            ))}
           </div>
         </main>
       </div>

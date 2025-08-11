@@ -83,14 +83,6 @@
   justify-content: center;
 }
 
-.chart {
-  width: 45%;
-  background-color: var(--color-white);
-  padding: 16px;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-primary);
-}
-
 .chartWrap {
   display: flex;
   flex-wrap: wrap;
