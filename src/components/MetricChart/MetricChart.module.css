@@ -5,3 +5,19 @@
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-primary);
 }
+
+.chart h3 {
+  font-size: var(--title-s-font-size);
+  font-family: var(--title-s-font-family);
+  font-weight: var(--title-s-font-weight);
+  line-height: var(--title-s-line-height);
+  color: var(--color-black);
+  margin: 0 0 16px 0;
+}
+
+/* Recharts 축 텍스트 스타일링 */
+.chart :global(.recharts-cartesian-axis-tick-value) {
+  font-size: var(--body-font-size) !important;
+  font-family: var(--body-font-family) !important;
+  font-weight: var(--body-font-weight) !important;
+}
