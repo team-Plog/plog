@@ -147,11 +147,13 @@
 
 .table td {
   color: var(--color-black);
+  word-break: break-word;
 }
 
 .table th {
   background-color: var(--color-gray-100);
   color: var(--color-gray-300);
+  word-break: keep-all;
 }
 
 /* 요약 박스 스타일 */
@@ -171,6 +173,11 @@
 
 .summaryContent {
   color: var(--color-black);
+}
+
+.icon {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
 }
 
 /* 모바일 반응형 */
