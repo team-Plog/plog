@@ -26,6 +26,16 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
     return num.toFixed(decimals);
   };
 
+  const toPercent = (v: number | string | null | undefined) => {
+    if (v == null) return null;
+    const num =
+      typeof v === "string"
+        ? parseFloat(v.replace("%", "").trim())
+        : v;
+    if (Number.isNaN(num)) return null;
+    return num <= 1 ? num * 100 : num;
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.actions}></div>
@@ -172,7 +182,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                         <td>{scenario.name}</td>
                         <td>{scenario.response_time_target || "X"}</td>
                         <td>{reportData.overall?.target_tps || "X"}</td>
-                        <td>{scenario.error_rate_target || "X"}</td>
+                        <td>{scenario.error_rate_target ?? "X"}</td>
                       </tr>
                     ))
                   ) : (
@@ -278,7 +288,11 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                           </td>
                           <td>{scenario.tps.avg}</td>
                           <td>
-                            {formatNumber(scenario.error_rate.avg * 100, 1)}%
+                            {formatNumber(
+                              (toPercent(scenario.error_rate.avg) ?? 0),
+                              1
+                            )}
+                            %
                           </td>
                           <td>{scenario.total_requests}</td>
                         </tr>
@@ -457,20 +471,30 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                         <tr key={index}>
                           <td>{scenario.name}</td>
                           <td>
-                            {formatNumber(scenario.error_rate.avg * 100, 1)}
+                            {formatNumber(
+                              (toPercent(scenario.error_rate.avg) ?? 0),
+                              1
+                            )}
+                            %
                           </td>
                           <td>
-                            {formatNumber(scenario.error_rate.min * 100, 1)}
+                            {formatNumber(
+                              (toPercent(scenario.error_rate.min) ?? 0),
+                              1
+                            )}
+                            %
                           </td>
                           <td>
-                            {formatNumber(scenario.error_rate.max * 100, 1)}
+                            {formatNumber(
+                              (toPercent(scenario.error_rate.max) ?? 0),
+                              1
+                            )}
+                            %
                           </td>
                           <td>
-                            {scenario.error_rate_target
+                            {scenario.error_rate_target != null
                               ? `${formatNumber(
-                                  parseFloat(
-                                    String(scenario.error_rate_target)
-                                  ) * 100,
+                                  (toPercent(scenario.error_rate_target) ?? 0),
                                   1
                                 )}%`
                               : "X"}
