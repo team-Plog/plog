@@ -29,9 +29,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
   const toPercent = (v: number | string | null | undefined) => {
     if (v == null) return null;
     const num =
-      typeof v === "string"
-        ? parseFloat(v.replace("%", "").trim())
-        : v;
+      typeof v === "string" ? parseFloat(v.replace("%", "").trim()) : v;
     if (Number.isNaN(num)) return null;
     return num <= 1 ? num * 100 : num;
   };
@@ -289,7 +287,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                           <td>{scenario.tps.avg}</td>
                           <td>
                             {formatNumber(
-                              (toPercent(scenario.error_rate.avg) ?? 0),
+                              toPercent(scenario.error_rate.avg) ?? 0,
                               1
                             )}
                             %
@@ -335,34 +333,118 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                   </thead>
                   <tbody>
                     {reportData.scenarios && reportData.scenarios.length > 0 ? (
-                      reportData.scenarios.map((scenario, index) => (
-                        <tr key={index}>
-                          <td>{scenario.name}</td>
+                      <>
+                        {reportData.scenarios.map((scenario, index) => (
+                          <tr key={index}>
+                            <td>{scenario.name}</td>
+                            <td>
+                              {formatNumber(
+                                scenario.response_time.avg / 1000,
+                                3
+                              )}
+                            </td>
+                            <td>
+                              {formatNumber(
+                                scenario.response_time.min / 1000,
+                                3
+                              )}
+                            </td>
+                            <td>
+                              {formatNumber(
+                                scenario.response_time.max / 1000,
+                                3
+                              )}
+                            </td>
+                            <td>
+                              {formatNumber(
+                                scenario.response_time.p50 / 1000,
+                                3
+                              )}
+                            </td>
+                            <td>
+                              {formatNumber(
+                                scenario.response_time.p95 / 1000,
+                                3
+                              )}
+                            </td>
+                            <td>
+                              {formatNumber(
+                                scenario.response_time.p99 / 1000,
+                                3
+                              )}
+                            </td>
+                            <td>
+                              {scenario.response_time_target
+                                ? `${scenario.response_time_target}초`
+                                : "X"}
+                            </td>
+                          </tr>
+                        ))}
+
+                        {/* 평균 행 */}
+                        <tr
+                          style={{
+                            fontWeight: "bold",
+                            backgroundColor: "#f9f9f9",
+                          }}>
+                          <td>전체</td>
                           <td>
-                            {formatNumber(scenario.response_time.avg / 1000, 3)}
+                            {formatNumber(
+                              reportData.scenarios.reduce(
+                                (sum, s) => sum + s.response_time.avg / 1000,
+                                0
+                              ) / reportData.scenarios.length,
+                              3
+                            )}
                           </td>
                           <td>
-                            {formatNumber(scenario.response_time.min / 1000, 3)}
+                            {formatNumber(
+                              reportData.scenarios.reduce(
+                                (sum, s) => sum + s.response_time.min / 1000,
+                                0
+                              ) / reportData.scenarios.length,
+                              3
+                            )}
                           </td>
                           <td>
-                            {formatNumber(scenario.response_time.max / 1000, 3)}
+                            {formatNumber(
+                              reportData.scenarios.reduce(
+                                (sum, s) => sum + s.response_time.max / 1000,
+                                0
+                              ) / reportData.scenarios.length,
+                              3
+                            )}
                           </td>
                           <td>
-                            {formatNumber(scenario.response_time.p50 / 1000, 3)}
+                            {formatNumber(
+                              reportData.scenarios.reduce(
+                                (sum, s) => sum + s.response_time.p50 / 1000,
+                                0
+                              ) / reportData.scenarios.length,
+                              3
+                            )}
                           </td>
                           <td>
-                            {formatNumber(scenario.response_time.p95 / 1000, 3)}
+                            {formatNumber(
+                              reportData.scenarios.reduce(
+                                (sum, s) => sum + s.response_time.p95 / 1000,
+                                0
+                              ) / reportData.scenarios.length,
+                              3
+                            )}
                           </td>
                           <td>
-                            {formatNumber(scenario.response_time.p99 / 1000, 3)}
+                            {formatNumber(
+                              reportData.scenarios.reduce(
+                                (sum, s) => sum + s.response_time.p99 / 1000,
+                                0
+                              ) / reportData.scenarios.length,
+                              3
+                            )}
                           </td>
-                          <td>
-                            {scenario.response_time_target
-                              ? `${scenario.response_time_target}초`
-                              : "X"}
-                          </td>
+                          <td></td>
                         </tr>
-                      ))
+                      </>
                     ) : (
                       <tr>
                         <td>데이터 없음</td>
@@ -410,16 +492,55 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                   </thead>
                   <tbody>
                     {reportData.scenarios && reportData.scenarios.length > 0 ? (
-                      reportData.scenarios.map((scenario, index) => (
-                        <tr key={index}>
-                          <td>{scenario.name}</td>
-                          <td>{formatNumber(scenario.tps.avg, 2)}</td>
-                          <td>{scenario.tps.min}</td>
-                          <td>{scenario.tps.max}</td>
-                          <td>{scenario.total_requests}</td>
-                          <td>{reportData.overall?.target_tps || "X"}</td>
+                      <>
+                        {reportData.scenarios.map((scenario, index) => (
+                          <tr key={index}>
+                            <td>{scenario.name}</td>
+                            <td>{formatNumber(scenario.tps.avg, 2)}</td>
+                            <td>{scenario.tps.min}</td>
+                            <td>{scenario.tps.max}</td>
+                            <td>{scenario.total_requests}</td>
+                            <td>{reportData.overall?.target_tps || "X"}</td>
+                          </tr>
+                        ))}
+
+                        {/* 합계 행 */}
+                        <tr
+                          style={{
+                            fontWeight: "bold",
+                            backgroundColor: "#f9f9f9",
+                          }}>
+                          <td>합계</td>
+                          <td>
+                            {formatNumber(
+                              reportData.scenarios.reduce(
+                                (sum, s) => sum + (s.tps.avg ?? 0),
+                                0
+                              ),
+                              2
+                            )}
+                          </td>
+                          <td>
+                            {reportData.scenarios.reduce(
+                              (sum, s) => sum + (s.tps.min ?? 0),
+                              0
+                            )}
+                          </td>
+                          <td>
+                            {reportData.scenarios.reduce(
+                              (sum, s) => sum + (s.tps.max ?? 0),
+                              0
+                            )}
+                          </td>
+                          <td>
+                            {reportData.scenarios.reduce(
+                              (sum, s) => sum + (s.total_requests ?? 0),
+                              0
+                            )}
+                          </td>
+                          <td></td>
                         </tr>
-                      ))
+                      </>
                     ) : (
                       <tr>
                         <td>데이터 없음</td>
@@ -467,40 +588,85 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                   </thead>
                   <tbody>
                     {reportData.scenarios && reportData.scenarios.length > 0 ? (
-                      reportData.scenarios.map((scenario, index) => (
-                        <tr key={index}>
-                          <td>{scenario.name}</td>
+                      <>
+                        {reportData.scenarios.map((scenario, index) => (
+                          <tr key={index}>
+                            <td>{scenario.name}</td>
+                            <td>
+                              {formatNumber(
+                                toPercent(scenario.error_rate.avg) ?? 0,
+                                1
+                              )}
+                              %
+                            </td>
+                            <td>
+                              {formatNumber(
+                                toPercent(scenario.error_rate.min) ?? 0,
+                                1
+                              )}
+                              %
+                            </td>
+                            <td>
+                              {formatNumber(
+                                toPercent(scenario.error_rate.max) ?? 0,
+                                1
+                              )}
+                              %
+                            </td>
+                            <td>
+                              {scenario.error_rate_target != null
+                                ? `${formatNumber(
+                                    toPercent(scenario.error_rate_target) ?? 0,
+                                    1
+                                  )}%`
+                                : "X"}
+                            </td>
+                          </tr>
+                        ))}
+
+                        {/* 합계 평균 행 */}
+                        <tr
+                          style={{
+                            fontWeight: "bold",
+                            backgroundColor: "#f9f9f9",
+                          }}>
+                          <td>전체</td>
                           <td>
                             {formatNumber(
-                              (toPercent(scenario.error_rate.avg) ?? 0),
+                              reportData.scenarios.reduce(
+                                (sum, s) =>
+                                  sum + (toPercent(s.error_rate.avg) ?? 0),
+                                0
+                              ) / reportData.scenarios.length,
                               1
                             )}
                             %
                           </td>
                           <td>
                             {formatNumber(
-                              (toPercent(scenario.error_rate.min) ?? 0),
+                              reportData.scenarios.reduce(
+                                (sum, s) =>
+                                  sum + (toPercent(s.error_rate.min) ?? 0),
+                                0
+                              ) / reportData.scenarios.length,
                               1
                             )}
                             %
                           </td>
                           <td>
                             {formatNumber(
-                              (toPercent(scenario.error_rate.max) ?? 0),
+                              reportData.scenarios.reduce(
+                                (sum, s) =>
+                                  sum + (toPercent(s.error_rate.max) ?? 0),
+                                0
+                              ) / reportData.scenarios.length,
                               1
                             )}
                             %
                           </td>
-                          <td>
-                            {scenario.error_rate_target != null
-                              ? `${formatNumber(
-                                  (toPercent(scenario.error_rate_target) ?? 0),
-                                  1
-                                )}%`
-                              : "X"}
-                          </td>
+                          <td></td>
                         </tr>
-                      ))
+                      </>
                     ) : (
                       <tr>
                         <td>데이터 없음</td>
@@ -527,6 +693,79 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
             </div>
             <div className={`${styles.subTitle} TitleS`}>
               다. 자원 사용량 분석
+            </div>
+            <div className={styles.tableContainer}>
+              <div className={`${styles.tableTitle} CaptionLight`}>
+                표 서버별 CPU 사용량
+              </div>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>최소 사용량</th>
+                    <th>평균 사용량</th>
+                    <th>최대 사용량</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Backend</td>
+                    <td>0.0%</td>
+                    <td>0.0%</td>
+                    <td>0.0%</td>
+                  </tr>
+
+                  <tr>
+                    <td>DB Server</td>
+                    <td>0.0%</td>
+                    <td>0.0%</td>
+                    <td>0.0%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className={styles.tableContainer}>
+              <div className={`${styles.tableTitle} CaptionLight`}>
+                표 서버별 Memory 사용량
+              </div>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>최소 사용량</th>
+                    <th>평균 사용량</th>
+                    <th>최대 사용량</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Backend</td>
+                    <td>0.0%</td>
+                    <td>0.0%</td>
+                    <td>0.0%</td>
+                  </tr>
+
+                  <tr>
+                    <td>DB Server</td>
+                    <td>0.0%</td>
+                    <td>0.0%</td>
+                    <td>0.0%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className={styles.summaryBox}>
+              <div className={`${styles.summaryHeader} Body`}>
+                <Sparkle className={styles.icon} />
+                <span>요약</span>
+              </div>
+              <div className={`${styles.summaryContent} Body`}>
+                테스트 결과 백엔드 서버의 CPU 사용량이 최대 100%에 도달하며 높은
+                부하를 보였으나, DB 서버의 CPU 및 메모리 사용량은 여유가
+                있었습니다. 이는 서비스 병목 현상이 백엔드 서버의 CPU에 있음을
+                나타냅니다. 따라서 백엔드 서버의 스케일 아웃을 통해 성능 향상 및
+                안정성을 확보할 필요가 있습니다.
+              </div>
             </div>
           </div>
         </div>
