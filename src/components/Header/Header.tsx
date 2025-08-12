@@ -20,12 +20,15 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
   // 현재 경로 상태
   const isProjectPage = location.pathname === "/projectDetail";
   const isTestPage = location.pathname === "/test";
+  const isReportPage = location.pathname === "/report";
   const projectId = location.state?.projectId;
-  const testTitle = location.state?.testTitle; // 시나리오명 받기
+  const testTitle = location.state?.testTitle;
+  const stateTestHistoryId = location.state?.testHistoryId ?? null;
+  const effectiveTestHistoryId = testHistoryId ?? stateTestHistoryId;
 
   // 프로젝트 제목 로딩
   useEffect(() => {
-    if ((isProjectPage || isTestPage) && projectId) {
+    if ((isProjectPage || isTestPage || isReportPage) && projectId) {
       getProjectDetail(projectId)
         .then((res) => {
           setProjectTitle(res.data.data.title);
@@ -37,28 +40,44 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
     } else {
       setProjectTitle("");
     }
-  }, [isProjectPage, isTestPage, projectId]);
+  }, [isProjectPage, isTestPage, isReportPage, projectId]);
 
   const handleNavigateToMain = () => {
     navigate("/");
   };
 
+  const handleNavigateToProjectDetail = () => {
+    if (!projectId) return;
+    navigate("/projectDetail", {state: {projectId, projectTitle}});
+  };
+
+  const handleNavigateToTest = () => {
+    if (!projectId || !testTitle) return;
+    navigate("/test", {
+      state: {projectId, testTitle, testHistoryId: effectiveTestHistoryId},
+    });
+  };
+
   const handleNavigateToReport = () => {
-    navigate("/report", {state: {projectId, testHistoryId}});
+    navigate("/report", {
+      state: {projectId, testHistoryId, testTitle, projectTitle},
+    });
   };
 
   return (
     <div className={styles.header}>
       <div className={styles.title}>
         <div className={styles.filledCircle} />
-        <div className="HeadingS">PLog</div>
+        <div className="HeadingS" onClick={handleNavigateToMain}>
+          PLog
+        </div>
         <div className={styles.button}>
           <ChevronLeft onClick={goBack} />
           <ChevronRight onClick={goForward} />
         </div>
 
-        {/* 프로젝트 상세 페이지 or 테스트 페이지일 때 메뉴 표시 */}
-        {(isProjectPage || isTestPage) && projectId && (
+        {/* 프로젝트 상세, 테스트, 리포트 페이지일 때 메뉴 표시 */}
+        {(isProjectPage || isTestPage || isReportPage) && projectId && (
           <div className={styles.navMenu}>
             <button
               className={`${styles.navButton} Body`}
@@ -66,32 +85,36 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
               메인
             </button>
             <div className={`${styles.navButton} Body`}>/</div>
-            <button className={`${styles.navButton} Body`} onClick={() => {}}>
+            <button
+              className={`${styles.navButton} Body`}
+              onClick={handleNavigateToProjectDetail}>
               {projectTitle || "프로젝트 타이틀"}
             </button>
 
-            {/* 테스트 페이지일 때 시나리오명 추가 */}
-            {isTestPage && (
+            {/* 테스트 페이지 또는 리포트 페이지일 때 시나리오명 추가 */}
+            {(isTestPage || isReportPage) && (
               <>
                 <div className={`${styles.navButton} Body`}>/</div>
                 <button
                   className={`${styles.navButton} Body`}
-                  onClick={() => {}}>
+                  onClick={handleNavigateToTest}>
                   {testTitle || "시나리오명"}
                 </button>
               </>
             )}
 
-            {(isProjectPage || isTestPage) && testHistoryId && (
-              <>
-                <div className={`${styles.navButton} Body`}>/</div>
-                <button
-                  className={`${styles.navButton} Body`}
-                  onClick={handleNavigateToReport}>
-                  보고서
-                </button>
-              </>
-            )}
+            {/* 리포트 페이지가 아닐 때만 '보고서' 버튼 표시 */}
+            {(isProjectPage || isTestPage || isReportPage) &&
+              effectiveTestHistoryId && (
+                <>
+                  <div className={`${styles.navButton} Body`}>/</div>
+                  <button
+                    className={`${styles.navButton} Body`}
+                    onClick={handleNavigateToReport}>
+                    보고서
+                  </button>
+                </>
+              )}
           </div>
         )}
       </div>
