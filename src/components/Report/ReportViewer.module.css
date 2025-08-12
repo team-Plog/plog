@@ -147,11 +147,13 @@
 
 .table td {
   color: var(--color-black);
+  word-break: break-word;
 }
 
 .table th {
   background-color: var(--color-gray-100);
   color: var(--color-gray-300);
+  word-break: keep-all;
 }
 
 /* 요약 박스 스타일 */
