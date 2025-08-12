@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, {useEffect, useState, useRef} from "react";
 import Header from "../../components/Header/Header";
 import styles from "./Test.module.css";
 import "../../assets/styles/typography.css";
-import { Button } from "../../components/Button/Button";
+import {Button} from "../../components/Button/Button";
 import {
   Activity,
   CircleAlert,
@@ -13,24 +13,32 @@ import {
 } from "lucide-react";
 import MetricCard from "../../components/MetricCard/MetricCard";
 import MetricChart from "../../components/MetricChart/MetricChart";
-import { useLocation } from "react-router-dom";
-import { getProjectDetail, getTestHistoryDetail } from "../../api";
+import {useLocation} from "react-router-dom";
+import {getProjectDetail, getTestHistoryDetail} from "../../api";
+import {forceProcessJob} from "../../api/jobScheduler";
 
 const Test: React.FC = () => {
   const location = useLocation();
   const {
     projectId,
     testTitle,
-    jobName,
+    jobName, // location.state에서 올 수도, 없을 수도 있음
     projectTitle: passedProjectTitle,
     testHistoryId: initialTestHistoryId,
   } = location.state || {};
+
   const [projectTitle, setProjectTitle] = useState<string>(
     passedProjectTitle || ""
   );
   const [testHistoryId, setTestHistoryId] = useState<number | null>(
     initialTestHistoryId || null
   );
+
+  // 📌 jobName 폴백을 위한 내부 상태 (location.state → 없으면 API job_name)
+  const [jobNameState, setJobNameState] = useState<string | null>(
+    jobName ?? null
+  );
+  const effectiveJobName = jobNameState; // 항상 이 값을 사용
 
   const [chartData, setChartData] = useState<any[]>([]);
   const [metrics, setMetrics] = useState({
@@ -40,29 +48,62 @@ const Test: React.FC = () => {
     vus: 0,
   });
 
+  // 중단 로딩 상태 & SSE 핸들 ref
+  const [stopping, setStopping] = useState(false);
+  const sseRef = useRef<EventSource | null>(null);
+  const [lastJobName, setLastJobName] = useState<string | null>(null);
+  const [lastRequestUrl, setLastRequestUrl] = useState<string | null>(null);
+
   useEffect(() => {
     console.log("✅ 선택된 testHistoryId:", testHistoryId);
   }, [testHistoryId]);
 
+  // 👉 testHistoryId로 상세 조회해서 job_name 폴백 채우기
   useEffect(() => {
-    if (!jobName) return;
+    if (!testHistoryId) return;
+
+    getTestHistoryDetail(testHistoryId)
+      .then((res) => {
+        console.log("🧪 테스트 상세 정보:", res.data);
+        const apiJobName = res?.data?.data?.job_name;
+        if (apiJobName && !jobNameState) {
+          setJobNameState(apiJobName);
+        }
+      })
+      .catch((err) => {
+        console.error("❌ 테스트 상세 정보 조회 실패:", err);
+      });
+  }, [testHistoryId]); // jobNameState는 의도적으로 의존성 제외(초기 폴백 세팅 목적)
+
+  // 프로젝트 타이틀 불러오기 (필요 시)
+  useEffect(() => {
+    if (projectId && !passedProjectTitle) {
+      getProjectDetail(projectId)
+        .then((res) => setProjectTitle(res.data.data.title))
+        .catch((err) => {
+          console.error("프로젝트 타이틀 불러오기 실패:", err);
+          setProjectTitle("프로젝트명 없음");
+        });
+    }
+  }, [projectId, passedProjectTitle]);
+
+  // 👉 SSE 연결 (effectiveJobName이 준비되었을 때만)
+  useEffect(() => {
+    if (!effectiveJobName) return;
 
     const eventSource = new EventSource(
-      `http://35.216.24.11:30002/sse/k6data/${jobName}`
+      `http://35.216.24.11:30002/sse/k6data/${effectiveJobName}`
     );
+    sseRef.current = eventSource;
 
     eventSource.onmessage = (event) => {
       try {
         const parsedData = JSON.parse(event.data);
-        console.log("📡 실시간 k6 데이터:", parsedData);
+        // console.log("📡 실시간 k6 데이터:", parsedData);
 
         const timestamp = new Date(parsedData.timestamp).toLocaleTimeString(
           "ko-KR",
-          {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          }
+          {hour: "2-digit", minute: "2-digit", second: "2-digit"}
         );
 
         const overall = parsedData.overall || {
@@ -99,57 +140,54 @@ const Test: React.FC = () => {
     eventSource.onerror = (error) => {
       console.error("❌ SSE 연결 오류:", error);
       eventSource.close();
+      sseRef.current = null;
     };
 
     return () => {
       eventSource.close();
+      sseRef.current = null;
     };
-  }, [jobName]);
+  }, [effectiveJobName]);
 
-  useEffect(() => {
-    if (projectId && !passedProjectTitle) {
-      getProjectDetail(projectId)
-        .then((res) => setProjectTitle(res.data.data.title))
-        .catch((err) => {
-          console.error("프로젝트 타이틀 불러오기 실패:", err);
-          setProjectTitle("프로젝트명 없음");
-        });
+  // 중단 핸들러: 폴백된 jobName으로 호출
+  const handleStopTest = async () => {
+    if (!effectiveJobName) {
+      alert("jobName이 없어 중단 요청을 보낼 수 없습니다.");
+      return;
     }
-  }, [projectId, passedProjectTitle]);
+    try {
+      setStopping(true);
 
-  useEffect(() => {
-    if (!testHistoryId) return;
+      // UI/콘솔 확인용 저장 & 로그
+      const encoded = encodeURIComponent(effectiveJobName);
+      const url = `${import.meta.env.VITE_API_BASE_URL}/scheduler/force-process/${encoded}`;
+      setLastJobName(effectiveJobName);
+      setLastRequestUrl(url);
+      console.log("[handleStopTest] job_name(raw):", effectiveJobName);
+      console.log("[handleStopTest] job_name(encoded):", encoded);
+      console.log("[handleStopTest] POST →", url);
 
-    getTestHistoryDetail(testHistoryId)
-      .then((res) => {
-        console.log("🧪 테스트 상세 정보:", res.data);
-      })
-      .catch((err) => {
-        console.error("❌ 테스트 상세 정보 조회 실패:", err);
-      });
-  }, [testHistoryId]);
+      if (sseRef.current) {
+        sseRef.current.close();
+        sseRef.current = null;
+      }
+
+      await forceProcessJob(effectiveJobName);
+      alert(`테스트 중단 요청 완료\njob_name: ${effectiveJobName}`);
+    } catch (err: any) {
+      console.error("테스트 중단 요청 실패:", err?.message);
+      console.error("config.url:", err?.config?.baseURL, err?.config?.url);
+      alert(`네트워크 오류로 중단 요청 실패\njob_name: ${effectiveJobName}`);
+    } finally {
+      setStopping(false);
+    }
+  };
 
   const chartConfigs = [
-    {
-      title: "TPS 변화 추이",
-      dataKey: "tps",
-      color: "#60a5fa",
-    },
-    {
-      title: "평균 응답시간(ms)",
-      dataKey: "responseTime",
-      color: "#82ca9d",
-    },
-    {
-      title: "에러율(%)",
-      dataKey: "errorRate",
-      color: "#f87171",
-    },
-    {
-      title: "활성 사용자 수",
-      dataKey: "users",
-      color: "#8884d8",
-    },
+    {title: "TPS 변화 추이", dataKey: "tps", color: "#60a5fa"},
+    {title: "평균 응답시간(ms)", dataKey: "responseTime", color: "#82ca9d"},
+    {title: "에러율(%)", dataKey: "errorRate", color: "#f87171"},
+    {title: "활성 사용자 수", dataKey: "users", color: "#8884d8"},
   ];
 
   return (
@@ -175,7 +213,12 @@ const Test: React.FC = () => {
                 </div>
               </div>
               <div className={styles.progressButton}>
-                <Button variant="primaryGradient">테스트 중단하기</Button>
+                <Button
+                  variant="primaryGradient"
+                  onClick={handleStopTest}
+                  disabled={stopping || !effectiveJobName}>
+                  {stopping ? "중단 요청 중..." : "테스트 중단하기"}
+                </Button>
               </div>
             </div>
           </div>
