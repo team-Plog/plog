@@ -106,7 +106,7 @@ class K6JobScheduler:
             for job in completed_jobs:
                 job_name = job['name']                    # 실제 Kubernetes Job 이름
 
-                # TODO: 1. SQLite에서 job_name을 가지고 test_history, scenario_history를 조회
+                # 1. SQLite에서 job_name을 가지고 test_history, scenario_history를 조회
                 test_history:TestHistoryModel = get_test_history_by_job_name(db, job_name)
                 if not test_history:
                     logger.warning(f"No test history found for job: {job_name} - skipping processing")
@@ -114,17 +114,17 @@ class K6JobScheduler:
                     
                 scenario_histories:List[ScenarioHistoryModel] = test_history.scenarios
 
-                # TODO: 2. InfluxDB의 job_name과 매칭하여 테스트 전체 TPS, 응답시간, 에러율 계산
+                # 2. InfluxDB의 job_name과 매칭하여 테스트 전체 TPS, 응답시간, 에러율 계산
                 overall_metrics:Dict[str, Any] = self.influxdb_service.get_overall_metrics(job_name=test_history.job_name)
 
-                # TODO: 3. 조회한 test_history에 업데이트 (null 체크 추가)
+                # 3. 조회한 test_history에 업데이트 (null 체크 추가)
                 if overall_metrics:
                     update_test_history_with_metrics(db, test_history, overall_metrics)
                     logger.info(f"Updated overall metrics for job: {job_name}")
                 else:
                     logger.warning(f"No overall metrics found for job: {job_name} - skipping update")
 
-                # TODO: 4. scenario_history.scenario_tag를 통해 influxdb에서 시나리오별 메트릭 조회 및 업데이트
+                # 4. scenario_history.scenario_tag를 통해 influxdb에서 시나리오별 메트릭 조회 및 업데이트
                 for scenario_history in scenario_histories:
                     scenario_identifier = scenario_history.scenario_tag  # 테스트 시나리오 태그(쿼리할 때 사용하는 내부 식별자)
                     scenario_metrics = self.influxdb_service.get_scenario_metrics(scenario_identifier)
@@ -134,10 +134,10 @@ class K6JobScheduler:
                     else:
                         logger.warning(f"No scenario metrics found for scenario: {scenario_identifier} - skipping update")
 
-                # TODO: 5. test history를 완료 상태로 마킹
+                # 5. test history를 완료 상태로 마킹
                 mark_test_as_completed(db, test_history)
                 
-                # TODO: 6. 완료된 job 정리 (설정에 따라)
+                # 6. 완료된 job 정리 (설정에 따라)
                 if self.auto_delete_jobs:
                     self.job_monitor.delete_completed_job(job_name)
                     
