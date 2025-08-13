@@ -8,6 +8,7 @@ from app.dto.project.openapi import OpenAPISpec
 from app.common.response.code import SuccessCode, FailureCode
 from app.common.response.response_template import ResponseTemplate
 from app.services import *
+from app.services.openapi_strategy_factory import analyze_openapi_with_strategy
 
 router = APIRouter()
 
@@ -20,8 +21,8 @@ async def analyze_swagger(
     request: OpenAPISpecRegisterRequest,
     db: Session = Depends(get_db)
 ):
-    # 1. analyze
-    analyze_result: OpenAPISpecModel = await analyze_openapi_spec(request)
+    # 1. analyze using strategy pattern
+    analyze_result: OpenAPISpecModel = await analyze_openapi_with_strategy(request)
 
     # 2. save
     saved_open_api_spec: OpenAPISpecModel = await save_openapi_spec(db, analyze_result)
