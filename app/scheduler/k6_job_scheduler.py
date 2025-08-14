@@ -8,10 +8,10 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.db.sqlite.database import SessionLocal
 from app.db.sqlite.models import TestHistoryModel, ScenarioHistoryModel
-from app.services.job_monitor_service import JobMonitorService
-from app.services.metrics_aggregation_service import MetricsAggregationService
-from app.services.influxdb_service import InfluxDBService
-from app.services.test_history_service import (
+from app.services.monitoring.job_monitor_service import JobMonitorService
+from app.services.monitoring.metrics_aggregation_service import MetricsAggregationService
+from app.services.monitoring.influxdb_service import InfluxDBService
+from app.services.testing.test_history_service import (
     get_test_history_by_job_name,
     get_scenario_histories_by_test_id,
     update_test_history_with_metrics,
