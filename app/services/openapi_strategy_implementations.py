@@ -151,22 +151,26 @@ class SwaggerUIStrategy(OpenAPIAnalysisStrategy):
                     for mx in re.finditer(r'\burl\s*:\s*["\']([^"\']+)["\']', blk):
                         spec_urls.append(urljoin(swagger_ui_url, mx.group(1)))
 
-            # C) initializer.js를 찾아서 동일 로직 적용
+            # C) initializer.js를 찾아서 동일 로직 적용 (예외 처리 포함)
             if not spec_urls:
                 m_src = re.search(r'<script[^>]+src=["\']([^"\']*swagger[^"\']*initializer[^"\']*)["\']', html, re.I)
                 if m_src:
                     init_js_url = urljoin(swagger_ui_url, m_src.group(1))
-                    js_resp = await client.get(init_js_url)
-                    js_resp.raise_for_status()
-                    init_js = js_resp.text
-                    for m in re.finditer(r'SwaggerUIBundle\(\s*\{(.*?)\}\s*\)', init_js, re.S):
-                        block = m.group(1)
-                        for ms in re.finditer(r'\burl\s*:\s*["\']([^"\']+)["\']', block):
-                            spec_urls.append(urljoin(init_js_url, ms.group(1)))
-                        for mu in re.finditer(r'\burls\s*:\s*\[(.*?)\]', block, re.S):
-                            blk = mu.group(1)
-                            for mx in re.finditer(r'\burl\s*:\s*["\']([^"\']+)["\']', blk):
-                                spec_urls.append(urljoin(init_js_url, mx.group(1)))
+                    try:
+                        js_resp = await client.get(init_js_url)
+                        js_resp.raise_for_status()
+                        init_js = js_resp.text
+                        for m in re.finditer(r'SwaggerUIBundle\(\s*\{(.*?)\}\s*\)', init_js, re.S):
+                            block = m.group(1)
+                            for ms in re.finditer(r'\burl\s*:\s*["\']([^"\']+)["\']', block):
+                                spec_urls.append(urljoin(init_js_url, ms.group(1)))
+                            for mu in re.finditer(r'\burls\s*:\s*\[(.*?)\]', block, re.S):
+                                blk = mu.group(1)
+                                for mx in re.finditer(r'\burl\s*:\s*["\']([^"\']+)["\']', blk):
+                                    spec_urls.append(urljoin(init_js_url, mx.group(1)))
+                    except Exception:
+                        # swagger-initializer.js 접근 실패 시 다음 단계로 진행
+                        pass
 
             # D) 후보 정리/랭킹
             ranked = self._rank_spec_candidates(spec_urls, swagger_ui_url)
@@ -177,7 +181,7 @@ class SwaggerUIStrategy(OpenAPIAnalysisStrategy):
                 guess = f"{parsed.scheme}://{parsed.netloc}/v3/api-docs"
                 ranked = [guess]
 
-            # 스펙들 로드
+            # 스펙들 로드 (강화된 오류 처리)
             openapi_data_list: List[Dict[str, Any]] = []
             for spec_url in ranked:
                 try:
@@ -187,11 +191,22 @@ class SwaggerUIStrategy(OpenAPIAnalysisStrategy):
                     # 최소 요건 체크
                     if isinstance(data, dict) and ("openapi" in data or "swagger" in data):
                         openapi_data_list.append(data)
+                except httpx.HTTPStatusError as e:
+                    # HTTP 상태 오류는 로그로 기록하고 다음 URL 시도
+                    continue
+                except (httpx.RequestError, ValueError) as e:
+                    # 연결 오류나 JSON 파싱 오류는 다음 URL 시도  
+                    continue
                 except Exception:
+                    # 기타 예외도 다음 URL 시도
                     continue
 
             if not openapi_data_list:
-                raise ValueError("Swagger UI에서 유효한 OpenAPI 스펙을 가져오지 못했습니다.")
+                # 더 구체적인 오류 메시지 제공
+                if len(ranked) == 1 and ranked[0].endswith('/v3/api-docs'):
+                    raise ValueError(f"Swagger UI에서 OpenAPI 스펙을 찾을 수 없습니다. {swagger_ui_url}에서 스펙 URL을 확인할 수 없고, 기본 경로({ranked[0]})도 접근할 수 없습니다.")
+                else:
+                    raise ValueError(f"Swagger UI에서 유효한 OpenAPI 스펙을 가져오지 못했습니다. 시도한 URL: {', '.join(ranked)}")
 
         # 기본 정보(첫 스펙 기준)
         primary = openapi_data_list[0]

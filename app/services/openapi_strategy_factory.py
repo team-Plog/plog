@@ -1,6 +1,7 @@
 import re
 from urllib.parse import urlparse
 from typing import Optional
+import httpx
 
 from app.services.openapi_analysis_strategy import OpenAPIAnalysisStrategy, OpenAPIAnalysisContext
 from app.services.openapi_strategy_implementations import DirectOpenAPIStrategy, SwaggerUIStrategy
@@ -47,9 +48,9 @@ class OpenAPIStrategyFactory:
         return cls._swagger_ui_context
     
     @staticmethod
-    def detect_strategy_type(url: str) -> str:
+    async def detect_strategy_type(url: str) -> str:
         """
-        URL 패턴을 분석하여 사용할 전략 타입을 결정합니다.
+        URL 패턴과 Content-Type을 분석하여 사용할 전략 타입을 결정합니다.
         
         Args:
             url: 분석할 URL
@@ -60,6 +61,7 @@ class OpenAPIStrategyFactory:
         parsed = urlparse(url.lower())
         path = parsed.path
         
+        # 1. URL 패턴 기반 우선 판단
         # JSON 파일 확장자나 API docs 패턴이 있으면 Direct 전략
         if any(pattern in path for pattern in [
             '/swagger.json',
@@ -90,7 +92,21 @@ class OpenAPIStrategyFactory:
             if 'swagger' in query or 'openapi' in query or 'docs' in query:
                 return 'swagger_ui'
         
-        # 기본값: Swagger UI 전략 (대부분의 경우 UI 페이지일 가능성이 높음)
+        # 2. URL 패턴으로 판단 불가능한 경우 HEAD 요청으로 Content-Type 확인
+        try:
+            async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
+                response = await client.head(url)
+                content_type = response.headers.get('content-type', '').lower()
+                
+                # JSON 응답이면 Direct 전략
+                if any(ct in content_type for ct in ['application/json', 'application/x-yaml', 'text/yaml']):
+                    return 'direct'
+                    
+        except Exception:
+            # HEAD 요청 실패 시 기본값으로 처리
+            pass
+        
+        # 기본값: Swagger UI 전략
         return 'swagger_ui'
     
     @classmethod
@@ -112,7 +128,7 @@ class OpenAPIStrategyFactory:
             raise ValueError(f"지원하지 않는 전략 타입입니다: {strategy_type}")
     
     @classmethod
-    def create_context_for_request(cls, request: OpenAPISpecRegisterRequest) -> OpenAPIAnalysisContext:
+    async def create_context_for_request(cls, request: OpenAPISpecRegisterRequest) -> OpenAPIAnalysisContext:
         """
         요청 객체를 기반으로 적절한 전략이 설정된 Singleton 컨텍스트를 반환합니다.
         
@@ -123,7 +139,7 @@ class OpenAPIStrategyFactory:
             적절한 전략이 설정된 OpenAPIAnalysisContext (Singleton)
         """
         url = str(request.open_api_url)
-        strategy_type = cls.detect_strategy_type(url)
+        strategy_type = await cls.detect_strategy_type(url)
         
         if strategy_type == 'direct':
             return cls._get_direct_context()
@@ -134,12 +150,12 @@ class OpenAPIStrategyFactory:
 
 
 # 편의를 위한 간단한 함수들
-def create_openapi_analysis_context(request: OpenAPISpecRegisterRequest) -> OpenAPIAnalysisContext:
+async def create_openapi_analysis_context(request: OpenAPISpecRegisterRequest) -> OpenAPIAnalysisContext:
     """요청에 따른 OpenAPI 분석 컨텍스트를 생성합니다."""
-    return OpenAPIStrategyFactory.create_context_for_request(request)
+    return await OpenAPIStrategyFactory.create_context_for_request(request)
 
 
-def analyze_openapi_with_strategy(request: OpenAPISpecRegisterRequest):
+async def analyze_openapi_with_strategy(request: OpenAPISpecRegisterRequest):
     """전략 패턴을 사용하여 OpenAPI를 분석합니다."""
-    context = create_openapi_analysis_context(request)
-    return context.analyze(request)
+    context = await create_openapi_analysis_context(request)
+    return await context.analyze(request)
