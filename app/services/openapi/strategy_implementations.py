@@ -6,7 +6,7 @@ import httpx
 from collections import defaultdict
 from app.db.sqlite.models.project_models import OpenAPISpecModel, EndpointModel, TagModel
 from app.dto.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
-from app.services.openapi_analysis_strategy import OpenAPIAnalysisStrategy
+from app.services.openapi.analysis_strategy import OpenAPIAnalysisStrategy
 
 
 class DirectOpenAPIStrategy(OpenAPIAnalysisStrategy):

@@ -8,7 +8,7 @@ from app.dto.project.openapi import OpenAPISpec
 from app.common.response.code import SuccessCode, FailureCode
 from app.common.response.response_template import ResponseTemplate
 from app.services import *
-from app.services.openapi_strategy_factory import analyze_openapi_with_strategy
+from app.services.openapi.strategy_factory import analyze_openapi_with_strategy
 
 router = APIRouter()
 

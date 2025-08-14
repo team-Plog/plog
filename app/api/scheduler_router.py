@@ -6,7 +6,7 @@ from app.common.response.code import SuccessCode
 from app.common.response.response_template import ResponseTemplate
 from app.db import get_db
 from app.scheduler.k6_job_scheduler import get_scheduler
-from app.services.test_history_service import get_incomplete_test_histories
+from app.services.testing.test_history_service import get_incomplete_test_histories
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

@@ -3,8 +3,8 @@ from urllib.parse import urlparse
 from typing import Optional
 import httpx
 
-from app.services.openapi_analysis_strategy import OpenAPIAnalysisStrategy, OpenAPIAnalysisContext
-from app.services.openapi_strategy_implementations import DirectOpenAPIStrategy, SwaggerUIStrategy
+from app.services.openapi.analysis_strategy import OpenAPIAnalysisStrategy, OpenAPIAnalysisContext
+from app.services.openapi.strategy_implementations import DirectOpenAPIStrategy, SwaggerUIStrategy
 from app.dto.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 
 

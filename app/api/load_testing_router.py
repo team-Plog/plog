@@ -11,11 +11,10 @@ from app.common.response.code import SuccessCode
 from app.common.response.response_template import ResponseTemplate
 from app.db import get_db
 from app.dto.load_test.load_test_request import LoadTestRequest
-from app.services.load_test_service import generate_k6_script
-from app.services.test_history_service import save_test_history
+from app.services.testing.load_test_service import generate_k6_script
+from app.services.testing.test_history_service import save_test_history
 
 from k8s.k8s_service import create_k6_job_with_dashboard
-from app.services import save_test_history
 
 load_dotenv()
 

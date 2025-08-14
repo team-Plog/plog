@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.db.sqlite.models.history_models import TestHistoryModel, ScenarioHistoryModel, StageHistoryModel
 from app.db.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, TagModel, EndpointModel, tags_endpoints
 from app.dto.load_test.load_test_request import LoadTestRequest
-from app.services.project_service import get_project_by_endpoint_id_simple
+from app.services.project.service import get_project_by_endpoint_id_simple
 from app.dto.test_history.test_history_detail_response import (
     TestHistoryDetailResponse,
     ScenarioHistoryDetailResponse,
