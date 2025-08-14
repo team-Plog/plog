@@ -10,7 +10,19 @@ from app.services.openapi_analysis_strategy import OpenAPIAnalysisStrategy
 
 
 class DirectOpenAPIStrategy(OpenAPIAnalysisStrategy):
-    """직접 OpenAPI JSON URL을 분석하는 전략"""
+    """직접 OpenAPI JSON URL을 분석하는 전략 (Singleton)"""
+    
+    _instance = None
+    _initialized = False
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
+    def __init__(self):
+        if not self._initialized:
+            self._initialized = True
     
     async def analyze(self, request: OpenAPISpecRegisterRequest) -> OpenAPISpecModel:
         async with httpx.AsyncClient(follow_redirects=True) as client:
@@ -71,7 +83,19 @@ class DirectOpenAPIStrategy(OpenAPIAnalysisStrategy):
 
 
 class SwaggerUIStrategy(OpenAPIAnalysisStrategy):
-    """Swagger UI 페이지에서 OpenAPI 스펙을 찾아 분석하는 전략"""
+    """Swagger UI 페이지에서 OpenAPI 스펙을 찾아 분석하는 전략 (Singleton)"""
+    
+    _instance = None
+    _initialized = False
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
+    def __init__(self):
+        if not self._initialized:
+            self._initialized = True
     
     def _same_origin(self, u1: str, u2: str) -> bool:
         p1, p2 = urlparse(u1), urlparse(u2)
