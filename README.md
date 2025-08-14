@@ -520,19 +520,3 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 - **에러 처리**: 표준화된 예외 처리
 
 ---
-
-## 🤝 기여하기
-
-1. 저장소를 Fork 합니다
-2. 기능 브랜치를 생성합니다 (`git checkout -b feature/amazing-feature`)
-3. 변경사항을 커밋합니다 (`git commit -m 'Add amazing feature'`)
-4. 브랜치에 푸시합니다 (`git push origin feature/amazing-feature`)
-5. Pull Request를 생성합니다
-
-## 📄 라이센스
-
-이 프로젝트는 MIT 라이센스 하에 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
-
----
-
-**❤️ FastAPI, Kubernetes, k6로 제작되었습니다**
