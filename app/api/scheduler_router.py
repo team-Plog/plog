@@ -98,10 +98,100 @@ async def force_process_job(job_name: str, db: Session = Depends(get_db)):
         return ResponseTemplate.fail("FORCE_PROCESS_ERROR", str(e))
 
 
+@router.post(
+    "/suspend/{job_name}",
+    summary="특정 Job 일시정지 API - 개발용",
+    description="특정 job_name에 해당하는 k8s Job을 일시정지시킵니다 (삭제하지 않음)."
+)
+async def suspend_job(job_name: str):
+    """특정 Job을 일시정지시킵니다."""
+    try:
+        scheduler = get_scheduler()
+        job_monitor = scheduler.job_monitor
+        
+        # Job 상태 확인
+        job_status_info = job_monitor.get_job_status(job_name)
+        
+        if job_status_info.get('error'):
+            return ResponseTemplate.fail(
+                FailureCode.NOT_FOUND_DATA, 
+                f"Job {job_name} not found: {job_status_info.get('error')}"
+            )
+        
+        current_status = job_status_info.get('status')
+        logger.info(f"Current status of job {job_name}: {current_status}")
+        
+        # Job 일시정지 시도
+        success = job_monitor.suspend_job(job_name)
+        
+        if success:
+            result = {
+                "job_name": job_name,
+                "previous_status": current_status,
+                "action": "suspended",
+                "message": f"Job {job_name} suspended successfully"
+            }
+            return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, result)
+        else:
+            return ResponseTemplate.fail(
+                FailureCode.INTERNAL_SERVER_ERROR, 
+                f"Failed to suspend job {job_name}"
+            )
+        
+    except Exception as e:
+        logger.error(f"Error suspending job {job_name}: {e}")
+        return ResponseTemplate.fail(FailureCode.INTERNAL_SERVER_ERROR, str(e))
+
+
+@router.post(
+    "/resume/{job_name}",
+    summary="특정 Job 재개 API - 개발용",
+    description="일시정지된 job_name에 해당하는 k8s Job을 재개시킵니다."
+)
+async def resume_job(job_name: str):
+    """일시정지된 Job을 재개시킵니다."""
+    try:
+        scheduler = get_scheduler()
+        job_monitor = scheduler.job_monitor
+        
+        # Job 상태 확인
+        job_status_info = job_monitor.get_job_status(job_name)
+        
+        if job_status_info.get('error'):
+            return ResponseTemplate.fail(
+                FailureCode.NOT_FOUND_DATA, 
+                f"Job {job_name} not found: {job_status_info.get('error')}"
+            )
+        
+        current_status = job_status_info.get('status')
+        logger.info(f"Current status of job {job_name}: {current_status}")
+        
+        # Job 재개 시도
+        success = job_monitor.resume_job(job_name)
+        
+        if success:
+            result = {
+                "job_name": job_name,
+                "previous_status": current_status,
+                "action": "resumed",
+                "message": f"Job {job_name} resumed successfully"
+            }
+            return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, result)
+        else:
+            return ResponseTemplate.fail(
+                FailureCode.INTERNAL_SERVER_ERROR, 
+                f"Failed to resume job {job_name}"
+            )
+        
+    except Exception as e:
+        logger.error(f"Error resuming job {job_name}: {e}")
+        return ResponseTemplate.fail(FailureCode.INTERNAL_SERVER_ERROR, str(e))
+
+
 @router.delete(
     "/stop/{job_name}",
     summary="특정 Job 중지 API",
-    description="특정 job_name에 해당하는 k8s Job을 중지시킵니다."
+    description="특정 job_name에 해당하는 k8s Job을 중지시킵니다 (삭제)."
 )
 async def stop_job(job_name: str):
     """특정 Job을 중지시킵니다."""
@@ -128,6 +218,7 @@ async def stop_job(job_name: str):
             result = {
                 "job_name": job_name,
                 "previous_status": current_status,
+                "action": "deleted",
                 "message": f"Job {job_name} stop request completed"
             }
             return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, result)

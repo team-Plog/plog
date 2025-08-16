@@ -400,6 +400,89 @@ class JobMonitorService:
             logger.error(f"Error force deleting jobs by original name {original_name}: {e}")
             return 0
 
+    def suspend_job(self, job_name: str) -> bool:
+        """
+        Job을 일시정지 상태로 만듭니다 (삭제하지 않음).
+        
+        Args:
+            job_name: 일시정지할 Job 이름
+            
+        Returns:
+            일시정지 성공 여부
+        """
+        try:
+            # Job 상태 확인
+            job_info = self.get_job_status(job_name)
+            
+            if job_info['status'] in [JobStatus.SUCCEEDED, JobStatus.FAILED]:
+                logger.info(f"Job {job_name} is already completed, no need to suspend")
+                return True
+                
+            # Job의 suspend 필드를 true로 설정
+            body = {
+                "spec": {
+                    "suspend": True
+                }
+            }
+            
+            v1_batch.patch_namespaced_job(
+                name=job_name,
+                namespace=self.namespace,
+                body=body
+            )
+            
+            logger.info(f"Job {job_name} suspended successfully")
+            return True
+            
+        except ApiException as e:
+            if e.status == 404:
+                logger.warning(f"Job {job_name} not found for suspension")
+                return False
+            else:
+                logger.error(f"Error suspending job {job_name}: {e}")
+                return False
+        except Exception as e:
+            logger.error(f"Unexpected error suspending job {job_name}: {e}")
+            return False
+
+    def resume_job(self, job_name: str) -> bool:
+        """
+        일시정지된 Job을 재개합니다.
+        
+        Args:
+            job_name: 재개할 Job 이름
+            
+        Returns:
+            재개 성공 여부
+        """
+        try:
+            # Job의 suspend 필드를 false로 설정
+            body = {
+                "spec": {
+                    "suspend": False
+                }
+            }
+            
+            v1_batch.patch_namespaced_job(
+                name=job_name,
+                namespace=self.namespace,
+                body=body
+            )
+            
+            logger.info(f"Job {job_name} resumed successfully")
+            return True
+            
+        except ApiException as e:
+            if e.status == 404:
+                logger.warning(f"Job {job_name} not found for resume")
+                return False
+            else:
+                logger.error(f"Error resuming job {job_name}: {e}")
+                return False
+        except Exception as e:
+            logger.error(f"Unexpected error resuming job {job_name}: {e}")
+            return False
+
     def stop_running_job(self, job_name: str) -> bool:
         """
         실행 중인 Job을 중지합니다 (완료되지 않은 Job만).
