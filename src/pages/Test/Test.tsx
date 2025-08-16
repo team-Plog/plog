@@ -53,6 +53,7 @@ const Test: React.FC = () => {
   const sseRef = useRef<EventSource | null>(null);
   const [lastJobName, setLastJobName] = useState<string | null>(null);
   const [lastRequestUrl, setLastRequestUrl] = useState<string | null>(null);
+  const [scenarioName, setScenarioName] = useState<string | null>(null);
 
   useEffect(() => {
     console.log("✅ 선택된 testHistoryId:", testHistoryId);
@@ -68,6 +69,10 @@ const Test: React.FC = () => {
         const apiJobName = res?.data?.data?.job_name;
         if (apiJobName && !jobNameState) {
           setJobNameState(apiJobName);
+        }
+        const apiScenarioName = res?.data?.data?.scenarios?.[0]?.name;
+        if (apiScenarioName) {
+          setScenarioName(apiScenarioName);
         }
       })
       .catch((err) => {
@@ -103,7 +108,12 @@ const Test: React.FC = () => {
 
         const timestamp = new Date(parsedData.timestamp).toLocaleTimeString(
           "ko-KR",
-          {hour: "2-digit", minute: "2-digit", second: "2-digit"}
+          {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hourCycle: "h23",
+          }
         );
 
         const overall = parsedData.overall || {
@@ -160,7 +170,9 @@ const Test: React.FC = () => {
 
       // UI/콘솔 확인용 저장 & 로그
       const encoded = encodeURIComponent(effectiveJobName);
-      const url = `${import.meta.env.VITE_API_BASE_URL}/scheduler/force-process/${encoded}`;
+      const url = `${
+        import.meta.env.VITE_API_BASE_URL
+      }/scheduler/force-process/${encoded}`;
       setLastJobName(effectiveJobName);
       setLastRequestUrl(url);
       console.log("[handleStopTest] job_name(raw):", effectiveJobName);
@@ -183,6 +195,37 @@ const Test: React.FC = () => {
     }
   };
 
+  const combinedSeries = [
+    {
+      key: "tps",
+      name: "현재 TPS",
+      color: "#60a5fa",
+      unit: "",
+      yAxis: "left" as const,
+    },
+    {
+      key: "responseTime",
+      name: "평균 응답시간",
+      color: "#82ca9d",
+      unit: "ms",
+      yAxis: "right" as const,
+    },
+    {
+      key: "errorRate",
+      name: "에러율",
+      color: "#f87171",
+      unit: "%",
+      yAxis: "right" as const,
+    },
+    {
+      key: "users",
+      name: "활성 사용자",
+      color: "#8884d8",
+      unit: "",
+      yAxis: "left" as const,
+    },
+  ];
+
   const chartConfigs = [
     {title: "TPS 변화 추이", dataKey: "tps", color: "#60a5fa"},
     {title: "평균 응답시간(ms)", dataKey: "responseTime", color: "#82ca9d"},
@@ -200,7 +243,12 @@ const Test: React.FC = () => {
 
         <main className={styles.main}>
           <div className={styles.title}>
-            <div className="HeadingS">{projectTitle || "프로젝트명 없음"}</div>
+            <div className="HeadingS">
+              {projectTitle || "프로젝트명 없음"}
+              {scenarioName && (
+                <span className={styles.scenarioName}>({scenarioName})</span>
+              )}
+            </div>
             <div className={styles.progress}>
               <div className={styles.status}>
                 <div className={styles.statusItem}>
@@ -247,6 +295,12 @@ const Test: React.FC = () => {
           </div>
 
           <div className={styles.chartWrap}>
+            <MetricChart
+              title="TPS/평균 응답시간/에러율/활성 사용자"
+              data={chartData}
+              combinedSeries={combinedSeries}
+              height={320}
+            />
             {chartConfigs.map((config, index) => (
               <MetricChart
                 key={index}

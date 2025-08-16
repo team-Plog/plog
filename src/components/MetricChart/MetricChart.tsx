@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useMemo, useState} from "react";
 import {
   AreaChart,
   Area,
@@ -7,15 +7,26 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend,
 } from "recharts";
 import styles from "./MetricChart.module.css";
 import "../../assets/styles/typography.css";
 
+interface CombinedSeries {
+  key: string;
+  name: string;
+  color: string;
+  unit?: string;
+  yAxis?: "left" | "right";
+}
+
 interface MetricChartProps {
   title: string;
   data: any[];
-  dataKey: string;
-  color: string;
+  dataKey?: string;
+  color?: string;
+  combinedSeries?: CombinedSeries[];
+  height?: number;
 }
 
 const MetricChart: React.FC<MetricChartProps> = ({
@@ -23,38 +34,167 @@ const MetricChart: React.FC<MetricChartProps> = ({
   data,
   dataKey,
   color,
+  combinedSeries,
+  height = 200,
 }) => {
-  // 그라데이션 ID 생성 (고유성을 위해 dataKey 사용)
-  const gradientId = `gradient-${dataKey}`;
+  const multiMode = !!(combinedSeries && combinedSeries.length > 0);
 
-  return (
-    <div className={styles.chart}>
-      <h3>{title}</h3>
-      <ResponsiveContainer width="100%" height={200}>
-        <AreaChart data={data}>
-          <defs>
-            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity={0.8} />
-              <stop offset="100%" stopColor={color} stopOpacity={0.1} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis 
-            dataKey="time"
-          />
-          <YAxis />
-          <Tooltip />
-          <Area 
-            type="monotone" 
-            dataKey={dataKey} 
-            stroke={color} 
-            fill={`url(#${gradientId})`}
-            strokeWidth={2}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
+  const [visible, setVisible] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries((combinedSeries ?? []).map((s) => [s.key, true]))
   );
+
+  const hasRightAxis = useMemo(
+    () =>
+      (combinedSeries ?? []).some(
+        (s) => (s.yAxis ?? "left") === "right" && visible[s.key]
+      ),
+    [combinedSeries, visible] // visible 상태가 바뀔 때도 재계산하도록 추가
+  );
+
+  const toggle = (key: string) =>
+    setVisible((prev) => ({...prev, [key]: !prev[key]}));
+
+  if (multiMode) {
+    const activeSeries = (combinedSeries ?? []).filter((s) => visible[s.key]);
+
+    // Y축 색상을 동적으로 찾기 (왼쪽: tps/users, 오른쪽: responseTime/errorRate 대표 색상)
+    const yAxisColors = useMemo(() => {
+      const leftColor =
+        (combinedSeries ?? []).find((s) => (s.yAxis ?? "left") === "left")
+          ?.color || "#8884d8";
+      const rightColor =
+        (combinedSeries ?? []).find((s) => s.yAxis === "right")?.color ||
+        "#82ca9d";
+      return {left: leftColor, right: rightColor};
+    }, [combinedSeries]);
+
+    return (
+      <div className={styles.chart}>
+        <h3>{title}</h3>
+        <div className={styles.toggleGroup}>
+          {(combinedSeries ?? []).map((s) => {
+            const isOn = visible[s.key];
+            return (
+              <label
+                key={s.key}
+                className={styles.toggleSwitch}
+                title={isOn ? "숨기기" : "보이기"}>
+                <input
+                  type="checkbox"
+                  checked={isOn}
+                  onChange={() => toggle(s.key)}
+                />
+                <span
+                  className={styles.slider}
+                  style={{backgroundColor: isOn ? s.color : "#ccc"}}
+                />
+                <span className={styles.toggleLabel}>{s.name}</span>
+              </label>
+            );
+          })}
+        </div>
+
+        <ResponsiveContainer width="100%" height={height}>
+          <AreaChart
+            data={data}
+            margin={{top: 5, right: 30, left: 20, bottom: 5}}>
+            <defs>
+              {activeSeries.map((s) => (
+                <linearGradient
+                  key={s.key}
+                  id={`gradient-${s.key}`}
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1">
+                  <stop offset="0%" stopColor={s.color} stopOpacity={0.8} />
+                  <stop offset="100%" stopColor={s.color} stopOpacity={0.1} />
+                </linearGradient>
+              ))}
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="time" />
+
+            <YAxis
+              yAxisId="left"
+              stroke={yAxisColors.left}
+              tick={{fill: yAxisColors.left, fontSize: 12}}
+            />
+            {hasRightAxis && (
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                stroke={yAxisColors.right}
+                tick={{fill: yAxisColors.right, fontSize: 12}}
+              />
+            )}
+
+            <Tooltip
+              formatter={(value: any, name: any, props: any) => {
+                const ser = (combinedSeries ?? []).find(
+                  (s) => s.key === props.dataKey
+                );
+                const unit = ser?.unit ? ` ${ser.unit}` : "";
+                const v =
+                  typeof value === "number" ? value.toLocaleString() : value;
+                return [`${v}${unit}`, ser?.name ?? name];
+              }}
+            />
+            <Legend />
+            {activeSeries.map((s) => (
+              <Area
+                key={s.key}
+                type="monotone"
+                dataKey={s.key}
+                name={s.name}
+                yAxisId={s.yAxis ?? "left"}
+                stroke={s.color}
+                strokeWidth={2}
+                fill={`url(#gradient-${s.key})`}
+                isAnimationActive={false}
+                dot={false}
+              />
+            ))}
+          </AreaChart>
+        </ResponsiveContainer>
+
+        {activeSeries.length === 0 && (
+          <div className={styles.emptyHint}>
+            표시할 그래프가 없습니다. 위에서 선택하세요.
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // // 단일 시리즈 모드 (변경 없음)
+  // const gradientId = `gradient-${dataKey}`;
+  // return (
+  //   <div className={styles.chart}>
+  //     <h3>{title}</h3>
+  //     <ResponsiveContainer width="100%" height={height}>
+  //       <AreaChart data={data}>
+  //         <defs>
+  //           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+  //             <stop offset="0%" stopColor={color} stopOpacity={0.8} />
+  //             <stop offset="100%" stopColor={color} stopOpacity={0.1} />
+  //           </linearGradient>
+  //         </defs>
+  //         <CartesianGrid strokeDasharray="3 3" />
+  //         <XAxis dataKey="time" />
+  //         <YAxis />
+  //         <Tooltip />
+  //         <Area
+  //           type="monotone"
+  //           dataKey={dataKey!}
+  //           stroke={color}
+  //           fill={`url(#${gradientId})`}
+  //           strokeWidth={2}
+  //         />
+  //       </AreaChart>
+  //     </ResponsiveContainer>
+  //   </div>
+  // );
 };
 
 export default MetricChart;

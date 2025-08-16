@@ -16,6 +16,12 @@
   justify-content: space-between;
   align-items: center;
 }
+
+.scenarioName {
+  color: var(--color-gray-300);
+  margin-left: var(--spacing-sm);
+}
+
 /* Header 스타일 */
 .header {
   margin-bottom: var(--spacing-lg);
