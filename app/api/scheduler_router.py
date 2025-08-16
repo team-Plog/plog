@@ -6,7 +6,7 @@ from app.common.response.code import SuccessCode, FailureCode
 from app.common.response.response_template import ResponseTemplate
 from app.db import get_db
 from app.scheduler.k6_job_scheduler import get_scheduler
-from app.services.testing.test_history_service import get_incomplete_test_histories
+from app.services.testing.test_history_service import get_incomplete_test_histories, get_test_history_by_job_name
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -75,27 +75,6 @@ async def restart_scheduler():
     except Exception as e:
         logger.error(f"Error restarting scheduler: {e}")
         return ResponseTemplate.fail("SCHEDULER_RESTART_ERROR", str(e))
-
-
-@router.post(
-    "/force-process/{job_name}",
-    summary="특정 Job 강제 처리 API",
-    description="특정 Job을 즉시 처리합니다."
-)
-async def force_process_job(job_name: str, db: Session = Depends(get_db)):
-    """특정 Job을 강제로 처리합니다."""
-    try:
-        scheduler = get_scheduler()
-        
-
-        return ResponseTemplate.success(
-            SuccessCode.SUCCESS_CODE,
-            {"message": f"Job {job_name} processing triggered"}
-        )
-        
-    except Exception as e:
-        logger.error(f"Error force processing job {job_name}: {e}")
-        return ResponseTemplate.fail("FORCE_PROCESS_ERROR", str(e))
 
 
 @router.post(
@@ -193,7 +172,10 @@ async def resume_job(job_name: str):
     summary="특정 Job 중지 API",
     description="특정 job_name에 해당하는 k8s Job을 중지시킵니다 (삭제)."
 )
-async def stop_job(job_name: str):
+async def stop_job(
+        job_name: str,
+        db: Session = Depends(get_db)
+):
     """특정 Job을 중지시킵니다."""
     try:
         scheduler = get_scheduler()
@@ -213,20 +195,25 @@ async def stop_job(job_name: str):
         
         # Job 중지 시도
         success = job_monitor.stop_running_job(job_name)
-        
-        if success:
-            result = {
-                "job_name": job_name,
-                "previous_status": current_status,
-                "action": "deleted",
-                "message": f"Job {job_name} stop request completed"
-            }
-            return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, result)
-        else:
+
+        if not success:
             return ResponseTemplate.fail(
-                FailureCode.INTERNAL_SERVER_ERROR, 
+                FailureCode.INTERNAL_SERVER_ERROR,
                 f"Failed to stop job {job_name}"
             )
+
+        test_history = get_test_history_by_job_name(db, job_name)
+        test_history.is_completed = True
+        db.commit()
+
+        result = {
+            "job_name": job_name,
+            "previous_status": current_status,
+            "action": "deleted",
+            "message": f"Job {job_name} stop request completed"
+        }
+        return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, result)
+
         
     except Exception as e:
         logger.error(f"Error stopping job {job_name}: {e}")
