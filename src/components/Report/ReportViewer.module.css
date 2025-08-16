@@ -180,6 +180,26 @@
   height: var(--icon-size-md);
 }
 
+/* 편집 가능한 텍스트 스타일 */
+.editableText {
+  cursor: pointer;
+  transition: border 0.2s ease;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  padding: 4px;
+  margin: -4px;
+}
+
+.editableText:hover {
+  border-color: var(--color-border-primary);
+  background-color: var(--color-gray-100);
+}
+
+.selectedText {
+  border-color: var(--color-accent-primary) !important;
+  background-color: var(--color-gray-100);
+}
+
 /* 모바일 반응형 */
 @media (max-width: 768px) {
   .documentHeader h1 {
@@ -217,8 +237,6 @@
   overflow: visible !important;
   max-height: none !important;
 }
-
-
 
 /* 스크롤 컨테이너 PDF 최적화 */
 .previewContainer[data-pdf-capture] {

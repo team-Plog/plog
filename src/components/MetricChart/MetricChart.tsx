@@ -70,14 +70,14 @@ const MetricChart: React.FC<MetricChartProps> = ({
 
     return (
       <div className={styles.chart}>
-        <h3>{title}</h3>
+        <h3 className="HeadingS">{title}</h3>
         <div className={styles.toggleGroup}>
           {(combinedSeries ?? []).map((s) => {
             const isOn = visible[s.key];
             return (
               <label
                 key={s.key}
-                className={styles.toggleSwitch}
+                className={`${styles.toggleSwitch} CaptionLight`}
                 title={isOn ? "숨기기" : "보이기"}>
                 <input
                   type="checkbox"
@@ -88,7 +88,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
                   className={styles.slider}
                   style={{backgroundColor: isOn ? s.color : "#ccc"}}
                 />
-                <span className={styles.toggleLabel}>{s.name}</span>
+                <span className={`${styles.toggleLabel} CaptionLight`}>{s.name}</span>
               </label>
             );
           })}
@@ -159,7 +159,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
         </ResponsiveContainer>
 
         {activeSeries.length === 0 && (
-          <div className={styles.emptyHint}>
+          <div className={`${styles.emptyHint} Body`}>
             표시할 그래프가 없습니다. 위에서 선택하세요.
           </div>
         )}
@@ -167,7 +167,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
     );
   }
 
-  // // 단일 시리즈 모드 (변경 없음)
+  // 단일 시리즈 모드 (변경 없음)
   // const gradientId = `gradient-${dataKey}`;
   // return (
   //   <div className={styles.chart}>
