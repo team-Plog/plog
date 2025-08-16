@@ -2,7 +2,7 @@ import logging
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.common.response.code import SuccessCode
+from app.common.response.code import SuccessCode, FailureCode
 from app.common.response.response_template import ResponseTemplate
 from app.db import get_db
 from app.scheduler.k6_job_scheduler import get_scheduler
@@ -80,16 +80,14 @@ async def restart_scheduler():
 @router.post(
     "/force-process/{job_name}",
     summary="특정 Job 강제 처리 API",
-    description="특정 Job을 즉시 처리합니다. (디버깅 목적)"
+    description="특정 Job을 즉시 처리합니다."
 )
 async def force_process_job(job_name: str, db: Session = Depends(get_db)):
     """특정 Job을 강제로 처리합니다."""
     try:
         scheduler = get_scheduler()
         
-        # 단일 Job 처리 실행
-        scheduler._process_single_job(db, job_name)
-        
+
         return ResponseTemplate.success(
             SuccessCode.SUCCESS_CODE,
             {"message": f"Job {job_name} processing triggered"}
@@ -98,3 +96,47 @@ async def force_process_job(job_name: str, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Error force processing job {job_name}: {e}")
         return ResponseTemplate.fail("FORCE_PROCESS_ERROR", str(e))
+
+
+@router.delete(
+    "/stop/{job_name}",
+    summary="특정 Job 중지 API",
+    description="특정 job_name에 해당하는 k8s Job을 중지시킵니다."
+)
+async def stop_job(job_name: str):
+    """특정 Job을 중지시킵니다."""
+    try:
+        scheduler = get_scheduler()
+        job_monitor = scheduler.job_monitor
+        
+        # Job 상태 확인
+        job_status_info = job_monitor.get_job_status(job_name)
+        
+        if job_status_info.get('error'):
+            return ResponseTemplate.fail(
+                FailureCode.NOT_FOUND_DATA, 
+                f"Job {job_name} not found: {job_status_info.get('error')}"
+            )
+        
+        current_status = job_status_info.get('status')
+        logger.info(f"Current status of job {job_name}: {current_status}")
+        
+        # Job 중지 시도
+        success = job_monitor.stop_running_job(job_name)
+        
+        if success:
+            result = {
+                "job_name": job_name,
+                "previous_status": current_status,
+                "message": f"Job {job_name} stop request completed"
+            }
+            return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, result)
+        else:
+            return ResponseTemplate.fail(
+                FailureCode.INTERNAL_SERVER_ERROR, 
+                f"Failed to stop job {job_name}"
+            )
+        
+    except Exception as e:
+        logger.error(f"Error stopping job {job_name}: {e}")
+        return ResponseTemplate.fail(FailureCode.INTERNAL_SERVER_ERROR, str(e))
