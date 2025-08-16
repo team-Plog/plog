@@ -190,6 +190,37 @@ const Test: React.FC = () => {
     }
   };
 
+  const combinedSeries = [
+    {
+      key: "tps",
+      name: "현재 TPS",
+      color: "#60a5fa",
+      unit: "",
+      yAxis: "left" as const,
+    },
+    {
+      key: "responseTime",
+      name: "평균 응답시간",
+      color: "#82ca9d",
+      unit: "ms",
+      yAxis: "right" as const,
+    },
+    {
+      key: "errorRate",
+      name: "에러율",
+      color: "#f87171",
+      unit: "%",
+      yAxis: "right" as const,
+    },
+    {
+      key: "users",
+      name: "활성 사용자",
+      color: "#8884d8",
+      unit: "",
+      yAxis: "left" as const,
+    },
+  ];
+
   const chartConfigs = [
     {title: "TPS 변화 추이", dataKey: "tps", color: "#60a5fa"},
     {title: "평균 응답시간(ms)", dataKey: "responseTime", color: "#82ca9d"},
@@ -259,6 +290,12 @@ const Test: React.FC = () => {
           </div>
 
           <div className={styles.chartWrap}>
+            <MetricChart
+              title="종합 지표 (TPS/VUs vs 응답시간/에러율)"
+              data={chartData}
+              combinedSeries={combinedSeries}
+              height={320}
+            />
             {chartConfigs.map((config, index) => (
               <MetricChart
                 key={index}
