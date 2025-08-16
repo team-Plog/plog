@@ -403,6 +403,7 @@ const generatePDF = async () => {
                   <ReportViewer
                     reportData={reportData}
                     reportConfig={reportConfig}
+                    isEditing={false}
                   />
                 </div>
               )}
