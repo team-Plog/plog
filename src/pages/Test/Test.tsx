@@ -53,6 +53,7 @@ const Test: React.FC = () => {
   const sseRef = useRef<EventSource | null>(null);
   const [lastJobName, setLastJobName] = useState<string | null>(null);
   const [lastRequestUrl, setLastRequestUrl] = useState<string | null>(null);
+  const [scenarioName, setScenarioName] = useState<string | null>(null);
 
   useEffect(() => {
     console.log("✅ 선택된 testHistoryId:", testHistoryId);
@@ -68,6 +69,10 @@ const Test: React.FC = () => {
         const apiJobName = res?.data?.data?.job_name;
         if (apiJobName && !jobNameState) {
           setJobNameState(apiJobName);
+        }
+        const apiScenarioName = res?.data?.data?.scenarios?.[0]?.name;
+        if (apiScenarioName) {
+          setScenarioName(apiScenarioName);
         }
       })
       .catch((err) => {
@@ -160,7 +165,9 @@ const Test: React.FC = () => {
 
       // UI/콘솔 확인용 저장 & 로그
       const encoded = encodeURIComponent(effectiveJobName);
-      const url = `${import.meta.env.VITE_API_BASE_URL}/scheduler/force-process/${encoded}`;
+      const url = `${
+        import.meta.env.VITE_API_BASE_URL
+      }/scheduler/force-process/${encoded}`;
       setLastJobName(effectiveJobName);
       setLastRequestUrl(url);
       console.log("[handleStopTest] job_name(raw):", effectiveJobName);
@@ -200,7 +207,12 @@ const Test: React.FC = () => {
 
         <main className={styles.main}>
           <div className={styles.title}>
-            <div className="HeadingS">{projectTitle || "프로젝트명 없음"}</div>
+            <div className="HeadingS">
+              {projectTitle || "프로젝트명 없음"}
+              {scenarioName && (
+                <span className={styles.scenarioName}>({scenarioName})</span>
+              )}
+            </div>
             <div className={styles.progress}>
               <div className={styles.status}>
                 <div className={styles.statusItem}>
