@@ -13,20 +13,18 @@ import styles from "./MetricChart.module.css";
 import "../../assets/styles/typography.css";
 
 interface CombinedSeries {
-  key: string; 
-  name: string; 
+  key: string;
+  name: string;
   color: string;
-  unit?: string; 
-  yAxis?: "left" | "right"; 
+  unit?: string;
+  yAxis?: "left" | "right";
 }
 
 interface MetricChartProps {
   title: string;
   data: any[];
-  // 단일 시리즈 모드
   dataKey?: string;
   color?: string;
-  // 합친 그래프 모드
   combinedSeries?: CombinedSeries[];
   height?: number;
 }
@@ -41,14 +39,16 @@ const MetricChart: React.FC<MetricChartProps> = ({
 }) => {
   const multiMode = !!(combinedSeries && combinedSeries.length > 0);
 
-  // 시리즈 가시성 토글 상태
   const [visible, setVisible] = useState<Record<string, boolean>>(() =>
     Object.fromEntries((combinedSeries ?? []).map((s) => [s.key, true]))
   );
 
   const hasRightAxis = useMemo(
-    () => (combinedSeries ?? []).some((s) => (s.yAxis ?? "left") === "right"),
-    [combinedSeries]
+    () =>
+      (combinedSeries ?? []).some(
+        (s) => (s.yAxis ?? "left") === "right" && visible[s.key]
+      ),
+    [combinedSeries, visible] // visible 상태가 바뀔 때도 재계산하도록 추가
   );
 
   const toggle = (key: string) =>
@@ -57,11 +57,20 @@ const MetricChart: React.FC<MetricChartProps> = ({
   if (multiMode) {
     const activeSeries = (combinedSeries ?? []).filter((s) => visible[s.key]);
 
+    // Y축 색상을 동적으로 찾기 (왼쪽: tps/users, 오른쪽: responseTime/errorRate 대표 색상)
+    const yAxisColors = useMemo(() => {
+      const leftColor =
+        (combinedSeries ?? []).find((s) => (s.yAxis ?? "left") === "left")
+          ?.color || "#8884d8";
+      const rightColor =
+        (combinedSeries ?? []).find((s) => s.yAxis === "right")?.color ||
+        "#82ca9d";
+      return {left: leftColor, right: rightColor};
+    }, [combinedSeries]);
+
     return (
       <div className={styles.chart}>
         <h3>{title}</h3>
-
-        {/* ---- 토글 버튼 그룹 ---- */}
         <div className={styles.toggleGroup}>
           {(combinedSeries ?? []).map((s) => {
             const isOn = visible[s.key];
@@ -86,7 +95,9 @@ const MetricChart: React.FC<MetricChartProps> = ({
         </div>
 
         <ResponsiveContainer width="100%" height={height}>
-          <AreaChart data={data}>
+          <AreaChart
+            data={data}
+            margin={{top: 5, right: 30, left: 20, bottom: 5}}>
             <defs>
               {activeSeries.map((s) => (
                 <linearGradient
@@ -103,8 +114,21 @@ const MetricChart: React.FC<MetricChartProps> = ({
             </defs>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="time" />
-            <YAxis yAxisId="left" />
-            {hasRightAxis && <YAxis yAxisId="right" orientation="right" />}
+
+            <YAxis
+              yAxisId="left"
+              stroke={yAxisColors.left}
+              tick={{fill: yAxisColors.left, fontSize: 12}}
+            />
+            {hasRightAxis && (
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                stroke={yAxisColors.right}
+                tick={{fill: yAxisColors.right, fontSize: 12}}
+              />
+            )}
+
             <Tooltip
               formatter={(value: any, name: any, props: any) => {
                 const ser = (combinedSeries ?? []).find(
@@ -143,8 +167,8 @@ const MetricChart: React.FC<MetricChartProps> = ({
     );
   }
 
-  const gradientId = `gradient-${dataKey}`;
-
+  // // 단일 시리즈 모드 (변경 없음)
+  // const gradientId = `gradient-${dataKey}`;
   // return (
   //   <div className={styles.chart}>
   //     <h3>{title}</h3>

@@ -108,7 +108,12 @@ const Test: React.FC = () => {
 
         const timestamp = new Date(parsedData.timestamp).toLocaleTimeString(
           "ko-KR",
-          {hour: "2-digit", minute: "2-digit", second: "2-digit"}
+          {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hourCycle: "h23",
+          }
         );
 
         const overall = parsedData.overall || {
@@ -291,7 +296,7 @@ const Test: React.FC = () => {
 
           <div className={styles.chartWrap}>
             <MetricChart
-              title="종합 지표 (TPS/VUs vs 응답시간/에러율)"
+              title="TPS/평균 응답시간/에러율/활성 사용자"
               data={chartData}
               combinedSeries={combinedSeries}
               height={320}
