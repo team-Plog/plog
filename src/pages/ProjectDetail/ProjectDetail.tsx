@@ -350,6 +350,27 @@ const ProjectDetail: React.FC = () => {
       return;
     }
 
+    // duration 형식 검증
+    const durationRegex = /^\d+[smh]$/;
+    const invalidDurations: string[] = [];
+
+    for (const config of apiTestConfigs) {
+      for (const stage of config.stages) {
+        if (!durationRegex.test(stage.duration)) {
+          invalidDurations.push(
+            `${config.endpoint_path}의 테스트 시간 "${stage.duration}"`
+          );
+        }
+      }
+    }
+
+    if (invalidDurations.length > 0) {
+      alert(
+        `다음 테스트 시간 형식이 올바르지 않습니다:\n${invalidDurations.join('\n')}\n\n올바른 형식: 숫자 + 단위 (예: 10s, 5m, 1h)`
+      );
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
