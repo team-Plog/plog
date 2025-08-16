@@ -95,21 +95,15 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
     updateConfig({ stages: newStages });
   };
 
-  // duration 포맷 검증 및 변환
-  const formatDuration = (value: string): string => {
-    // 숫자만 입력된 경우 's' 추가
-    if (/^\d+$/.test(value)) {
-      return value + 's';
-    }
-    // 이미 올바른 포맷인지 확인
-    if (/^\d+[smh]$/.test(value)) {
-      return value;
-    }
-    return value;
+  // duration 입력값 필터링 (숫자, s, m, h만 허용)
+  const handleDurationInput = (value: string): string => {
+    // 숫자, s, m, h만 허용하고 나머지 문자는 제거
+    return value.replace(/[^0-9smh]/g, '');
   };
 
   const handleDurationChange = (index: number, value: string) => {
-    updateStage(index, 'duration', formatDuration(value));
+    const filteredValue = handleDurationInput(value);
+    updateStage(index, 'duration', filteredValue);
   };
 
   return (
