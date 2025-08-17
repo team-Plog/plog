@@ -144,7 +144,7 @@ def update_test_history_final_metrics(
         
         # 전체 테스트 메트릭 업데이트 - InfluxDB 플랫 구조에 맞게 수정
         test_history.is_completed = True
-        test_history.completed_at = datetime.utcnow()
+        test_history.completed_at = datetime.now(kst)
         
         # TPS 메트릭 (현재는 단일 값만 있으므로 max/min/avg에 동일값 설정)
         if 'actual_tps' in overall_metrics:
@@ -509,7 +509,7 @@ def mark_test_as_completed(db: Session, test_history: TestHistoryModel) -> bool:
     """테스트를 완료 상태로 마킹"""
     try:
         test_history.is_completed = True
-        test_history.completed_at = datetime.utcnow()
+        test_history.completed_at = datetime.now(kst)
         
         db.commit()
         db.refresh(test_history)

@@ -4,6 +4,7 @@ from app.db.influxdb.database import client
 import asyncio
 import json
 import logging
+import pytz
 from typing import List, Dict, Any
 from datetime import datetime
 
@@ -12,6 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+kst = pytz.timezone('Asia/Seoul')
 
 
 def get_scenario_names(job_name: str) -> List[str]:
@@ -257,7 +259,7 @@ def collect_metrics_data(job_name: str) -> Dict[str, Any]:
         })
     
     result = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(kst).isoformat(),
         "overall": overall_metrics,
         "scenarios": scenario_list
     }
@@ -277,7 +279,7 @@ async def event_stream(job_name: str):
         except Exception as e:
             logger.error(f"Error in event_stream: {e}")
             error_data = {
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(kst).isoformat(),
                 "overall": {"tps": 0, "vus": 0, "response_time": 0, "error_rate": 0},
                 "scenarios": [],
                 "error": str(e)

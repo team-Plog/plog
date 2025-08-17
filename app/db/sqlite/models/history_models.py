@@ -1,8 +1,14 @@
+import pytz
 from datetime import datetime
 
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, Table, DateTime, Float, Boolean
 from sqlalchemy.orm import relationship
 from app.db.sqlite.database import Base
+
+def now_kst():
+    """KST 타임존으로 현재 시간 반환"""
+    kst = pytz.timezone('Asia/Seoul')
+    return datetime.now(kst)
 
 class TestHistoryModel(Base):
     __tablename__ = "test_history"
@@ -11,7 +17,7 @@ class TestHistoryModel(Base):
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     target_tps = Column(Float, nullable=True)
-    tested_at = Column(DateTime, default=datetime.utcnow)
+    tested_at = Column(DateTime, default=now_kst)
 
     job_name = Column(String(255), nullable=True)
     k6_script_file_name = Column(String(255), nullable=True)

@@ -1,4 +1,7 @@
 import logging
+import pytz
+from datetime import datetime
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -10,6 +13,8 @@ from app.services.testing.test_history_service import get_incomplete_test_histor
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+kst = pytz.timezone('Asia/Seoul')
 
 
 @router.get(
@@ -204,6 +209,8 @@ async def stop_job(
 
         test_history = get_test_history_by_job_name(db, job_name)
         test_history.is_completed = True
+
+        test_history.completed_at = datetime.now(kst)
         db.commit()
 
         result = {
