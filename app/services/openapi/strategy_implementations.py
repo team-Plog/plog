@@ -34,7 +34,14 @@ class DirectOpenAPIStrategy(OpenAPIAnalysisStrategy):
         title = openapi_data.get("info", {}).get("title", "Untitled")
         version = openapi_data.get("info", {}).get("version", "unknown")
         servers = openapi_data.get("servers", [])
-        base_url = servers[0]["url"]
+        
+        # base_url 결정 (servers가 없거나 비어있는 경우 요청 URL에서 파싱)
+        if servers and isinstance(servers, list) and len(servers) > 0 and isinstance(servers[0], dict) and "url" in servers[0]:
+            base_url = str(servers[0]["url"])
+        else:
+            # 요청 URL에서 base_url 파싱 (scheme://netloc 부분만 추출)
+            parsed_url = urlparse(str(request.open_api_url))
+            base_url = f"{parsed_url.scheme}://{parsed_url.netloc}" if parsed_url.scheme and parsed_url.netloc else str(request.open_api_url)
 
         # 2. openapi 스펙 모델 생성
         openapi_spec_model = OpenAPISpecModel(
