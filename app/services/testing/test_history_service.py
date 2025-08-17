@@ -252,6 +252,7 @@ def get_test_histories_with_project_info(db: Session, page: int = 0, size: int =
     return db.query(TestHistoryModel) \
         .join(TestHistoryModel.project) \
         .options(joinedload(TestHistoryModel.project)) \
+        .order_by(TestHistoryModel.tested_at.desc()) \
         .offset(page * size) \
         .limit(size) \
         .all()
@@ -259,7 +260,7 @@ def get_test_histories_with_project_info(db: Session, page: int = 0, size: int =
 
 def get_test_histories_by_project_id(db: Session, project_id: int) -> List[TestHistoryModel]:
     """특정 프로젝트의 테스트 기록을 조회합니다."""
-    return (
+    results = (
         db.query(TestHistoryModel)
         .join(TestHistoryModel.project)
         .options(joinedload(TestHistoryModel.project))
@@ -267,6 +268,8 @@ def get_test_histories_by_project_id(db: Session, project_id: int) -> List[TestH
         .order_by(TestHistoryModel.tested_at.desc())
         .all()
     )
+
+    return results
 
 
 def build_test_history_detail_response(test_history: TestHistoryModel) -> TestHistoryDetailResponse:

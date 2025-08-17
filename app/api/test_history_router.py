@@ -57,7 +57,7 @@ def get_test_history_simple_list(
             project_id=test_history.project.id,
             project_title=test_history.project.title or "알 수 없는 프로젝트",
             test_title=test_history.title,
-            status_datetime=test_history.completed_at if test_history.completed_at else test_history.tested_at,
+            status_datetime=test_history.tested_at,
             test_status=test_status
         ))
     
@@ -129,7 +129,7 @@ def get_test_histories_by_project(
             project_id=test_history.project.id,
             project_title=test_history.project.title or "알 수 없는 프로젝트",
             test_title=test_history.title,
-            status_datetime=test_history.completed_at if test_history.completed_at else test_history.tested_at,
+            status_datetime=test_history.tested_at,
             test_status=test_status
         ))
     
