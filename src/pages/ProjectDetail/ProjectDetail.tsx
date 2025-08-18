@@ -36,6 +36,14 @@ interface ApiServer {
   }[];
 }
 
+// 임시 저장 데이터 타입 정의
+interface TempSaveData {
+  scenarioTitle: string;
+  scenarioDescription: string;
+  targetTps: string;
+  apiTestConfigs: ApiTestConfig[];
+}
+
 const ProjectDetail: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -50,6 +58,7 @@ const ProjectDetail: React.FC = () => {
   const [apiTestConfigs, setApiTestConfigs] = useState<ApiTestConfig[]>([]);
   const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // 리사이즈 관련 상태
   const [leftWidth, setLeftWidth] = useState(20.1); // %
@@ -65,6 +74,67 @@ const ProjectDetail: React.FC = () => {
   const MIN_PANEL_WIDTH = 15;
   const MAX_PANEL_WIDTH = 40;
   const COLLAPSE_THRESHOLD = 12; // 이 너비 이하로 줄어들면 자동으로 접힘
+
+  // 임시 저장 키 생성
+  const getTempSaveKey = (projectId: number) => `temp_save_project_${projectId}`;
+
+  // 임시 저장된 데이터 불러오기
+  const loadTempSaveData = useCallback((projectId: number) => {
+    try {
+      const key = getTempSaveKey(projectId);
+      const savedData = localStorage.getItem(key);
+      if (savedData) {
+        const parsedData: TempSaveData = JSON.parse(savedData);
+        setScenarioTitle(parsedData.scenarioTitle || "");
+        setScenarioDescription(parsedData.scenarioDescription || "");
+        setTargetTps(parsedData.targetTps || "");
+        setApiTestConfigs(parsedData.apiTestConfigs || []);
+        console.log("✅ 임시 저장된 데이터 복원 완료:", parsedData);
+        return true;
+      }
+    } catch (error) {
+      console.error("❌ 임시 저장 데이터 불러오기 실패:", error);
+    }
+    return false;
+  }, []);
+
+  // 임시 저장 함수
+  const handleTempSave = async () => {
+    if (!projectId) return;
+
+    setIsSaving(true);
+    try {
+      const tempData: TempSaveData = {
+        scenarioTitle,
+        scenarioDescription,
+        targetTps,
+        apiTestConfigs,
+      };
+
+      const key = getTempSaveKey(projectId);
+      localStorage.setItem(key, JSON.stringify(tempData));
+      console.log("💾 임시 저장 완료:", tempData);
+      
+      // 사용자에게 피드백 제공
+      alert("입력된 데이터가 임시 저장되었습니다.");
+    } catch (error) {
+      console.error("❌ 임시 저장 실패:", error);
+      alert("임시 저장에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 임시 저장 데이터 삭제 (테스트 실행 시)
+  const clearTempSaveData = useCallback((projectId: number) => {
+    try {
+      const key = getTempSaveKey(projectId);
+      localStorage.removeItem(key);
+      console.log("🗑️ 임시 저장 데이터 삭제 완료");
+    } catch (error) {
+      console.error("❌ 임시 저장 데이터 삭제 실패:", error);
+    }
+  }, []);
 
   useEffect(() => {
     if (!projectId) {
@@ -83,12 +153,15 @@ const ProjectDetail: React.FC = () => {
         });
         setOpenApiSpecs(data.openapi_specs);
         console.log("📩 프로젝트 상세 정보: ", data);
+        
+        // 프로젝트 데이터 로딩 후 임시 저장된 데이터 복원
+        loadTempSaveData(data.id);
       })
       .catch((err) => {
         console.error("❌ 프로젝트 상세 불러오기 실패:", err);
         navigate("/");
       });
-  }, [projectId, navigate]);
+  }, [projectId, navigate, loadTempSaveData]);
 
   // 리사이즈 핸들러
   const handleMouseDown = useCallback((side: 'left' | 'right') => (e: React.MouseEvent) => {
@@ -394,6 +467,9 @@ const ProjectDetail: React.FC = () => {
       const response = await generateLoadTestScript(loadTestRequest);
       console.log("✅ 로드 테스트 시작:", response.data);
 
+      // 테스트 실행 성공 시 임시 저장 데이터 삭제
+      clearTempSaveData(projectId);
+
       // 테스트 페이지로 이동하면서 job_name을 전달
       navigate("/test", { 
         state: { 
@@ -637,9 +713,11 @@ const ProjectDetail: React.FC = () => {
             <Button 
               variant="secondary" 
               icon={<Save />}
+              onClick={handleTempSave}
+              disabled={isSaving}
               responsive={true}
             >
-              임시 저장
+              {isSaving ? "저장 중..." : "임시 저장"}
             </Button>
             <Button
               variant="primaryGradient"
