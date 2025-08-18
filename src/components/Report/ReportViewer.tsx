@@ -378,118 +378,52 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                   </thead>
                   <tbody>
                     {reportData.scenarios && reportData.scenarios.length > 0 ? (
-                      <>
-                        {reportData.scenarios.map((scenario, index) => (
-                          <tr key={index}>
-                            <td>{scenario.name}</td>
-                            <td>
-                              {formatNumber(
-                                scenario.response_time.avg / 1000,
-                                3
-                              )}
-                            </td>
-                            <td>
-                              {formatNumber(
-                                scenario.response_time.min / 1000,
-                                3
-                              )}
-                            </td>
-                            <td>
-                              {formatNumber(
-                                scenario.response_time.max / 1000,
-                                3
-                              )}
-                            </td>
-                            <td>
-                              {formatNumber(
-                                scenario.response_time.p50 / 1000,
-                                3
-                              )}
-                            </td>
-                            <td>
-                              {formatNumber(
-                                scenario.response_time.p95 / 1000,
-                                3
-                              )}
-                            </td>
-                            <td>
-                              {formatNumber(
-                                scenario.response_time.p99 / 1000,
-                                3
-                              )}
-                            </td>
-                            <td>
-                              {scenario.response_time_target
-                                ? `${scenario.response_time_target}초`
-                                : "X"}
-                            </td>
-                          </tr>
-                        ))}
-
-                        {/* 평균 행 */}
-                        <tr
-                          style={{
-                            fontWeight: "bold",
-                            backgroundColor: "#f9f9f9",
-                          }}>
-                          <td>전체</td>
+                      reportData.scenarios.map((scenario, index) => (
+                        <tr key={index}>
+                          <td>{scenario.name}</td>
                           <td>
                             {formatNumber(
-                              reportData.scenarios.reduce(
-                                (sum, s) => sum + s.response_time.avg / 1000,
-                                0
-                              ) / reportData.scenarios.length,
+                              scenario.response_time.avg / 1000,
                               3
                             )}
                           </td>
                           <td>
                             {formatNumber(
-                              reportData.scenarios.reduce(
-                                (sum, s) => sum + s.response_time.min / 1000,
-                                0
-                              ) / reportData.scenarios.length,
+                              scenario.response_time.min / 1000,
                               3
                             )}
                           </td>
                           <td>
                             {formatNumber(
-                              reportData.scenarios.reduce(
-                                (sum, s) => sum + s.response_time.max / 1000,
-                                0
-                              ) / reportData.scenarios.length,
+                              scenario.response_time.max / 1000,
                               3
                             )}
                           </td>
                           <td>
                             {formatNumber(
-                              reportData.scenarios.reduce(
-                                (sum, s) => sum + s.response_time.p50 / 1000,
-                                0
-                              ) / reportData.scenarios.length,
+                              scenario.response_time.p50 / 1000,
                               3
                             )}
                           </td>
                           <td>
                             {formatNumber(
-                              reportData.scenarios.reduce(
-                                (sum, s) => sum + s.response_time.p95 / 1000,
-                                0
-                              ) / reportData.scenarios.length,
+                              scenario.response_time.p95 / 1000,
                               3
                             )}
                           </td>
                           <td>
                             {formatNumber(
-                              reportData.scenarios.reduce(
-                                (sum, s) => sum + s.response_time.p99 / 1000,
-                                0
-                              ) / reportData.scenarios.length,
+                              scenario.response_time.p99 / 1000,
                               3
                             )}
                           </td>
-                          <td></td>
+                          <td>
+                            {scenario.response_time_target
+                              ? `${scenario.response_time_target}초`
+                              : "X"}
+                          </td>
                         </tr>
-                      </>
+                      ))
                     ) : (
                       <tr>
                         <td>데이터 없음</td>
@@ -503,6 +437,66 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                       </tr>
                     )}
                   </tbody>
+                  <tfoot>
+                    <tr>
+                      <th>전체</th>
+                      <th>
+                        {formatNumber(
+                          reportData.scenarios.reduce(
+                            (sum, s) => sum + s.response_time.avg / 1000,
+                            0
+                          ) / reportData.scenarios.length,
+                          3
+                        )}
+                      </th>
+                      <th>
+                        {formatNumber(
+                          reportData.scenarios.reduce(
+                            (sum, s) => sum + s.response_time.min / 1000,
+                            0
+                          ) / reportData.scenarios.length,
+                          3
+                        )}
+                      </th>
+                      <th>
+                        {formatNumber(
+                          reportData.scenarios.reduce(
+                            (sum, s) => sum + s.response_time.max / 1000,
+                            0
+                          ) / reportData.scenarios.length,
+                          3
+                        )}
+                      </th>
+                      <th>
+                        {formatNumber(
+                          reportData.scenarios.reduce(
+                            (sum, s) => sum + s.response_time.p50 / 1000,
+                            0
+                          ) / reportData.scenarios.length,
+                          3
+                        )}
+                      </th>
+                      <th>
+                        {formatNumber(
+                          reportData.scenarios.reduce(
+                            (sum, s) => sum + s.response_time.p95 / 1000,
+                            0
+                          ) / reportData.scenarios.length,
+                          3
+                        )}
+                      </th>
+                      <th>
+                        {formatNumber(
+                          reportData.scenarios.reduce(
+                            (sum, s) => sum + s.response_time.p99 / 1000,
+                            0
+                          ) / reportData.scenarios.length,
+                          3
+                        )}
+                      </th>
+                      <th></th>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
               <div className={styles.summaryBox}>
@@ -539,55 +533,16 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                   </thead>
                   <tbody>
                     {reportData.scenarios && reportData.scenarios.length > 0 ? (
-                      <>
-                        {reportData.scenarios.map((scenario, index) => (
-                          <tr key={index}>
-                            <td>{scenario.name}</td>
-                            <td>{formatNumber(scenario.tps.avg, 2)}</td>
-                            <td>{scenario.tps.min}</td>
-                            <td>{scenario.tps.max}</td>
-                            <td>{scenario.total_requests}</td>
-                            <td>{reportData.overall?.target_tps || "X"}</td>
-                          </tr>
-                        ))}
-
-                        {/* 합계 행 */}
-                        <tr
-                          style={{
-                            fontWeight: "bold",
-                            backgroundColor: "#f9f9f9",
-                          }}>
-                          <td>합계</td>
-                          <td>
-                            {formatNumber(
-                              reportData.scenarios.reduce(
-                                (sum, s) => sum + (s.tps.avg ?? 0),
-                                0
-                              ),
-                              2
-                            )}
-                          </td>
-                          <td>
-                            {reportData.scenarios.reduce(
-                              (sum, s) => sum + (s.tps.min ?? 0),
-                              0
-                            )}
-                          </td>
-                          <td>
-                            {reportData.scenarios.reduce(
-                              (sum, s) => sum + (s.tps.max ?? 0),
-                              0
-                            )}
-                          </td>
-                          <td>
-                            {reportData.scenarios.reduce(
-                              (sum, s) => sum + (s.total_requests ?? 0),
-                              0
-                            )}
-                          </td>
-                          <td></td>
+                      reportData.scenarios.map((scenario, index) => (
+                        <tr key={index}>
+                          <td>{scenario.name}</td>
+                          <td>{formatNumber(scenario.tps.avg, 2)}</td>
+                          <td>{scenario.tps.min}</td>
+                          <td>{scenario.tps.max}</td>
+                          <td>{scenario.total_requests}</td>
+                          <td>{reportData.overall?.target_tps || "X"}</td>
                         </tr>
-                      </>
+                      ))
                     ) : (
                       <tr>
                         <td>데이터 없음</td>
@@ -599,6 +554,39 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                       </tr>
                     )}
                   </tbody>
+                  <tfoot>
+                    <tr>
+                      <th>전체</th>
+                      <th>
+                        {formatNumber(
+                          reportData.scenarios.reduce(
+                            (sum, s) => sum + (s.tps.avg ?? 0),
+                            0
+                          ),
+                          2
+                        )}
+                      </th>
+                      <th>
+                        {reportData.scenarios.reduce(
+                          (sum, s) => sum + (s.tps.min ?? 0),
+                          0
+                        )}
+                      </th>
+                      <th>
+                        {reportData.scenarios.reduce(
+                          (sum, s) => sum + (s.tps.max ?? 0),
+                          0
+                        )}
+                      </th>
+                      <th>
+                        {reportData.scenarios.reduce(
+                          (sum, s) => sum + (s.total_requests ?? 0),
+                          0
+                        )}
+                      </th>
+                      <th></th>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
               <div className={styles.summaryBox}>
@@ -636,85 +624,40 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                   </thead>
                   <tbody>
                     {reportData.scenarios && reportData.scenarios.length > 0 ? (
-                      <>
-                        {reportData.scenarios.map((scenario, index) => (
-                          <tr key={index}>
-                            <td>{scenario.name}</td>
-                            <td>
-                              {formatNumber(
-                                toPercent(scenario.error_rate.avg) ?? 0,
-                                1
-                              )}
-                              %
-                            </td>
-                            <td>
-                              {formatNumber(
-                                toPercent(scenario.error_rate.min) ?? 0,
-                                1
-                              )}
-                              %
-                            </td>
-                            <td>
-                              {formatNumber(
-                                toPercent(scenario.error_rate.max) ?? 0,
-                                1
-                              )}
-                              %
-                            </td>
-                            <td>
-                              {scenario.error_rate_target != null
-                                ? `${formatNumber(
-                                    toPercent(scenario.error_rate_target) ?? 0,
-                                    1
-                                  )}%`
-                                : "X"}
-                            </td>
-                          </tr>
-                        ))}
-
-                        {/* 합계 평균 행 */}
-                        <tr
-                          style={{
-                            fontWeight: "bold",
-                            backgroundColor: "#f9f9f9",
-                          }}>
-                          <td>전체</td>
+                      reportData.scenarios.map((scenario, index) => (
+                        <tr key={index}>
+                          <td>{scenario.name}</td>
                           <td>
                             {formatNumber(
-                              reportData.scenarios.reduce(
-                                (sum, s) =>
-                                  sum + (toPercent(s.error_rate.avg) ?? 0),
-                                0
-                              ) / reportData.scenarios.length,
+                              toPercent(scenario.error_rate.avg) ?? 0,
                               1
                             )}
                             %
                           </td>
                           <td>
                             {formatNumber(
-                              reportData.scenarios.reduce(
-                                (sum, s) =>
-                                  sum + (toPercent(s.error_rate.min) ?? 0),
-                                0
-                              ) / reportData.scenarios.length,
+                              toPercent(scenario.error_rate.min) ?? 0,
                               1
                             )}
                             %
                           </td>
                           <td>
                             {formatNumber(
-                              reportData.scenarios.reduce(
-                                (sum, s) =>
-                                  sum + (toPercent(s.error_rate.max) ?? 0),
-                                0
-                              ) / reportData.scenarios.length,
+                              toPercent(scenario.error_rate.max) ?? 0,
                               1
                             )}
                             %
                           </td>
-                          <td></td>
+                          <td>
+                            {scenario.error_rate_target != null
+                              ? `${formatNumber(
+                                  toPercent(scenario.error_rate_target) ?? 0,
+                                  1
+                                )}%`
+                              : "X"}
+                          </td>
                         </tr>
-                      </>
+                      ))
                     ) : (
                       <tr>
                         <td>데이터 없음</td>
@@ -725,6 +668,45 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                       </tr>
                     )}
                   </tbody>
+                  <tfoot>
+                    <tr>
+                      <th>전체</th>
+                      <th>
+                        {formatNumber(
+                          reportData.scenarios.reduce(
+                            (sum, s) =>
+                              sum + (toPercent(s.error_rate.avg) ?? 0),
+                            0
+                          ) / reportData.scenarios.length,
+                          1
+                        )}
+                        %
+                      </th>
+                      <th>
+                        {formatNumber(
+                          reportData.scenarios.reduce(
+                            (sum, s) =>
+                              sum + (toPercent(s.error_rate.min) ?? 0),
+                            0
+                          ) / reportData.scenarios.length,
+                          1
+                        )}
+                        %
+                      </th>
+                      <th>
+                        {formatNumber(
+                          reportData.scenarios.reduce(
+                            (sum, s) =>
+                              sum + (toPercent(s.error_rate.max) ?? 0),
+                            0
+                          ) / reportData.scenarios.length,
+                          1
+                        )}
+                        %
+                      </th>
+                      <th></th>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
               <div className={styles.summaryBox}>

@@ -156,6 +156,19 @@
   word-break: keep-all;
 }
 
+.table tfoot th,
+.table tfoot td {
+  background-color: var(--color-gray-100);
+  color: var(--color-gray-300);
+  word-break: break-word;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  text-align: left;
+  font-size: var(--caption-light-font-size);
+  font-family: var(--caption-light-font-family);
+  font-weight: var(--caption-light-font-weight);
+  line-height: var(--caption-light-line-height);
+}
+
 /* 요약 박스 스타일 */
 .summaryBox {
   position: relative;
