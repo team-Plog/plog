@@ -183,28 +183,91 @@ const Report: React.FC = () => {
     setIsEditing(Boolean((selected as {value: unknown}).value));
   };
 
-  // Report.tsx의 generatePDF 함수를 이것으로 교체하세요
-
-const generatePDF = async () => {
+  const generatePDF = async () => {
   if (!reportViewerRef.current || pdfGenerating) return;
 
   setPdfGenerating(true);
   try {
     const element = reportViewerRef.current;
     
-    // 1. 캡처 전 요소 스타일 최적화
+    // 1. 캡처 전 최적화
     const originalStyles = {
       maxHeight: element.style.maxHeight,
       overflow: element.style.overflow,
-      height: element.style.height
+      height: element.style.height,
+      position: element.style.position
     };
     
-    // 캡처를 위한 임시 스타일 적용
     element.style.maxHeight = 'none';
     element.style.overflow = 'visible';
     element.style.height = 'auto';
+    element.style.position = 'static';
 
-    // 2. 더 정확한 캡처 설정
+    // 2. 모든 보호 대상 요소들 식별
+    const protectedSelectors = [
+      '.section',           // 섹션 전체
+      '.tableContainer',    // 표 컨테이너
+      '.summaryBox',        // 요약 박스
+      '.subTitleGroup',     // 서브타이틀 그룹
+      '.contentGroup',      // 콘텐츠 그룹
+      '.textGroup',         // 텍스트 그룹
+      'h1, h2, h3, h4, h5, h6', // 모든 제목
+      'p',                  // 문단
+      'table',              // 표 자체
+      '.documentHeader'     // 문서 헤더
+    ];
+    
+    const protectedElements: Array<{
+      top: number, 
+      height: number, 
+      type: string, 
+      element: Element,
+      priority: number
+    }> = [];
+    
+    // 각 선택자별로 요소 수집 및 우선순위 설정
+    protectedSelectors.forEach((selector, index) => {
+      const elements = element.querySelectorAll(selector);
+      elements.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        const containerRect = element.getBoundingClientRect();
+        
+        // 우선순위 설정 (낮을수록 높은 우선순위)
+        let priority = index;
+        if (selector.includes('table')) priority = 0;        // 표가 최우선
+        else if (selector.includes('summaryBox')) priority = 1; // 요약박스
+        else if (selector.includes('section')) priority = 2;    // 섹션
+        else if (selector.includes('Group')) priority = 3;      // 그룹들
+        else if (selector.includes('h1,h2,h3')) priority = 4;   // 제목들
+        
+        protectedElements.push({
+          top: rect.top - containerRect.top,
+          height: rect.height,
+          type: selector.replace('.', ''),
+          element: el,
+          priority: priority
+        });
+      });
+    });
+    
+    // 위치순 정렬 후 중복 제거 (부모-자식 관계 요소 중 우선순위 높은 것만 유지)
+    protectedElements.sort((a, b) => a.top - b.top);
+    
+    // 중복되는 영역의 요소들 중 우선순위가 높은 것만 유지
+    const uniqueElements = protectedElements.filter((current, index) => {
+      return !protectedElements.some((other, otherIndex) => {
+        if (index === otherIndex) return false;
+        
+        // 다른 요소 안에 완전히 포함되는지 확인
+        const isContained = current.top >= other.top && 
+                           (current.top + current.height) <= (other.top + other.height);
+        
+        // 포함되면서 우선순위가 낮으면 제거
+        return isContained && current.priority > other.priority;
+      });
+    });
+
+    // 3. 고해상도 전체 캡처
     const canvas = await html2canvas(element, {
       scale: 2,
       useCORS: true,
@@ -213,102 +276,145 @@ const generatePDF = async () => {
       logging: false,
       scrollX: 0,
       scrollY: 0,
-      windowWidth: element.scrollWidth,
-      windowHeight: element.scrollHeight,
+      width: element.scrollWidth,
+      height: element.scrollHeight,
       onclone: (clonedDoc) => {
-        // 클론된 문서에서 PDF 캡처용 스타일 적용
         const clonedElement = clonedDoc.querySelector("[data-pdf-capture]") as HTMLElement;
         if (clonedElement) {
           clonedElement.style.maxHeight = "none";
           clonedElement.style.overflow = "visible";
           clonedElement.style.height = "auto";
-          clonedElement.style.transform = "none";
+          clonedElement.style.position = "static";
         }
-        
-        // 스크롤 컨테이너 정리
-        const scrollContainers = clonedDoc.querySelectorAll('.previewContainer');
-        scrollContainers.forEach(container => {
-          (container as HTMLElement).style.overflow = 'visible';
-          (container as HTMLElement).style.maxHeight = 'none';
-        });
       },
     });
 
-    // 3. 원본 스타일 복원
-    element.style.maxHeight = originalStyles.maxHeight;
-    element.style.overflow = originalStyles.overflow;
-    element.style.height = originalStyles.height;
+    // 4. 원본 스타일 복원
+    Object.assign(element.style, originalStyles);
 
-    const imgData = canvas.toDataURL("image/png", 0.95); // 압축률 조정
-
-    // 4. PDF 생성 with 정확한 페이지 분할
+    // 5. PDF 설정
     const pdf = new jsPDF("p", "mm", "a4");
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
     
-    // 여백 설정
-    const margin = 10;
+    const margin = 15; // 15mm 여백
     const contentWidth = pdfWidth - (margin * 2);
     const contentHeight = pdfHeight - (margin * 2);
     
-    // 이미지 크기 계산
-    const imgWidth = contentWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    // 6. 스마트 페이지 분할
+    let canvasCurrentY = 0;
+    let pageNumber = 0;
     
-    // 페이지당 콘텐츠 높이
-    const pageContentHeight = contentHeight;
+    // 캔버스 픽셀을 PDF mm로 변환하는 비율
+    const pxToMm = 0.264583;
+    const canvasWidthMm = canvas.width * pxToMm;
+    const scale = contentWidth / canvasWidthMm;
     
-    let yPosition = 0;
-    let pageCount = 0;
-    
-    while (yPosition < imgHeight) {
-      if (pageCount > 0) {
+    while (canvasCurrentY < canvas.height) {
+      if (pageNumber > 0) {
         pdf.addPage();
       }
       
-      // 현재 페이지에 들어갈 이미지의 높이 계산
-      const remainingHeight = imgHeight - yPosition;
-      const currentPageHeight = Math.min(pageContentHeight, remainingHeight);
+      // 이번 페이지에 들어갈 수 있는 최대 캔버스 높이 계산
+      const maxCanvasHeightForPage = contentHeight / (pxToMm * scale);
+      let nextCanvasY = Math.min(canvasCurrentY + maxCanvasHeightForPage, canvas.height);
       
-      // 소스 이미지에서 현재 페이지 부분의 시작 y 좌표 계산
-      const sourceY = (yPosition / imgHeight) * canvas.height;
-      const sourceHeight = (currentPageHeight / imgHeight) * canvas.height;
+      // 보호 대상 요소들이 잘리는지 확인
+      for (const protectedEl of uniqueElements) {
+        const elementTop = protectedEl.top;
+        const elementBottom = protectedEl.top + protectedEl.height;
+        
+        // 요소가 페이지 경계에서 잘리는 경우
+        if (elementTop < nextCanvasY && elementBottom > nextCanvasY) {
+          const elementHeight = protectedEl.height;
+          const availableSpace = nextCanvasY - canvasCurrentY;
+          const requiredSpace = elementBottom - canvasCurrentY;
+          
+          // 요소 전체가 현재 페이지에 들어갈 수 있는지 확인
+          if (requiredSpace <= maxCanvasHeightForPage && elementTop >= canvasCurrentY) {
+            // 들어갈 수 있으면 현재 페이지에 포함
+            nextCanvasY = elementBottom;
+          } else {
+            // 안 들어가면 다음 페이지로 미룸 (단, 현재 페이지에 충분한 내용이 있을 때만)
+            const currentPageUsage = (elementTop - canvasCurrentY) / maxCanvasHeightForPage;
+            
+            if (currentPageUsage > 0.3) { // 현재 페이지를 30% 이상 사용했다면
+              nextCanvasY = elementTop;
+              break;
+            } else {
+              // 페이지 시작 부분이면 강제로 포함 (너무 큰 요소 처리)
+              const maxAllowedHeight = maxCanvasHeightForPage * 0.9; // 페이지의 90%까지 허용
+              if (elementHeight > maxAllowedHeight) {
+                // 너무 큰 요소는 여러 페이지에 걸쳐 분할
+                nextCanvasY = canvasCurrentY + maxCanvasHeightForPage;
+              } else {
+                nextCanvasY = elementBottom;
+              }
+            }
+          }
+        }
+      }
       
-      // 캔버스에서 현재 페이지 부분만 추출
+      // 실제 페이지에 포함될 높이
+      const actualCanvasHeight = nextCanvasY - canvasCurrentY;
+      
+      // 최소 페이지 높이 보장 (너무 작은 조각 방지)
+      if (actualCanvasHeight < maxCanvasHeightForPage * 0.1 && canvasCurrentY + maxCanvasHeightForPage < canvas.height) {
+        nextCanvasY = canvasCurrentY + maxCanvasHeightForPage;
+      }
+      
+      const finalCanvasHeight = nextCanvasY - canvasCurrentY;
+      
+      // 7. 페이지 캔버스 생성 및 이미지 추출
       const pageCanvas = document.createElement('canvas');
       pageCanvas.width = canvas.width;
-      pageCanvas.height = sourceHeight;
+      pageCanvas.height = finalCanvasHeight;
       
       const pageCtx = pageCanvas.getContext('2d');
       if (pageCtx) {
+        // 흰색 배경
+        pageCtx.fillStyle = '#ffffff';
+        pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        
+        // 이미지 복사
         pageCtx.drawImage(
-          canvas, 
-          0, sourceY, canvas.width, sourceHeight,  // 소스 영역
-          0, 0, canvas.width, sourceHeight         // 대상 영역
+          canvas,
+          0, canvasCurrentY, canvas.width, finalCanvasHeight,
+          0, 0, canvas.width, finalCanvasHeight
         );
         
-        const pageImgData = pageCanvas.toDataURL("image/png", 0.95);
+        const pageImgData = pageCanvas.toDataURL("image/png", 1.0);
         
-        // PDF에 현재 페이지 이미지 추가
+        // 8. PDF에 중앙 정렬로 추가
+        const imgWidthMm = contentWidth;
+        const imgHeightMm = finalCanvasHeight * pxToMm * scale;
+        
+        const xPosition = margin;
+        const yPosition = margin;
+        
         pdf.addImage(
-          pageImgData, 
-          "PNG", 
-          margin, 
-          margin, 
-          imgWidth, 
-          currentPageHeight
+          pageImgData,
+          "PNG",
+          xPosition,
+          yPosition,
+          imgWidthMm,
+          Math.min(imgHeightMm, contentHeight)
         );
       }
       
-      yPosition += pageContentHeight;
-      pageCount++;
+      canvasCurrentY = nextCanvasY;
+      pageNumber++;
+      
+      // 안전장치
+      if (pageNumber > 50) {
+        console.warn('페이지 수 제한 도달');
+        break;
+      }
     }
 
-    // 5. PDF 저장
-    const fileName = `${reportConfig.customTitle || "성능테스트리포트"}_${
-      new Date().toISOString().split("T")[0]
-    }.pdf`;
-    
+    // 9. 파일명 생성 및 저장
+    const timestamp = new Date().toISOString().split("T")[0];
+    const fileName = `${reportConfig.customTitle || "성능테스트리포트"}_${timestamp}.pdf`;
     pdf.save(fileName);
     
   } catch (error) {
