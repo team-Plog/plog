@@ -4,9 +4,77 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 from collections import defaultdict
-from app.db.sqlite.models.project_models import OpenAPISpecModel, EndpointModel, TagModel
+from app.db.sqlite.models.project_models import OpenAPISpecModel, EndpointModel, TagModel, ParameterModel
 from app.dto.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 from app.services.openapi.analysis_strategy import OpenAPIAnalysisStrategy
+
+
+def resolve_schema_references(schema: Dict[str, Any], components: Dict[str, Any], visited: set = None) -> Dict[str, Any]:
+    """
+    OpenAPI 스키마의 $ref 참조를 재귀적으로 해결하여 최종 JSON 형태로 변환
+    
+    Args:
+        schema: 해결할 스키마 객체
+        components: OpenAPI components 섹션
+        visited: 순환 참조 방지를 위한 방문한 참조 목록
+    
+    Returns:
+        $ref가 해결된 최종 스키마 객체
+    """
+    if visited is None:
+        visited = set()
+    
+    if not isinstance(schema, dict):
+        return schema
+    
+    # $ref 참조가 있는 경우
+    if "$ref" in schema:
+        ref_path = schema["$ref"]
+        
+        # 순환 참조 방지
+        if ref_path in visited:
+            return {"type": "object", "description": f"Circular reference to {ref_path}"}
+        
+        visited.add(ref_path)
+        
+        # #/components/schemas/SchemaName 형태의 참조 파싱
+        if ref_path.startswith("#/components/schemas/"):
+            schema_name = ref_path.split("/")[-1]
+            if schema_name in components.get("schemas", {}):
+                referenced_schema = components["schemas"][schema_name]
+                # 재귀적으로 참조 해결
+                resolved = resolve_schema_references(referenced_schema, components, visited.copy())
+                visited.discard(ref_path)
+                return resolved
+        
+        visited.discard(ref_path)
+        return {"type": "object", "description": f"Unresolved reference: {ref_path}"}
+    
+    # 스키마 객체의 각 프로퍼티를 재귀적으로 처리
+    resolved_schema = {}
+    for key, value in schema.items():
+        if key == "properties" and isinstance(value, dict):
+            # properties 안의 각 속성도 재귀 처리
+            resolved_schema[key] = {
+                prop_name: resolve_schema_references(prop_schema, components, visited.copy())
+                for prop_name, prop_schema in value.items()
+            }
+        elif key == "items" and isinstance(value, dict):
+            # 배열의 items도 재귀 처리
+            resolved_schema[key] = resolve_schema_references(value, components, visited.copy())
+        elif isinstance(value, dict):
+            # 다른 객체도 재귀 처리
+            resolved_schema[key] = resolve_schema_references(value, components, visited.copy())
+        elif isinstance(value, list):
+            # 리스트 안의 객체들도 처리
+            resolved_schema[key] = [
+                resolve_schema_references(item, components, visited.copy()) if isinstance(item, dict) else item
+                for item in value
+            ]
+        else:
+            resolved_schema[key] = value
+    
+    return resolved_schema
 
 
 class DirectOpenAPIStrategy(OpenAPIAnalysisStrategy):
@@ -54,9 +122,10 @@ class DirectOpenAPIStrategy(OpenAPIAnalysisStrategy):
         # 3. tag description 매핑
         tag_defs = {tag["name"]: tag.get("description", "") for tag in openapi_data.get("tags", [])}
 
-        # 4. endpoint 저장 & 태그 분류
+        # 4. endpoint 저장 & 태그 분류 & 파라미터 파싱
         tag_map = defaultdict(list)
         all_endpoints = []  # DB에 들어갈 endpoint들
+        components = openapi_data.get("components", {})
 
         paths = openapi_data.get("paths", {})
         for path, methods in paths.items():
@@ -67,6 +136,50 @@ class DirectOpenAPIStrategy(OpenAPIAnalysisStrategy):
                     summary=details.get("summary", ""),
                     description=details.get("description", "")
                 )
+                
+                # 파라미터 파싱
+                parameters = []
+                
+                # Path & Query parameters
+                for param in details.get("parameters", []):
+                    param_type = param.get("in", "")
+                    if param_type in ["path", "query"]:
+                        schema = param.get("schema", {})
+                        parameter_model = ParameterModel(
+                            param_type=param_type,
+                            name=param.get("name", ""),
+                            required=param.get("required", False),
+                            value_type=schema.get("type", ""),
+                            title=schema.get("title", ""),
+                            description=param.get("description", ""),
+                            value=schema.get("default")  # 기본값이 있으면 저장
+                        )
+                        parameters.append(parameter_model)
+                
+                # Request Body parameter
+                request_body = details.get("requestBody")
+                if request_body:
+                    content = request_body.get("content", {})
+                    # application/json 우선 처리
+                    json_content = content.get("application/json", {})
+                    if json_content:
+                        schema = json_content.get("schema", {})
+                        # 스키마 참조 해결
+                        resolved_schema = resolve_schema_references(schema, components)
+                        
+                        parameter_model = ParameterModel(
+                            param_type="requestBody",
+                            name="requestBody",
+                            required=request_body.get("required", False),
+                            value_type="object",
+                            title="Request Body",
+                            description=request_body.get("description", ""),
+                            value=resolved_schema
+                        )
+                        parameters.append(parameter_model)
+                
+                # endpoint에 파라미터 연결
+                endpoint_model.parameters = parameters
                 all_endpoints.append(endpoint_model)
 
                 tags = details.get("tags", ["Default"])
@@ -246,11 +359,12 @@ class SwaggerUIStrategy(OpenAPIAnalysisStrategy):
                 if name and name not in tag_defs:
                     tag_defs[name] = t.get("description", "") or ""
 
-        # 엔드포인트/태그
+        # 엔드포인트/태그 & 파라미터 파싱
         tag_map = defaultdict(list)
         all_endpoints: List[EndpointModel] = []
 
         for spec in openapi_data_list:
+            components = spec.get("components", {})
             paths = spec.get("paths", {}) or {}
             for path, methods in paths.items():
                 if not isinstance(methods, dict):
@@ -264,6 +378,52 @@ class SwaggerUIStrategy(OpenAPIAnalysisStrategy):
                         summary=details.get("summary", "") or "",
                         description=details.get("description", "") or ""
                     )
+                    
+                    # 파라미터 파싱
+                    parameters = []
+                    
+                    # Path & Query parameters
+                    for param in details.get("parameters", []):
+                        if not isinstance(param, dict):
+                            continue
+                        param_type = param.get("in", "")
+                        if param_type in ["path", "query"]:
+                            schema = param.get("schema", {})
+                            parameter_model = ParameterModel(
+                                param_type=param_type,
+                                name=param.get("name", ""),
+                                required=param.get("required", False),
+                                value_type=schema.get("type", ""),
+                                title=schema.get("title", ""),
+                                description=param.get("description", ""),
+                                value=schema.get("default")  # 기본값이 있으면 저장
+                            )
+                            parameters.append(parameter_model)
+                    
+                    # Request Body parameter
+                    request_body = details.get("requestBody")
+                    if request_body and isinstance(request_body, dict):
+                        content = request_body.get("content", {})
+                        # application/json 우선 처리
+                        json_content = content.get("application/json", {})
+                        if json_content:
+                            schema = json_content.get("schema", {})
+                            # 스키마 참조 해결
+                            resolved_schema = resolve_schema_references(schema, components)
+                            
+                            parameter_model = ParameterModel(
+                                param_type="requestBody",
+                                name="requestBody",
+                                required=request_body.get("required", False),
+                                value_type="object",
+                                title="Request Body",
+                                description=request_body.get("description", ""),
+                                value=resolved_schema
+                            )
+                            parameters.append(parameter_model)
+                    
+                    # endpoint에 파라미터 연결
+                    endpoint_model.parameters = parameters
                     all_endpoints.append(endpoint_model)
 
                     tags = details.get("tags") or ["Default"]
