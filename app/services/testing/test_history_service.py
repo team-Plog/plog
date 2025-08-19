@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session, joinedload
 
-from app.db.sqlite.models.history_models import TestHistoryModel, ScenarioHistoryModel, StageHistoryModel
+from app.db.sqlite.models.history_models import TestHistoryModel, ScenarioHistoryModel, StageHistoryModel, TestParameterHistoryModel, TestHeaderHistoryModel
 from app.db.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, TagModel, EndpointModel, tags_endpoints
 from app.dto.load_test.load_test_request import LoadTestRequest
 from app.services.project.service import get_project_by_endpoint_id_simple
@@ -55,12 +55,32 @@ def save_test_history(
             error_rate_target=scenario.error_rate_target
         )
 
+        # Stage 저장
         for stage in scenario.stages:
             stage_model = StageHistoryModel(
                 duration=stage.duration,
                 target=stage.target
             )
             scenario_model.stages.append(stage_model)
+        
+        # 파라미터 저장
+        if scenario.parameters:
+            for param in scenario.parameters:
+                param_model = TestParameterHistoryModel(
+                    name=param.name,
+                    param_type=param.param_type,
+                    value=param.value
+                )
+                scenario_model.test_parameters.append(param_model)
+        
+        # 헤더 저장
+        if scenario.headers:
+            for header in scenario.headers:
+                header_model = TestHeaderHistoryModel(
+                    header_key=header.header_key,
+                    header_value=header.header_value
+                )
+                scenario_model.test_headers.append(header_model)
 
         test_history.scenarios.append(scenario_model)
 
@@ -79,7 +99,11 @@ def get_test_histories(db: Session, skip: int = 0, limit: int = 100) -> List[Tes
             joinedload(TestHistoryModel.scenarios)
             .joinedload(ScenarioHistoryModel.stages),
             joinedload(TestHistoryModel.scenarios)
-            .joinedload(ScenarioHistoryModel.endpoint)
+            .joinedload(ScenarioHistoryModel.endpoint),
+            joinedload(TestHistoryModel.scenarios)
+            .joinedload(ScenarioHistoryModel.test_parameters),
+            joinedload(TestHistoryModel.scenarios)
+            .joinedload(ScenarioHistoryModel.test_headers)
         )
         .order_by(TestHistoryModel.tested_at.desc())
         .offset(skip)
@@ -95,7 +119,11 @@ def get_test_history_by_id(db: Session, test_history_id: int) -> Optional[TestHi
             joinedload(TestHistoryModel.scenarios)
             .joinedload(ScenarioHistoryModel.stages),
             joinedload(TestHistoryModel.scenarios)
-            .joinedload(ScenarioHistoryModel.endpoint)
+            .joinedload(ScenarioHistoryModel.endpoint),
+            joinedload(TestHistoryModel.scenarios)
+            .joinedload(ScenarioHistoryModel.test_parameters),
+            joinedload(TestHistoryModel.scenarios)
+            .joinedload(ScenarioHistoryModel.test_headers)
         )
         .filter(TestHistoryModel.id == test_history_id)
         .first()
@@ -110,7 +138,11 @@ def get_test_history_by_job_name(db: Session, job_name: str) -> Optional[TestHis
             joinedload(TestHistoryModel.scenarios)
             .joinedload(ScenarioHistoryModel.stages),
             joinedload(TestHistoryModel.scenarios)
-            .joinedload(ScenarioHistoryModel.endpoint)
+            .joinedload(ScenarioHistoryModel.endpoint),
+            joinedload(TestHistoryModel.scenarios)
+            .joinedload(ScenarioHistoryModel.test_parameters),
+            joinedload(TestHistoryModel.scenarios)
+            .joinedload(ScenarioHistoryModel.test_headers)
         )
         .filter(TestHistoryModel.job_name == job_name)
         .first()
