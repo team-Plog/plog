@@ -50,10 +50,33 @@ def generate_k6_script(payload: LoadTestRequest, job_name: str, db: Session) -> 
     for scenario in payload.scenarios:
         endpoint = get_endpoint_by_id(db, scenario.endpoint_id)
         method = endpoint.method.lower()
-        full_url = f"{base_url}{endpoint.path}"
-
+        
+        # URL 및 파라미터 처리
+        url_parts = generate_url_and_params(base_url, endpoint.path, scenario)
+        
         script_lines.append(f"export function {job_name}{scenario.endpoint_id}() {{")
-        script_lines.append(f"  http.{method}('{full_url}');")
+        
+        # 헤더 처리
+        if scenario.headers:
+            script_lines.append("  const headers = {")
+            for header in scenario.headers:
+                script_lines.append(f"    '{header.header_key}': '{header.header_value}',")
+            script_lines.append("  };")
+        
+        # HTTP 요청 생성
+        if method in ['post', 'put', 'patch'] and url_parts['body']:
+            # Body가 있는 요청
+            if scenario.headers:
+                script_lines.append(f"  http.{method}('{url_parts['url']}', {url_parts['body']}, {{ headers }});")
+            else:
+                script_lines.append(f"  http.{method}('{url_parts['url']}', {url_parts['body']});")
+        else:
+            # Body가 없는 요청 (GET, DELETE 등)
+            if scenario.headers:
+                script_lines.append(f"  http.{method}('{url_parts['url']}', null, {{ headers }});")
+            else:
+                script_lines.append(f"  http.{method}('{url_parts['url']}');")
+        
         script_lines.append(f"  sleep({scenario.think_time});")
         script_lines.append("}\n")
 
@@ -84,4 +107,38 @@ def generate_k6_scenario_options(scenario: ScenarioConfig, scenario_name: str) -
 
     lines.append(f"      exec: {scenario_name},")
     return lines
+
+
+def generate_url_and_params(base_url: str, endpoint_path: str, scenario: ScenarioConfig) -> dict:
+    """
+    파라미터 타입별로 URL과 파라미터를 처리하여 k6 스크립트용 데이터 생성
+    
+    Returns:
+        dict: {'url': str, 'body': str or None}
+    """
+    url = base_url + endpoint_path
+    body = None
+    query_params = []
+    
+    if not scenario.parameters:
+        return {'url': url, 'body': body}
+    
+    for param in scenario.parameters:
+        if param.param_type == 'path':
+            # Path 파라미터: URL 경로에서 {param_name} 형태를 실제 값으로 치환
+            url = url.replace(f'{{{param.name}}}', param.value)
+            
+        elif param.param_type == 'query':
+            # Query 파라미터: URL 쿼리 스트링에 추가
+            query_params.append(f"{param.name}={param.value}")
+            
+        elif param.param_type == 'requestBody':
+            # Request Body: JSON 문자열로 설정
+            body = param.value
+    
+    # Query 파라미터가 있으면 URL에 추가
+    if query_params:
+        url += '?' + '&'.join(query_params)
+    
+    return {'url': url, 'body': body}
 

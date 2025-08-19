@@ -1,7 +1,7 @@
 import pytz
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, Table, DateTime, Float, Boolean
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, Table, DateTime, Float, Boolean, JSON
 from sqlalchemy.orm import relationship
 from app.db.sqlite.database import Base
 
@@ -99,6 +99,29 @@ class ScenarioHistoryModel(Base):
     test_history = relationship("TestHistoryModel", back_populates="scenarios")
 
     stages = relationship("StageHistoryModel", back_populates="scenario", cascade="all, delete-orphan")
+    test_parameters = relationship("TestParameterHistoryModel", back_populates="scenario", cascade="all, delete-orphan")
+    test_headers = relationship("TestHeaderHistoryModel", back_populates="scenario", cascade="all, delete-orphan")
+
+class TestParameterHistoryModel(Base):
+    __tablename__ = "test_parameter_history"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String, nullable=False)           # 파라미터 이름
+    param_type = Column(String, nullable=False)     # path, query, requestBody
+    value = Column(String, nullable=False)          # 실제 사용된 값 (문자열)
+    
+    scenario_id = Column(Integer, ForeignKey("scenario_history.id"))
+    scenario = relationship("ScenarioHistoryModel", back_populates="test_parameters")
+
+class TestHeaderHistoryModel(Base):
+    __tablename__ = "test_header_history"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    header_key = Column(String, nullable=False)     # 헤더 키
+    header_value = Column(String, nullable=False)   # 헤더 값
+    
+    scenario_id = Column(Integer, ForeignKey("scenario_history.id"))
+    scenario = relationship("ScenarioHistoryModel", back_populates="test_headers")
 
 class StageHistoryModel(Base):
     __tablename__ = "stage_history"
