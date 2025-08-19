@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, Table, DateTime
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, Table, DateTime, Boolean, JSON
 from sqlalchemy.orm import relationship
 from app.db.sqlite.database import Base
 
@@ -54,3 +54,19 @@ class EndpointModel(Base):
 
     tags = relationship("TagModel", secondary=tags_endpoints, back_populates="endpoints")
     scenarios = relationship("ScenarioHistoryModel", back_populates="endpoint")
+    parameters = relationship("ParameterModel", back_populates="endpoint", cascade="all, delete")
+
+# 파라미터
+class ParameterModel(Base):
+    __tablename__ = "parameter"
+    id = Column(Integer, primary_key=True, index=True)
+    endpoint_id = Column(Integer, ForeignKey("endpoint.id"), nullable=False)
+    param_type = Column(String, nullable=False)     # path, query, requestBody
+    name = Column(String, nullable=False)           # 파라미터 key name
+    required = Column(Boolean, nullable=False, default=False)  # true, false
+    value_type = Column(String, nullable=True)      # integer, string, array, object etc.
+    title = Column(String, nullable=True)           # 값에 대한 설명
+    description = Column(Text, nullable=True)       # 값에 대한 상세 설명
+    value = Column(JSON, nullable=True)             # 실제 값 (다양한 타입 지원)
+
+    endpoint = relationship("EndpointModel", back_populates="parameters")

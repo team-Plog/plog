@@ -1,6 +1,20 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Any
 from datetime import datetime
+
+class ParameterResponse(BaseModel):
+    id: int
+    param_type: str  # path, query, requestBody
+    name: str
+    required: bool
+    value_type: Optional[str]  # integer, string, array, object etc.
+    title: Optional[str]
+    description: Optional[str]
+    value: Optional[Any]  # JSON 데이터
+
+    model_config = {
+        "from_attributes": True
+    }
 
 class EndpointResponse(BaseModel):
     id: int
@@ -8,6 +22,7 @@ class EndpointResponse(BaseModel):
     method: Optional[str]
     summary: Optional[str]
     description: Optional[str]
+    parameters: Optional[List[ParameterResponse]] = []  # 엔드포인트의 파라미터들
 
     model_config = {
         "from_attributes": True
