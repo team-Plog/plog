@@ -88,7 +88,9 @@ const MetricChart: React.FC<MetricChartProps> = ({
                   className={styles.slider}
                   style={{backgroundColor: isOn ? s.color : "#ccc"}}
                 />
-                <span className={`${styles.toggleLabel} CaptionLight`}>{s.name}</span>
+                <span className={`${styles.toggleLabel} CaptionLight`}>
+                  {s.name}
+                </span>
               </label>
             );
           })}
@@ -140,7 +142,17 @@ const MetricChart: React.FC<MetricChartProps> = ({
                 return [`${v}${unit}`, ser?.name ?? name];
               }}
             />
-            <Legend />
+            <Legend
+              content={() => (
+                <div className={styles.legend}>
+                  {combinedSeries?.map((s) => (
+                    <span key={s.key} style={{color: s.color, fontSize: 12}}>
+                      ■ {s.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            />
             {activeSeries.map((s) => (
               <Area
                 key={s.key}
