@@ -77,3 +77,9 @@
   color: var(--color-gray-300);
   padding: var(--spacing-xl);
 }
+
+.legend {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-lg);
+}
