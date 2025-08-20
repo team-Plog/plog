@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class MetricGroupResponse(BaseModel):
@@ -40,6 +40,25 @@ class OverallMetricsResponse(BaseModel):
     vus: Optional[VusMetricResponse] = None
 
 
+class TestParameterHistoryResponse(BaseModel):
+    """테스트 실행 시 사용된 파라미터 정보"""
+    id: int
+    name: str
+    param_type: str  # path, query, requestBody
+    value: str
+    
+    class Config:
+        from_attributes = True
+
+class TestHeaderHistoryResponse(BaseModel):
+    """테스트 실행 시 사용된 헤더 정보"""
+    id: int
+    header_key: str
+    header_value: str
+    
+    class Config:
+        from_attributes = True
+
 class StageHistoryDetailResponse(BaseModel):
     stage_history_id: int
     duration: str
@@ -75,7 +94,9 @@ class ScenarioHistoryDetailResponse(BaseModel):
     tps: Optional[MetricGroupResponse] = None
     response_time: Optional[ResponseTimeMetricResponse] = None
     error_rate: Optional[MetricGroupResponse] = None
-    stages: List[StageHistoryDetailResponse] = Field(default_factory=list)
+    stages: Optional[List[StageHistoryDetailResponse]] = None
+    test_parameters: Optional[List[TestParameterHistoryResponse]] = None
+    test_headers: Optional[List[TestHeaderHistoryResponse]] = None
 
     class Config:
         from_attributes = True
@@ -93,7 +114,7 @@ class TestHistoryDetailResponse(BaseModel):
     k6_script_file_name: Optional[str] = None
 
     overall: Optional[OverallMetricsResponse] = None
-    scenarios: List[ScenarioHistoryDetailResponse] = Field(default_factory=list)
+    scenarios: Optional[List[ScenarioHistoryDetailResponse]] = None
 
     class Config:
         from_attributes = True

@@ -16,7 +16,9 @@ from app.dto.test_history.test_history_detail_response import (
     OverallMetricsResponse,
     MetricGroupResponse,
     ResponseTimeMetricResponse,
-    VusMetricResponse
+    VusMetricResponse,
+    TestParameterHistoryResponse,
+    TestHeaderHistoryResponse
 )
 
 logger = logging.getLogger(__name__)
@@ -365,6 +367,25 @@ def build_test_history_detail_response(test_history: TestHistoryModel) -> TestHi
             ) for stage in scenario.stages
         ]
 
+        # 파라미터 목록
+        test_parameters = [
+            TestParameterHistoryResponse(
+                id=param.id,
+                name=param.name,
+                param_type=param.param_type,
+                value=param.value
+            ) for param in scenario.test_parameters or []
+        ]
+
+        # 헤더 목록
+        test_headers = [
+            TestHeaderHistoryResponse(
+                id=header.id,
+                header_key=header.header_key,
+                header_value=header.header_value
+            ) for header in scenario.test_headers or []
+        ]
+
         # 시나리오 응답 구성
         scenario_response = ScenarioHistoryDetailResponse(
             scenario_history_id=scenario.id,
@@ -400,7 +421,9 @@ def build_test_history_detail_response(test_history: TestHistoryModel) -> TestHi
                 min=scenario.min_error_rate,
                 avg=scenario.avg_error_rate
             ) if any([x is not None for x in [scenario.max_error_rate, scenario.min_error_rate, scenario.avg_error_rate]]) else None,
-            stages=stages
+            stages=stages,
+            test_parameters=test_parameters,
+            test_headers=test_headers
         )
         scenarios.append(scenario_response)
 
