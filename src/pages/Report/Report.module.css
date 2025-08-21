@@ -55,6 +55,7 @@
 /* 콘텐츠 컨테이너 */
 .contentContainer {
   width: 100%;
+  overflow-x: auto;
 }
 
 .emptyStateContainer {
