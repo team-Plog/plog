@@ -8,6 +8,14 @@ export const getSchedulerStatus = () =>
 export const restartScheduler = () =>
   axios.post('/scheduler/restart');
 
-// 특정 job 강제 처리 - 디버깅 목적
-export const forceProcessJob = (job_name: string) =>
-  axios.post(`/scheduler/force-process/${job_name}`);
+// 특정 Job 일시정지 - 개발용
+export const suspendJob = (job_name: string) =>
+  axios.post(`/scheduler/suspend/${job_name}`);
+
+// 특정 Job 재개 - 개발용
+export const resumeJob = (job_name: string) =>
+  axios.post(`/scheduler/resume/${job_name}`);
+
+// 특정 Job 중지
+export const stopJob = (job_name: string) =>
+  axios.delete(`/scheduler/stop/${job_name}`);
