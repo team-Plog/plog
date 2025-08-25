@@ -15,7 +15,7 @@ import MetricCard from "../../components/MetricCard/MetricCard";
 import MetricChart from "../../components/MetricChart/MetricChart";
 import {useLocation} from "react-router-dom";
 import {getProjectDetail, getTestHistoryDetail} from "../../api";
-import {forceProcessJob} from "../../api/jobScheduler";
+import {stopJob} from "../../api/jobScheduler";
 
 const Test: React.FC = () => {
   const location = useLocation();
@@ -159,7 +159,6 @@ const Test: React.FC = () => {
     };
   }, [effectiveJobName]);
 
-  // 중단 핸들러: 폴백된 jobName으로 호출
   const handleStopTest = async () => {
     if (!effectiveJobName) {
       alert("jobName이 없어 중단 요청을 보낼 수 없습니다.");
@@ -168,23 +167,12 @@ const Test: React.FC = () => {
     try {
       setStopping(true);
 
-      // UI/콘솔 확인용 저장 & 로그
-      const encoded = encodeURIComponent(effectiveJobName);
-      const url = `${
-        import.meta.env.VITE_API_BASE_URL
-      }/scheduler/force-process/${encoded}`;
-      setLastJobName(effectiveJobName);
-      setLastRequestUrl(url);
-      console.log("[handleStopTest] job_name(raw):", effectiveJobName);
-      console.log("[handleStopTest] job_name(encoded):", encoded);
-      console.log("[handleStopTest] POST →", url);
-
       if (sseRef.current) {
         sseRef.current.close();
         sseRef.current = null;
       }
 
-      await forceProcessJob(effectiveJobName);
+      await stopJob(effectiveJobName);
       alert(`테스트 중단 요청 완료\njob_name: ${effectiveJobName}`);
     } catch (err: any) {
       console.error("테스트 중단 요청 실패:", err?.message);
