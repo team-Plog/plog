@@ -43,6 +43,8 @@ class ServerInfraModel(Base):
     environment = Column(String, nullable=True) # K3S, ONPREMISE, LOCAL
     service_type = Column(String, nullable=True) # SERVER, DATABASE
     name = Column(String, nullable=True) # RESOURCE NAME
+    group_name = Column(String, nullable=True)
+    label = Column(String, nullable=True)
     namespace = Column(String, nullable=True)
 
 
