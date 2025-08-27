@@ -10,3 +10,4 @@ except:
 
 v1_core = client.CoreV1Api()
 v1_batch = client.BatchV1Api()
+v1_apps = client.AppsV1Api()

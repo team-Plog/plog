@@ -44,7 +44,7 @@ class ServerInfraModel(Base):
     service_type = Column(String, nullable=True) # SERVER, DATABASE
     name = Column(String, nullable=True) # RESOURCE NAME
     group_name = Column(String, nullable=True)
-    label = Column(String, nullable=True)
+    label = Column(JSON, nullable=True)
     namespace = Column(String, nullable=True)
 
 
