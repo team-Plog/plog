@@ -9,6 +9,9 @@ from app.core.config import settings
 from app.db.sqlite.database import SessionLocal
 from app.services.monitoring.pod_monitor_service import PodMonitorService
 from app.services.infrastructure.server_infra_service import ServerInfraService
+from app.services.openapi.strategy_factory import analyze_openapi_with_strategy
+from app.services.openapi.service import save_openapi_spec
+from app.dto.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 
 logger = logging.getLogger(__name__)
 
@@ -73,9 +76,13 @@ class ServerPodScheduler:
         """스케줄러 메인 루프"""
         logger.info("Server Pod Scheduler main loop started")
         
+        # asyncio 이벤트 루프 설정
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
         while self.is_running and not self._stop_event.is_set():
             try:
-                self._process_pod_status()
+                loop.run_until_complete(self._process_pod_status())
                 
                 # 다음 실행까지 대기
                 self._stop_event.wait(timeout=self.poll_interval)
@@ -84,8 +91,10 @@ class ServerPodScheduler:
                 logger.error(f"Error in server pod scheduler main loop: {e}")
                 # 에러 발생 시 짧은 대기 후 재시도
                 self._stop_event.wait(timeout=5)
+        
+        loop.close()
 
-    def _process_pod_status(self):
+    async def _process_pod_status(self):
         """Pod 상태를 처리"""
         db = SessionLocal()
         try:
@@ -107,17 +116,21 @@ class ServerPodScheduler:
                     detailed_pod_info = self.pod_monitor.get_pod_details_with_owner_info(pod_name)
                     
                     if detailed_pod_info:
-                        # server_infra 테이블에 저장
-                        server_infra = self.server_infra_service.create_server_infra(
-                            db=db,
-                            pod_info=detailed_pod_info,
-                            open_api_spec_id=None  # 아직 연결 안됨
-                        )
-                        
-                        if server_infra:
-                            logger.info(f"Successfully saved pod {pod_name} to server_infra table")
+                        # SERVER 타입 POD에 대해서만 서비스 발견 및 OpenAPI 분석 수행
+                        if detailed_pod_info.get("service_type") == "SERVER":
+                            await self._process_server_pod(db, detailed_pod_info)
                         else:
-                            logger.error(f"Failed to save pod {pod_name} to server_infra table")
+                            # DATABASE 타입은 기존대로 저장만
+                            server_infra = self.server_infra_service.create_server_infra(
+                                db=db,
+                                pod_info=detailed_pod_info,
+                                open_api_spec_id=None
+                            )
+                            
+                            if server_infra:
+                                logger.info(f"Successfully saved database pod {pod_name} to server_infra table")
+                            else:
+                                logger.error(f"Failed to save database pod {pod_name} to server_infra table")
                     else:
                         logger.error(f"Failed to get detailed info for pod {pod_name}")
                 else:
@@ -127,6 +140,214 @@ class ServerPodScheduler:
             logger.error(f"Error processing pod status: {e}")
         finally:
             db.close()
+
+    async def _process_server_pod(self, db: Session, pod_info: Dict[str, Any]):
+        """
+        SERVER 타입 POD에 대해 서비스 발견과 OpenAPI 분석을 수행합니다.
+        조건을 만족하지 않으면 Pod 정보를 저장하지 않아서 다음 스캔에서 재시도하도록 합니다.
+        
+        Args:
+            db: 데이터베이스 세션
+            pod_info: Pod 상세 정보
+        """
+        pod_name = pod_info.get("name")
+        pod_labels = pod_info.get("labels", {})
+        
+        try:
+            # 1. Pod의 라벨을 기반으로 연결된 Service 찾기
+            logger.info(f"Finding services for pod {pod_name} with labels: {pod_labels}")
+            services = self.pod_monitor.find_services_for_pod(pod_labels)
+            
+            if not services:
+                logger.warning(f"No services found for pod {pod_name} - skipping save for retry")
+                return  # 서비스가 없으면 저장하지 않음 (배포 중일 가능성)
+            
+            logger.info(f"Found {len(services)} services for pod {pod_name}: {[s['name'] for s in services]}")
+            
+            # 2. 서비스를 기반으로 Swagger URL 탐지 (클러스터 내부 IP 사용)
+            swagger_urls = await self._discover_swagger_urls_with_fallback(services)
+            
+            if not swagger_urls:
+                logger.warning(f"No Swagger URLs found for pod {pod_name} - skipping save for retry")
+                return  # Swagger URL이 없으면 저장하지 않음 (애플리케이션 시작 중일 가능성)
+            
+            # 3. 첫 번째로 발견된 Swagger URL로 OpenAPI 분석 수행
+            swagger_url = swagger_urls[0]
+            logger.info(f"Analyzing OpenAPI spec from URL: {swagger_url}")
+            
+            try:
+                # OpenAPI 분석 요청 생성
+                openapi_request = OpenAPISpecRegisterRequest(
+                    open_api_url=swagger_url,
+                    project_id=1  # 기본 프로젝트 ID 사용
+                )
+                
+                # OpenAPI 분석 수행
+                analysis_result = await analyze_openapi_with_strategy(openapi_request)
+                
+                if analysis_result:
+                    logger.info(f"Successfully analyzed OpenAPI spec for pod {pod_name}")
+                    
+                    # OpenAPI 분석 결과를 데이터베이스에 저장
+                    saved_openapi_spec = await save_openapi_spec(db, analysis_result)
+                    logger.info(f"Saved OpenAPI spec with ID: {saved_openapi_spec.id}")
+                    
+                    # server_infra 테이블에 저장 (OpenAPI spec과 연결)
+                    server_infra = self.server_infra_service.create_server_infra(
+                        db=db,
+                        pod_info=pod_info,
+                        open_api_spec_id=saved_openapi_spec.id  # 저장된 OpenAPI spec ID 사용
+                    )
+                    
+                    if server_infra:
+                        logger.info(f"Successfully saved server pod {pod_name} with OpenAPI spec connection")
+                    else:
+                        logger.error(f"Failed to save server pod {pod_name} - database error")
+                else:
+                    logger.warning(f"OpenAPI analysis returned no result for {swagger_url} - skipping save for retry")
+                    return  # OpenAPI 분석 실패하면 저장하지 않음 (API 준비 중일 가능성)
+                    
+            except Exception as openapi_error:
+                logger.error(f"Failed to analyze OpenAPI spec from {swagger_url}: {openapi_error} - skipping save for retry")
+                return  # OpenAPI 분석 실패하면 저장하지 않음 (API 준비 중일 가능성)
+                
+        except Exception as e:
+            logger.error(f"Error processing server pod {pod_name}: {e} - skipping save for retry")
+            return  # 전체 처리 실패하면 저장하지 않음
+
+    async def _discover_swagger_urls_with_fallback(self, services: List[Dict[str, Any]]) -> List[str]:
+        """
+        서비스 정보를 기반으로 Swagger URL을 탐지하고, 실패 시 NodePort로 fallback 시도
+        
+        Args:
+            services: Service 정보 리스트
+            
+        Returns:
+            발견된 Swagger URL 리스트
+        """
+        swagger_urls = []
+        
+        # 일반적인 Swagger 엔드포인트 패턴들 (성공 확률이 높은 순서로 정렬)
+        swagger_paths = [
+            "/v3/api-docs",         # Spring Boot 기본 경로 (가장 높은 성공률)
+            "/swagger-ui",          # 일반적인 Swagger UI
+            "/swagger-ui/index.html", # Swagger UI 인덱스 페이지
+            "/api/swagger",         # API 네임스페이스 하위
+            "/swagger",             # 간단한 swagger 경로
+            "/docs",                # 문서 경로
+            "/api/docs",            # API 문서 경로
+            "/openapi.json",        # OpenAPI JSON 스펙
+            "/swagger.json",        # Swagger JSON 스펙
+            "/v1/api-docs",         # 버전별 API 문서
+            "/v2/api-docs",         # 버전별 API 문서
+            "/api-docs"             # API 문서
+        ]
+        
+        for service in services:
+            service_name = service["name"]
+            cluster_ip = service["cluster_ip"]
+            ports = service["ports"]
+            service_type = service.get("type", "ClusterIP")
+            
+            # 1. 클러스터 내부 Service URL로 시도
+            for port in ports:
+                if self._is_http_port(port):
+                    # http://<service_name>:port/~~ 형태로 시도
+                    service_url = f"http://{service_name}:{port}"
+                    urls_found = await self._check_swagger_endpoints(service_url, swagger_paths)
+                    swagger_urls.extend(urls_found)
+                    
+                    # cluster IP로도 시도
+                    if cluster_ip and cluster_ip != "None":
+                        cluster_url = f"http://{cluster_ip}:{port}"
+                        urls_found = await self._check_swagger_endpoints(cluster_url, swagger_paths)
+                        swagger_urls.extend(urls_found)
+            
+            # 2. fallback: NodePort 타입인 경우 localhost로 시도
+            if service_type == "NodePort":
+                node_ports = service.get("node_ports", [])
+                await self._try_nodeport_fallback(service_name, node_ports, swagger_paths, swagger_urls)
+        
+        return swagger_urls
+
+    async def _check_swagger_endpoints(self, base_url: str, swagger_paths: List[str]) -> List[str]:
+        """
+        주어진 base URL에 대해 swagger paths를 확인하여 유효한 엔드포인트를 찾습니다.
+        """
+        found_urls = []
+        
+        for swagger_path in swagger_paths:
+            potential_url = f"{base_url}{swagger_path}"
+            logger.info(f"check swagger_url: {potential_url}")
+            
+            if await self._check_swagger_url_async(potential_url):
+                found_urls.append(potential_url)
+                logger.info(f"Found Swagger URL: {potential_url}")
+                break  # 첫 번째로 발견된 URL만 사용
+                
+        return found_urls
+
+    async def _try_nodeport_fallback(self, service_name: str, node_ports: List[int], 
+                                   swagger_paths: List[str], swagger_urls: List[str]):
+        """
+        NodePort 서비스에 대해 localhost로 fallback 시도
+        """
+        # node_ports 배열에는 이미 NodePort 포트만 들어있음
+        for port in node_ports:
+            localhost_url = f"http://localhost:{port}"
+            urls_found = await self._check_swagger_endpoints(localhost_url, swagger_paths)
+            swagger_urls.extend(urls_found)
+            
+            if urls_found:
+                logger.info(f"Found Swagger URL via NodePort fallback: {urls_found[0]}")
+
+    async def _check_swagger_url_async(self, url: str, timeout: int = 3) -> bool:
+        """
+        비동기적으로 주어진 URL이 유효한 Swagger 엔드포인트인지 확인합니다.
+        """
+        import httpx
+        
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.get(url)
+                
+                if response.status_code == 200:
+                    content = response.text.lower()
+                    # Swagger 관련 키워드들이 포함되어 있는지 확인
+                    swagger_keywords = [
+                        "swagger", "openapi", "api documentation", 
+                        "swagger-ui", "redoc", "rapidoc"
+                    ]
+                    
+                    if any(keyword in content for keyword in swagger_keywords):
+                        return True
+                        
+                    # JSON 응답인 경우 OpenAPI 스펙인지 확인
+                    try:
+                        json_data = response.json()
+                        if isinstance(json_data, dict) and (
+                            "swagger" in json_data or 
+                            "openapi" in json_data or 
+                            "info" in json_data
+                        ):
+                            return True
+                    except:
+                        pass
+                        
+        except Exception as e:
+            logger.debug(f"Failed to check Swagger URL {url}: {e}")
+            
+        return False
+
+    def _is_http_port(self, port: int) -> bool:
+        """
+        포트가 HTTP 서비스 포트인지 추정합니다.
+        """
+        # 일반적인 HTTP 포트들
+        common_http_ports = [80, 8080, 3000, 4000, 5000, 8000, 9000]
+        
+        # 8000-9999 범위의 포트들도 HTTP일 가능성이 높음
+        return port in common_http_ports or (8000 <= port <= 9999)
 
 
 # 전역 스케줄러 인스턴스

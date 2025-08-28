@@ -309,9 +309,19 @@ class PodMonitorService:
             for service in service_list.items:
                 # Service의 selector와 Pod의 label이 매치되는지 확인
                 if service.spec.selector and self._labels_match(service.spec.selector, pod_labels):
+                    # 일반 포트와 NodePort 정보를 모두 포함
+                    ports = []
+                    node_ports = []
+                    if service.spec.ports:
+                        for port in service.spec.ports:
+                            ports.append(port.port)
+                            if port.node_port:  # NodePort가 있는 경우
+                                node_ports.append(port.node_port)
+                    
                     service_info = {
                         "name": service.metadata.name,
-                        "ports": [port.port for port in service.spec.ports] if service.spec.ports else [],
+                        "ports": ports,
+                        "node_ports": node_ports,
                         "cluster_ip": service.spec.cluster_ip,
                         "type": service.spec.type
                     }
