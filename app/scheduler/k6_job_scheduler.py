@@ -16,7 +16,8 @@ from app.services.testing.test_history_service import (
     get_scenario_histories_by_test_id,
     update_test_history_with_metrics,
     update_scenario_history_with_metrics,
-    mark_test_as_completed
+    mark_test_as_completed,
+    save_test_timeseries_metrics
 )
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ class K6JobScheduler:
 
     def __init__(self, poll_interval: int = None, max_retry_attempts: int = None):
         """
-        Args:
+        Args:server_infra
             poll_interval: 폴링 간격(초) - None이면 설정에서 가져옴
             max_retry_attempts: 최대 재시도 횟수 - None이면 설정에서 가져옴
         """
@@ -134,7 +135,18 @@ class K6JobScheduler:
                     else:
                         logger.warning(f"No scenario metrics found for scenario: {scenario_identifier} - skipping update")
 
-                # 5. test history를 완료 상태로 마킹
+                # 5. 시계열 메트릭 데이터 수집 및 저장
+                timeseries_data = self.influxdb_service.get_test_timeseries_data(job_name)
+                if timeseries_data:
+                    save_success = save_test_timeseries_metrics(db, test_history.id, timeseries_data)
+                    if save_success:
+                        logger.info(f"Saved {len(timeseries_data)} timeseries data points for job: {job_name}")
+                    else:
+                        logger.error(f"Failed to save timeseries data for job: {job_name}")
+                else:
+                    logger.warning(f"No timeseries data found for job: {job_name} - skipping timeseries save")
+
+                # 6. test history를 완료 상태로 마킹
                 mark_test_as_completed(db, test_history)
                 
                 # 6. 완료된 job 정리 (설정에 따라)

@@ -1,7 +1,8 @@
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Tuple
 from influxdb import InfluxDBClient
 from app.core.config import settings
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -412,4 +413,233 @@ class InfluxDBService:
             
         except Exception as e:
             logger.error(f"Error retrieving scenario metrics for scenario '{scenario_identifier}': {e}")
+            return None
+
+    def get_test_time_range(self, job_name: str) -> Optional[Tuple[datetime, datetime]]:
+        """
+        테스트의 시작/종료 시간을 조회
+        
+        Args:
+            job_name: Kubernetes Job 이름
+            
+        Returns:
+            (start_time, end_time) 튜플 또는 None
+        """
+        try:
+            start_time_query = f'''
+                SELECT * FROM "http_reqs"
+                WHERE "job_name" = '{job_name}'
+                ORDER BY time ASC LIMIT 1
+            '''
+            
+            end_time_query = f'''
+                SELECT * FROM "http_reqs"
+                WHERE "job_name" = '{job_name}'
+                ORDER BY time DESC LIMIT 1
+            '''
+            
+            start_result = list(self.client.query(start_time_query).get_points())
+            end_result = list(self.client.query(end_time_query).get_points())
+            
+            if not start_result or not end_result:
+                logger.warning(f"No time range found for job: {job_name}")
+                return None
+                
+            start_time_str = start_result[0]['time']
+            end_time_str = end_result[0]['time']
+            
+            start_time = datetime.fromisoformat(start_time_str.replace('Z', '+00:00'))
+            end_time = datetime.fromisoformat(end_time_str.replace('Z', '+00:00'))
+            
+            logger.info(f"Job {job_name} time range: {start_time} ~ {end_time}")
+            return (start_time, end_time)
+            
+        except Exception as e:
+            logger.error(f"Error getting time range for job {job_name}: {e}")
+            return None
+
+    def get_scenario_names_for_job(self, job_name: str) -> List[str]:
+        """
+        job_name으로 시나리오 이름들을 조회
+        
+        Args:
+            job_name: Kubernetes Job 이름
+            
+        Returns:
+            시나리오 이름 리스트
+        """
+        try:
+            query = f'''
+                SHOW TAG VALUES FROM "http_reqs" 
+                WITH KEY = "scenario" 
+                WHERE "job_name" = '{job_name}'
+            '''
+            result = self.client.query(query)
+            scenarios = [point['value'] for point in result.get_points() if 'value' in point]
+            logger.info(f"Found {len(scenarios)} scenarios for job {job_name}: {scenarios}")
+            return scenarios
+        except Exception as e:
+            logger.error(f"Error getting scenario names for job {job_name}: {e}")
+            return []
+
+    def get_interval_metrics(self, job_name: str, start_time: datetime, end_time: datetime, 
+                           scenario_name: Optional[str] = None) -> Optional[Dict]:
+        """
+        특정 시간 구간(10초)에 대한 메트릭 조회
+        
+        Args:
+            job_name: Kubernetes Job 이름
+            start_time: 구간 시작 시간
+            end_time: 구간 종료 시간  
+            scenario_name: 시나리오 이름 (None이면 전체 데이터)
+            
+        Returns:
+            구간 메트릭 딕셔너리 또는 None
+        """
+        try:
+            # 시간 조건 생성
+            start_str = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+            end_str = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+            
+            # 기본 WHERE 조건
+            base_where = f'"job_name" = \'{job_name}\' AND time >= \'{start_str}\' AND time < \'{end_str}\''
+            if scenario_name:
+                base_where += f' AND "scenario" = \'{scenario_name}\''
+            
+            # TPS 계산 (요청 수 / 10초)
+            tps_query = f'''
+                SELECT SUM("value") as total_requests
+                FROM "http_reqs"
+                WHERE {base_where}
+            '''
+            
+            # 에러율 계산
+            error_query = f'''
+                SELECT SUM("value") as error_requests
+                FROM "http_reqs"
+                WHERE {base_where} AND "status" !~ /^2../
+            '''
+            
+            # VUS 조회 (구간 내 마지막 값)
+            vus_query = f'''
+                SELECT LAST("value") as vus
+                FROM "vus"
+                WHERE {base_where}
+            '''
+            
+            # 응답시간 조회
+            response_time_query = f'''
+                SELECT 
+                    MEAN("value") as avg_response_time,
+                    PERCENTILE("value", 95) as p95_response_time,
+                    PERCENTILE("value", 99) as p99_response_time
+                FROM "http_req_duration"
+                WHERE {base_where}
+            '''
+            
+            # 쿼리 실행
+            tps_result = list(self.client.query(tps_query).get_points())
+            error_result = list(self.client.query(error_query).get_points())
+            vus_result = list(self.client.query(vus_query).get_points())
+            response_result = list(self.client.query(response_time_query).get_points())
+            
+            # 결과 처리
+            total_requests = int(tps_result[0]['total_requests'] or 0) if tps_result else 0
+            error_requests = int(error_result[0]['error_requests'] or 0) if error_result else 0
+            vus = int(vus_result[0]['vus'] or 0) if vus_result else 0
+            
+            # TPS 계산 (10초 구간이므로 /10)
+            tps = total_requests / 10.0
+            
+            # 에러율 계산
+            error_rate = (error_requests / total_requests * 100) if total_requests > 0 else 0.0
+            
+            # 응답시간 처리
+            response_data = response_result[0] if response_result else {}
+            avg_response_time = float(response_data.get('avg_response_time', 0))
+            p95_response_time = float(response_data.get('p95_response_time', 0))
+            p99_response_time = float(response_data.get('p99_response_time', 0))
+            
+            return {
+                'tps': round(tps, 1),
+                'error_rate': round(error_rate, 2),
+                'vus': vus,
+                'avg_response_time': round(avg_response_time, 2),
+                'p95_response_time': round(p95_response_time, 2),
+                'p99_response_time': round(p99_response_time, 2)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting interval metrics: {e}")
+            return None
+
+    def get_test_timeseries_data(self, job_name: str) -> Optional[List[Dict]]:
+        """
+        테스트 전체 구간을 10초씩 나누어 시계열 데이터 조회
+        
+        Args:
+            job_name: Kubernetes Job 이름
+            
+        Returns:
+            시계열 데이터 리스트 또는 None
+            [
+                {
+                    'timestamp': datetime,
+                    'scenario_name': None or str,  # None이면 전체, str이면 해당 시나리오
+                    'tps': float,
+                    'error_rate': float,
+                    'vus': int,
+                    'avg_response_time': float,
+                    'p95_response_time': float,
+                    'p99_response_time': float
+                },
+                ...
+            ]
+        """
+        try:
+            # 테스트 시간 범위 조회
+            time_range = self.get_test_time_range(job_name)
+            if not time_range:
+                logger.error(f"Could not get time range for job: {job_name}")
+                return None
+                
+            start_time, end_time = time_range
+            
+            # 시나리오 이름들 조회
+            scenario_names = self.get_scenario_names_for_job(job_name)
+            
+            # 10초 단위로 구간 생성
+            timeseries_data = []
+            current_time = start_time
+            interval = timedelta(seconds=10)
+            
+            while current_time < end_time:
+                interval_end = min(current_time + interval, end_time)
+                
+                # 전체 데이터 조회
+                overall_metrics = self.get_interval_metrics(job_name, current_time, interval_end)
+                if overall_metrics:
+                    timeseries_data.append({
+                        'timestamp': current_time,
+                        'scenario_name': None,  # 전체 데이터
+                        **overall_metrics
+                    })
+                
+                # 시나리오별 데이터 조회
+                for scenario_name in scenario_names:
+                    scenario_metrics = self.get_interval_metrics(job_name, current_time, interval_end, scenario_name)
+                    if scenario_metrics:
+                        timeseries_data.append({
+                            'timestamp': current_time,
+                            'scenario_name': scenario_name,
+                            **scenario_metrics
+                        })
+                
+                current_time = interval_end
+            
+            logger.info(f"Generated {len(timeseries_data)} timeseries data points for job: {job_name}")
+            return timeseries_data
+            
+        except Exception as e:
+            logger.error(f"Error getting test timeseries data for job {job_name}: {e}")
             return None
