@@ -312,16 +312,19 @@ class PodMonitorService:
                     # 일반 포트와 NodePort 정보를 모두 포함
                     ports = []
                     node_ports = []
+                    port_mappings = {}  # NodePort -> Service Port 매핑
                     if service.spec.ports:
                         for port in service.spec.ports:
                             ports.append(port.port)
                             if port.node_port:  # NodePort가 있는 경우
                                 node_ports.append(port.node_port)
+                                port_mappings[port.node_port] = port.port  # NodePort -> Service Port 매핑
                     
                     service_info = {
                         "name": service.metadata.name,
                         "ports": ports,
                         "node_ports": node_ports,
+                        "port_mappings": port_mappings,  # NodePort -> Service Port 매핑 추가
                         "cluster_ip": service.spec.cluster_ip,
                         "type": service.spec.type
                     }

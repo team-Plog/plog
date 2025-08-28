@@ -6,8 +6,8 @@ from app.db.sqlite.database import Base
 tags_endpoints = Table(
     "tag_endpoint",
     Base.metadata,
-    Column("endpoint_id", ForeignKey("endpoint.id"), primary_key=True),
-    Column("tag_id", ForeignKey("tag.id"), primary_key=True)
+    Column("endpoint_id", ForeignKey("endpoint.id", ondelete="CASCADE"), primary_key=True),
+    Column("tag_id", ForeignKey("tag.id", ondelete="CASCADE"), primary_key=True)
 )
 
 # 프로젝트
