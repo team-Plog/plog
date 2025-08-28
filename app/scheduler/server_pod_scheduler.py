@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import List, Any, Dict
 import threading
 from sqlalchemy.orm import Session
+import httpx
 
 from app.core.config import settings
 from app.db.sqlite.database import SessionLocal
@@ -272,20 +273,45 @@ class ServerPodScheduler:
 
     async def _check_swagger_endpoints(self, base_url: str, swagger_paths: List[str]) -> List[str]:
         """
-        주어진 base URL에 대해 swagger paths를 확인하여 유효한 엔드포인트를 찾습니다.
+        주어진 base URL에 대해 swagger paths를 병렬로 확인하여 유효한 엔드포인트를 찾습니다.
+        세마포어로 동시 연결 수 제한, 클라이언트 재사용, 조기 종료 최적화 적용
         """
-        found_urls = []
+        potential_urls = [f"{base_url}{swagger_path}" for swagger_path in swagger_paths]
+        logger.info(f"Checking {len(potential_urls)} URLs in parallel for {base_url}")
         
-        for swagger_path in swagger_paths:
-            potential_url = f"{base_url}{swagger_path}"
-            logger.info(f"check swagger_url: {potential_url}")
+        # 세마포어로 최대 5개 동시 요청 제한
+        semaphore = asyncio.Semaphore(5)
+        
+        async def check_single_url_with_semaphore(client, url):
+            async with semaphore:
+                return await self._check_swagger_url_with_client(client, url)
+        
+        # 클라이언트 재사용으로 모든 요청 처리 (리다이렉트 자동 따르기)
+        async with httpx.AsyncClient(timeout=3, follow_redirects=True) as client:
+            # 모든 URL 체크 작업 생성 (URL과 함께 쌍으로 저장)
+            tasks = [(asyncio.create_task(check_single_url_with_semaphore(client, url)), url) 
+                    for url in potential_urls]
             
-            if await self._check_swagger_url_async(potential_url):
-                found_urls.append(potential_url)
-                logger.info(f"Found Swagger URL: {potential_url}")
-                break  # 첫 번째로 발견된 URL만 사용
+            # 병렬로 모든 작업 실행하고 결과 수집
+            try:
+                task_list = [task for task, _ in tasks]
+                results = await asyncio.gather(*task_list, return_exceptions=True)
                 
-        return found_urls
+                # 결과 확인하여 첫 번째 성공한 URL 찾기
+                for i, (result, (_, url)) in enumerate(zip(results, tasks)):
+                    logger.info(f"Result for {url}: {result} (type: {type(result)})")
+                    
+                    if result is True:
+                        logger.info(f"Found Swagger URL: {url}")
+                        return [url]
+                    elif isinstance(result, Exception):
+                        logger.debug(f"Error checking URL {url}: {result}")
+                        
+            except Exception as e:
+                logger.error(f"Error in parallel URL checking: {e}")
+                raise
+            
+            return []
 
     async def _try_nodeport_fallback(self, service_name: str, node_ports: List[int], 
                                    swagger_paths: List[str], swagger_urls: List[str]):
@@ -301,43 +327,58 @@ class ServerPodScheduler:
             if urls_found:
                 logger.info(f"Found Swagger URL via NodePort fallback: {urls_found[0]}")
 
-    async def _check_swagger_url_async(self, url: str, timeout: int = 3) -> bool:
+    async def _check_swagger_url_with_client(self, client, url: str) -> bool:
         """
-        비동기적으로 주어진 URL이 유효한 Swagger 엔드포인트인지 확인합니다.
+        주어진 클라이언트를 사용하여 URL이 유효한 Swagger 엔드포인트인지 확인합니다.
         """
-        import httpx
-        
         try:
-            async with httpx.AsyncClient(timeout=timeout) as client:
-                response = await client.get(url)
+            response = await client.get(url)
+            logger.info(f"Response for {url}: status={response.status_code}, content-type={response.headers.get('content-type', 'unknown')}")
+            
+            if response.status_code == 200:
+                content = response.text
+                logger.info(f"Response content preview for {url}: {content[:200]}...")
                 
-                if response.status_code == 200:
-                    content = response.text.lower()
-                    # Swagger 관련 키워드들이 포함되어 있는지 확인
-                    swagger_keywords = [
-                        "swagger", "openapi", "api documentation", 
-                        "swagger-ui", "redoc", "rapidoc"
-                    ]
+                content_lower = content.lower()
+                # Swagger 관련 키워드들이 포함되어 있는지 확인
+                swagger_keywords = [
+                    "swagger", "openapi", "api documentation", 
+                    "swagger-ui", "redoc", "rapidoc"
+                ]
+                
+                keyword_found = any(keyword in content_lower for keyword in swagger_keywords)
+                logger.info(f"Keyword check for {url}: found={keyword_found}")
+                
+                if keyword_found:
+                    return True
                     
-                    if any(keyword in content for keyword in swagger_keywords):
+                # JSON 응답인 경우 OpenAPI 스펙인지 확인
+                try:
+                    json_data = response.json()
+                    json_check = isinstance(json_data, dict) and (
+                        "swagger" in json_data or 
+                        "openapi" in json_data or 
+                        "info" in json_data
+                    )
+                    logger.info(f"JSON check for {url}: is_dict={isinstance(json_data, dict)}, has_swagger_keys={json_check}")
+                    
+                    if json_check:
                         return True
-                        
-                    # JSON 응답인 경우 OpenAPI 스펙인지 확인
-                    try:
-                        json_data = response.json()
-                        if isinstance(json_data, dict) and (
-                            "swagger" in json_data or 
-                            "openapi" in json_data or 
-                            "info" in json_data
-                        ):
-                            return True
-                    except:
-                        pass
-                        
+                except Exception as json_error:
+                    logger.info(f"JSON parse failed for {url}: {json_error}")
+                    
         except Exception as e:
             logger.debug(f"Failed to check Swagger URL {url}: {e}")
             
         return False
+    
+    async def _check_swagger_url_async(self, url: str, timeout: int = 3) -> bool:
+        """
+        비동기적으로 주어진 URL이 유효한 Swagger 엔드포인트인지 확인합니다.
+        (하위 호환성을 위한 래퍼 메소드)
+        """
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            return await self._check_swagger_url_with_client(client, url)
 
     def _is_http_port(self, port: int) -> bool:
         """
