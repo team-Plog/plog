@@ -31,6 +31,22 @@ class OpenAPISpecModel(Base):
 
     project = relationship("ProjectModel", back_populates="openapi_specs")
     tags = relationship("TagModel", back_populates="openapi_spec", cascade="all, delete")
+    server_infras = relationship("ServerInfraModel", back_populates="openapi_spec")
+
+# 서버와 연결된 POD 정보
+class ServerInfraModel(Base):
+    __tablename__ = "server_infra"
+    id = Column(Integer, primary_key=True, index=True)
+    open_api_spec_id = Column(Integer, ForeignKey("openapi_spec.id"))
+    openapi_spec = relationship("OpenAPISpecModel", back_populates="server_infras")
+    resource_type = Column(String, nullable=True) # POD, DEPLOYMENT, SERVICE
+    environment = Column(String, nullable=True) # K3S, ONPREMISE, LOCAL
+    service_type = Column(String, nullable=True) # SERVER, DATABASE
+    name = Column(String, nullable=True) # RESOURCE NAME
+    group_name = Column(String, nullable=True)
+    label = Column(JSON, nullable=True)
+    namespace = Column(String, nullable=True)
+
 
 # 태그
 class TagModel(Base):

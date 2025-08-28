@@ -10,7 +10,11 @@ from app.db.sqlite.database import engine
 from app.common.exceptionhandler import register_exception_handler
 from app.common.middleware.cors_middleware import register_cors_middleware
 from app.scheduler.k6_job_scheduler import start_scheduler, stop_scheduler
+from app.scheduler.server_pod_scheduler import start_scheduler as start_pod_scheduler, stop_scheduler as stop_pod_scheduler
 from k8s.k8s_client import v1_core
+
+# 테스트 임시 import
+from app.services.monitoring.pod_monitor_service import PodMonitorService
 
 # 로깅 설정
 logging.basicConfig(
@@ -37,6 +41,11 @@ async def lifespan(app: FastAPI):
             logger.info(f"Pod: {pod.metadata.name}")
     except Exception as e:
         logger.error(f"Kubernetes connection test failed: {e}")
+
+
+    pod_monitor_service = PodMonitorService("test")
+    test_data = pod_monitor_service.get_running_pods()
+    print("test_data = ", test_data)
     
     # k6 Job 스케줄러 시작
     try:
@@ -44,6 +53,13 @@ async def lifespan(app: FastAPI):
         logger.info("K6 Job Scheduler started successfully")
     except Exception as e:
         logger.error(f"Failed to start K6 Job Scheduler: {e}")
+    
+    # Server Pod 스케줄러 시작
+    try:
+        start_pod_scheduler()
+        logger.info("Server Pod Scheduler started successfully")
+    except Exception as e:
+        logger.error(f"Failed to start Server Pod Scheduler: {e}")
     
     yield
     
@@ -56,6 +72,12 @@ async def lifespan(app: FastAPI):
         logger.info("K6 Job Scheduler stopped successfully")
     except Exception as e:
         logger.error(f"Failed to stop K6 Job Scheduler: {e}")
+    
+    try:
+        stop_pod_scheduler()
+        logger.info("Server Pod Scheduler stopped successfully")
+    except Exception as e:
+        logger.error(f"Failed to stop Server Pod Scheduler: {e}")
 
 
 app = FastAPI(
