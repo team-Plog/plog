@@ -10,11 +10,13 @@ from app.services.testing.test_history_service import (
     get_test_history_by_id, 
     get_test_histories_with_project_info, 
     get_test_histories_by_project_id,
-    build_test_history_detail_response
+    build_test_history_detail_response,
+    build_test_history_timeseries_response
 )
 from app.dto.test_history.test_history_response import TestHistoryResponse
 from app.dto.test_history.test_history_simple_response import TestHistorySimpleResponse
 from app.dto.test_history.test_history_detail_response import TestHistoryDetailResponse
+from app.dto.test_history.test_history_timeseries_response import TestHistoryTimeseriesResponse
 
 router = APIRouter()
 
@@ -298,6 +300,108 @@ def get_test_history_details(
         raise HTTPException(status_code=404, detail="Test history not found")
     
     response_data:TestHistoryDetailResponse = build_test_history_detail_response(test_history)
+    
+    return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response_data)
+
+
+@router.get(
+    "/{test_history_id}/timeseries",
+    response_model=TestHistoryTimeseriesResponse,
+    summary="테스트 기록 시계열 데이터 조회",
+    description="""
+    ## 개요
+    특정 테스트 기록의 시계열 메트릭 데이터를 조회합니다. 전체 및 시나리오별로 10초 단위 시계열 데이터를 제공합니다.
+    
+    ## 요청 파라미터
+    - **test_history_id** (path): 조회할 테스트 기록의 ID (정수)
+    
+    ## 응답 형식
+    ```json
+    {
+        "success": true,
+        "message": "요청 처리에 성공하였습니다.",
+        "status_code": 200,
+        "data": {
+            "overall": {
+                "data": [
+                    {
+                        "timestamp": "2025-08-28T07:06:31.157437",
+                        "tps": 100.0,
+                        "error_rate": 0,
+                        "vus": 200, 
+                        "avg_response_time": 0,
+                        "p95_response_time": 0,
+                        "p99_response_time": 0
+                    }
+                ]
+            },
+            "scenarios": [
+                {
+                    "scenario_name": "기능1",
+                    "endpoint_summary": "I/O 지연 테스트",
+                    "data": [
+                        {
+                            "timestamp": "2025-08-28T07:06:31.157437",
+                            "tps": 100.0,
+                            "error_rate": 0,
+                            "vus": 200, 
+                            "avg_response_time": 0,
+                            "p95_response_time": 0,
+                            "p99_response_time": 0
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+    ```
+    
+    ## 응답 데이터 상세
+    
+    ### Overall 섹션 (전체 시계열 데이터)
+    - **data**: 전체 테스트의 10초 단위 시계열 데이터 배열
+      - **timestamp**: 해당 구간의 시작 시간
+      - **tps**: 해당 구간의 TPS (초당 트랜잭션)
+      - **error_rate**: 해당 구간의 에러율 (%)
+      - **vus**: 해당 구간의 가상 사용자 수
+      - **avg_response_time**: 해당 구간의 평균 응답시간 (ms)
+      - **p95_response_time**: 해당 구간의 95퍼센타일 응답시간 (ms)
+      - **p99_response_time**: 해당 구간의 99퍼센타일 응답시간 (ms)
+    
+    ### Scenarios 섹션 (시나리오별 시계열 데이터)
+    - **scenario_name**: 시나리오 이름
+    - **endpoint_summary**: 연결된 엔드포인트의 요약 설명
+    - **data**: 해당 시나리오의 10초 단위 시계열 데이터 배열 (구조는 overall과 동일)
+    
+    ## 데이터 특징
+    - 모든 시계열 데이터는 10초 단위로 집계됩니다
+    - 테스트 완료 후에만 데이터가 저장되므로, 완료되지 않은 테스트는 빈 배열을 반환할 수 있습니다
+    - timestamp는 각 10초 구간의 시작 시간을 나타냅니다
+    
+    ## 에러 응답
+    - **404 Not Found**: 해당 ID의 테스트 기록이 존재하지 않음
+    
+    ## 사용 예시
+    - 테스트 성능 그래프 표시
+    - 시간대별 성능 분석
+    - 시나리오별 성능 비교 차트
+    """
+)
+def get_test_history_timeseries(
+    test_history_id: int,
+    db: Session = Depends(get_db)
+):
+    """테스트 기록의 시계열 메트릭 데이터를 조회합니다."""
+    # 테스트 히스토리 존재 확인
+    test_history = get_test_history_by_id(db, test_history_id)
+    if not test_history:
+        raise HTTPException(status_code=404, detail="Test history not found")
+    
+    # 시계열 데이터 조회 및 응답 생성
+    response_data = build_test_history_timeseries_response(db, test_history_id)
+    
+    if response_data is None:
+        raise HTTPException(status_code=404, detail="Timeseries data not found")
     
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response_data)
 

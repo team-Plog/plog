@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session, joinedload
 
-from app.db.sqlite.models.history_models import TestHistoryModel, ScenarioHistoryModel, StageHistoryModel, TestParameterHistoryModel, TestHeaderHistoryModel
+from app.db.sqlite.models.history_models import TestHistoryModel, ScenarioHistoryModel, StageHistoryModel, TestParameterHistoryModel, TestHeaderHistoryModel, TestMetricsTimeseriesModel
 from app.db.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, TagModel, EndpointModel, tags_endpoints
 from app.dto.load_test.load_test_request import LoadTestRequest
 from app.services.project.service import get_project_by_endpoint_id_simple
@@ -19,6 +19,12 @@ from app.dto.test_history.test_history_detail_response import (
     VusMetricResponse,
     TestParameterHistoryResponse,
     TestHeaderHistoryResponse
+)
+from app.dto.test_history.test_history_timeseries_response import (
+    TestHistoryTimeseriesResponse,
+    OverallTimeseriesResponse,
+    ScenarioTimeseriesResponse,
+    TimeseriesDataPoint
 )
 
 logger = logging.getLogger(__name__)
@@ -579,3 +585,209 @@ def mark_test_as_completed(db: Session, test_history: TestHistoryModel) -> bool:
         logger.error(f"Error marking test as completed: {e}")
         db.rollback()
         return False
+
+
+# === 시계열 메트릭 관련 함수들 ===
+
+def save_test_timeseries_metrics(db: Session, test_history_id: int, timeseries_data: List[Dict]) -> bool:
+    """
+    테스트 완료 후 시계열 메트릭 데이터를 저장
+    
+    Args:
+        db: 데이터베이스 세션
+        test_history_id: 테스트 히스토리 ID
+        timeseries_data: InfluxDB에서 조회한 시계열 데이터 리스트
+                       [
+                           {
+                               'timestamp': datetime,
+                               'scenario_name': None or str,  # None이면 전체, str이면 해당 시나리오
+                               'tps': float,
+                               'error_rate': float,
+                               'vus': int,
+                               'avg_response_time': float,
+                               'p95_response_time': float,
+                               'p99_response_time': float
+                           },
+                           ...
+                       ]
+    
+    Returns:
+        bool: 저장 성공 여부
+    """
+    try:
+        if not timeseries_data:
+            logger.warning(f"No timeseries data to save for test_history_id: {test_history_id}")
+            return True
+            
+        # 시나리오 이름으로 시나리오 ID 매핑을 미리 구성
+        scenario_mapping = {}
+        test_history = get_test_history_by_id(db, test_history_id)
+        if test_history:
+            for scenario in test_history.scenarios:
+                scenario_mapping[scenario.scenario_tag] = scenario.id
+        
+        # 배치로 저장할 데이터 준비
+        timeseries_models = []
+        
+        for data_point in timeseries_data:
+            # 시나리오 ID 결정
+            scenario_id = None
+            if data_point.get('scenario_name'):
+                scenario_id = scenario_mapping.get(data_point['scenario_name'])
+                if scenario_id is None:
+                    logger.warning(f"Scenario not found for name: {data_point['scenario_name']}")
+                    continue
+            
+            # 시계열 데이터 모델 생성
+            timeseries_model = TestMetricsTimeseriesModel(
+                test_history_id=test_history_id,
+                scenario_id=scenario_id,
+                timestamp=data_point['timestamp'],
+                tps=data_point.get('tps'),
+                error_rate=data_point.get('error_rate'),
+                vus=data_point.get('vus'),
+                avg_response_time=data_point.get('avg_response_time'),
+                p95_response_time=data_point.get('p95_response_time'),
+                p99_response_time=data_point.get('p99_response_time')
+            )
+            timeseries_models.append(timeseries_model)
+        
+        if timeseries_models:
+            # 배치 저장
+            db.add_all(timeseries_models)
+            db.commit()
+            
+            logger.info(f"Saved {len(timeseries_models)} timeseries data points for test_history_id: {test_history_id}")
+        else:
+            logger.warning(f"No valid timeseries data to save for test_history_id: {test_history_id}")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error saving timeseries metrics: {e}")
+        db.rollback()
+        return False
+
+
+def get_test_timeseries_metrics(db: Session, test_history_id: int) -> List[TestMetricsTimeseriesModel]:
+    """
+    테스트의 시계열 메트릭 데이터 조회
+    
+    Args:
+        db: 데이터베이스 세션
+        test_history_id: 테스트 히스토리 ID
+    
+    Returns:
+        시계열 메트릭 데이터 리스트
+    """
+    try:
+        return (
+            db.query(TestMetricsTimeseriesModel)
+            .filter(TestMetricsTimeseriesModel.test_history_id == test_history_id)
+            .order_by(TestMetricsTimeseriesModel.timestamp.asc(), TestMetricsTimeseriesModel.scenario_id.asc())
+            .all()
+        )
+    except Exception as e:
+        logger.error(f"Error getting timeseries metrics for test_history_id {test_history_id}: {e}")
+        return []
+
+
+def get_test_timeseries_metrics_by_scenario(db: Session, test_history_id: int, scenario_id: Optional[int] = None) -> List[TestMetricsTimeseriesModel]:
+    """
+    특정 시나리오의 시계열 메트릭 데이터 조회
+    
+    Args:
+        db: 데이터베이스 세션
+        test_history_id: 테스트 히스토리 ID
+        scenario_id: 시나리오 ID (None이면 전체 데이터)
+    
+    Returns:
+        시계열 메트릭 데이터 리스트
+    """
+    try:
+        query = db.query(TestMetricsTimeseriesModel).filter(
+            TestMetricsTimeseriesModel.test_history_id == test_history_id,
+            TestMetricsTimeseriesModel.scenario_id == scenario_id
+        )
+        
+        return query.order_by(TestMetricsTimeseriesModel.timestamp.asc()).all()
+        
+    except Exception as e:
+        logger.error(f"Error getting timeseries metrics for scenario {scenario_id}: {e}")
+        return []
+
+
+def build_test_history_timeseries_response(db: Session, test_history_id: int) -> Optional[TestHistoryTimeseriesResponse]:
+    """
+    테스트 히스토리의 시계열 데이터를 응답 형식으로 변환
+    
+    Args:
+        db: 데이터베이스 세션
+        test_history_id: 테스트 히스토리 ID
+    
+    Returns:
+        시계열 데이터 응답 또는 None
+    """
+    try:
+        # 테스트 히스토리 조회
+        test_history = get_test_history_by_id(db, test_history_id)
+        if not test_history:
+            logger.error(f"Test history not found for id: {test_history_id}")
+            return None
+        
+        # 전체 시계열 데이터 조회 (scenario_id = None)
+        overall_timeseries_data = get_test_timeseries_metrics_by_scenario(db, test_history_id, None)
+        
+        # 전체 데이터를 TimeseriesDataPoint로 변환
+        overall_data = [
+            TimeseriesDataPoint(
+                timestamp=data.timestamp,
+                tps=data.tps,
+                error_rate=data.error_rate,
+                vus=data.vus,
+                avg_response_time=data.avg_response_time,
+                p95_response_time=data.p95_response_time,
+                p99_response_time=data.p99_response_time
+            ) for data in overall_timeseries_data
+        ]
+        
+        # 시나리오별 시계열 데이터 구성
+        scenarios = []
+        for scenario in test_history.scenarios:
+            # 해당 시나리오의 시계열 데이터 조회
+            scenario_timeseries_data = get_test_timeseries_metrics_by_scenario(db, test_history_id, scenario.id)
+            
+            # 시계열 데이터를 TimeseriesDataPoint로 변환
+            scenario_data = [
+                TimeseriesDataPoint(
+                    timestamp=data.timestamp,
+                    tps=data.tps,
+                    error_rate=data.error_rate,
+                    vus=data.vus,
+                    avg_response_time=data.avg_response_time,
+                    p95_response_time=data.p95_response_time,
+                    p99_response_time=data.p99_response_time
+                ) for data in scenario_timeseries_data
+            ]
+            
+            # endpoint summary 가져오기
+            endpoint_summary = None
+            if scenario.endpoint:
+                endpoint_summary = scenario.endpoint.summary
+            
+            scenario_response = ScenarioTimeseriesResponse(
+                scenario_name=scenario.name,
+                endpoint_summary=endpoint_summary,
+                data=scenario_data
+            )
+            scenarios.append(scenario_response)
+        
+        # 최종 응답 구성
+        return TestHistoryTimeseriesResponse(
+            overall=OverallTimeseriesResponse(data=overall_data),
+            scenarios=scenarios
+        )
+        
+    except Exception as e:
+        logger.error(f"Error building timeseries response for test_history_id {test_history_id}: {e}")
+        return None
