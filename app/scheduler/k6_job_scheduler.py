@@ -43,7 +43,7 @@ class K6JobScheduler:
         self.job_warning_hours = settings.SCHEDULER_JOB_WARNING_HOURS
         self.auto_delete_jobs = settings.AUTO_DELETE_COMPLETED_JOBS
         
-        self.job_monitor = JobMonitorService(namespace=settings.KUBERNETES_NAMESPACE)
+        self.job_monitor = JobMonitorService(namespace=settings.KUBERNETES_PLOG_NAMESPACE)
         self.metrics_service = MetricsAggregationService()
         self.influxdb_service = InfluxDBService()  # 새로운 InfluxDB 서비스
         self.is_running = False

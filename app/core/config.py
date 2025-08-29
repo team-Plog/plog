@@ -25,8 +25,9 @@ class Settings:
     K6_DEFAULT_PVC: str = os.getenv("K6_DEFAULT_PVC", "k6-script-pvc")
     
     # Kubernetes 설정
-    KUBERNETES_NAMESPACE: str = os.getenv("KUBERNETES_NAMESPACE", "default")
-    
+    KUBERNETES_TEST_NAMESPACE: str = os.getenv("KUBERNETES_TEST_NAMESPACE", "test")
+    KUBERNETES_PLOG_NAMESPACE: str = os.getenv("KUBERNETES_PLOG_NAMESPACE", "plog")
+
     # 로깅 설정
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     

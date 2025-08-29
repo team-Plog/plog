@@ -37,7 +37,7 @@ class ServerPodScheduler:
         self.pod_timeout_hours = getattr(settings, 'POD_SCHEDULER_TIMEOUT_HOURS', 24)
         self.pod_warning_hours = getattr(settings, 'POD_SCHEDULER_WARNING_HOURS', 6)
         
-        self.pod_monitor = PodMonitorService(namespace=getattr(settings, 'KUBERNETES_NAMESPACE', 'test'))
+        self.pod_monitor = PodMonitorService(namespace=settings.KUBERNETES_TEST_NAMESPACE)
         self.server_infra_service = ServerInfraService()
         self.is_running = False
         self._scheduler_thread = None
@@ -193,10 +193,11 @@ class ServerPodScheduler:
                     if hasattr(self, '_nodeport_conversions') and swagger_url in self._nodeport_conversions:
                         conversion_info = self._nodeport_conversions[swagger_url]
                         original_base_url = analysis_result.base_url
-                        # localhost:node_port를 service_name:service_port로 변환
+                        # localhost:node_port를 service_name.namespace:service_port로 변환
+                        service_with_namespace = f"{conversion_info['service_name']}.{settings.KUBERNETES_TEST_NAMESPACE}.svc.cluster.local"
                         converted_base_url = original_base_url.replace(
                             f"localhost:{conversion_info['node_port']}", 
-                            f"{conversion_info['service_name']}:{conversion_info['service_port']}"
+                            f"{service_with_namespace}:{conversion_info['service_port']}"
                         )
                         analysis_result.base_url = converted_base_url
                         logger.info(f"Converted base_url for k6 job access: {original_base_url} -> {converted_base_url}")
@@ -265,8 +266,8 @@ class ServerPodScheduler:
             # 1. 클러스터 내부 Service URL로 시도
             for port in ports:
                 if self._is_http_port(port):
-                    # http://<service_name>:port/~~ 형태로 시도
-                    service_url = f"http://{service_name}:{port}"
+                    # http://<service_name.namespace.svc.cluster.local>:port/~~ 형태로 시도
+                    service_url = f"http://{service_name}.{settings.KUBERNETES_TEST_NAMESPACE}.svc.cluster.local:{port}"
                     urls_found = await self._check_swagger_endpoints(service_url, swagger_paths)
                     swagger_urls.extend(urls_found)
                     
@@ -353,7 +354,7 @@ class ServerPodScheduler:
                         'service_port': service_port,
                         'node_port': node_port
                     }
-                    logger.info(f"Stored conversion info for {url}: localhost:{node_port} -> {service_name}:{service_port}")
+                    logger.info(f"Stored conversion info for {url}: localhost:{node_port} -> {service_name}.{settings.KUBERNETES_TEST_NAMESPACE}.svc.cluster.local:{service_port}")
 
     async def _check_swagger_url_with_client(self, client, url: str) -> bool:
         """
