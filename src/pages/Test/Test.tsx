@@ -14,7 +14,7 @@ import {
 import MetricCard from "../../components/MetricCard/MetricCard";
 import MetricChart from "../../components/MetricChart/MetricChart";
 import {useLocation} from "react-router-dom";
-import {getProjectDetail, getTestHistoryDetail} from "../../api";
+import {getProjectDetail, getTestHistoryDetail, getSseK6DataUrl} from "../../api";
 import {stopJob} from "../../api/jobScheduler";
 
 const Test: React.FC = () => {
@@ -96,9 +96,10 @@ const Test: React.FC = () => {
   useEffect(() => {
     if (!effectiveJobName) return;
 
-    const eventSource = new EventSource(
-      `http://35.216.24.11:30002/sse/k6data/${effectiveJobName}`
-    );
+    // API 유틸 함수를 사용해서 SSE URL 생성
+    const sseUrl = getSseK6DataUrl(effectiveJobName);
+    
+    const eventSource = new EventSource(sseUrl);
     sseRef.current = eventSource;
 
     eventSource.onmessage = (event) => {

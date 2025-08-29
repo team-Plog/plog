@@ -11,10 +11,10 @@
   width: 100%;
   max-width: 320px;
   box-sizing: border-box;
+  box-shadow: var(--shadow-primary);
 }
 
 .card:hover {
-  box-shadow: var(--shadow-primary, 0px 2px 16px rgba(0, 0, 0, 0.03));
   transform: translateY(-2px);
 }
 

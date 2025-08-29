@@ -1,5 +1,7 @@
 import axios from "./axiosInstance";
 
-export const getSseK6Data = (jobName: string) => {
-  return axios.get(`/sse/k6data/${jobName}`);
+// SSE URL 생성 함수 (실시간 스트림용)
+export const getSseK6DataUrl = (jobName: string): string => {
+  const baseURL = axios.defaults.baseURL || '';
+  return `${baseURL}/sse/k6data/${jobName}`;
 };
