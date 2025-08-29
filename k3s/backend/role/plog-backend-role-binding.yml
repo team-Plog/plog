@@ -3,12 +3,12 @@ kind: RoleBinding
 
 metadata:
   name: plog-backend-role-binding
-  namespace: default
+  namespace: plog
 
 subjects:
   - kind: ServiceAccount
     name: plog-backend-service-account
-    namespace: default
+    namespace: plog
 
 roleRef:
   apiGroup: rbac.authorization.k8s.io

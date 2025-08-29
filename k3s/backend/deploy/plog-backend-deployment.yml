@@ -3,6 +3,7 @@ kind: Deployment
 
 metadata:
   name: plog-backend-deployment
+  namespace: plog
 
 spec:
   replicas: 1

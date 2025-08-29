@@ -3,6 +3,7 @@ kind: Deployment
 
 metadata:
   name: influxdb-deployment
+  namespace: plog
 
 spec:
   selector:

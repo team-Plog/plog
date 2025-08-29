@@ -3,6 +3,7 @@ kind: Service
 
 metadata:
   name: plog-backend-service
+  namespace: plog
 
 spec:
   type: NodePort

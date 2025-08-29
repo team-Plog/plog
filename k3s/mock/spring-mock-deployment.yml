@@ -3,6 +3,7 @@ kind: Deployment
 
 metadata:
   name: spring-mock-deployment
+  namespace: test
 
 spec:
   replicas: 1
