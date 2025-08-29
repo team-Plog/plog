@@ -37,7 +37,7 @@ class ServerPodScheduler:
         self.pod_timeout_hours = getattr(settings, 'POD_SCHEDULER_TIMEOUT_HOURS', 24)
         self.pod_warning_hours = getattr(settings, 'POD_SCHEDULER_WARNING_HOURS', 6)
         
-        self.pod_monitor = PodMonitorService(namespace=getattr(settings, 'KUBERNETES_NAMESPACE', 'test'))
+        self.pod_monitor = PodMonitorService(namespace=settings.KUBERNETES_TEST_NAMESPACE)
         self.server_infra_service = ServerInfraService()
         self.is_running = False
         self._scheduler_thread = None
@@ -189,6 +189,19 @@ class ServerPodScheduler:
                 if analysis_result:
                     logger.info(f"Successfully analyzed OpenAPI spec for pod {pod_name}")
                     
+                    # NodePort fallback URL인 경우 base_url을 service_name:port로 변환
+                    if hasattr(self, '_nodeport_conversions') and swagger_url in self._nodeport_conversions:
+                        conversion_info = self._nodeport_conversions[swagger_url]
+                        original_base_url = analysis_result.base_url
+                        # localhost:node_port를 service_name.namespace:service_port로 변환
+                        service_with_namespace = f"{conversion_info['service_name']}.{settings.KUBERNETES_TEST_NAMESPACE}.svc.cluster.local"
+                        converted_base_url = original_base_url.replace(
+                            f"localhost:{conversion_info['node_port']}", 
+                            f"{service_with_namespace}:{conversion_info['service_port']}"
+                        )
+                        analysis_result.base_url = converted_base_url
+                        logger.info(f"Converted base_url for k6 job access: {original_base_url} -> {converted_base_url}")
+                    
                     # OpenAPI 분석 결과를 데이터베이스에 저장
                     saved_openapi_spec = await save_openapi_spec(db, analysis_result)
                     logger.info(f"Saved OpenAPI spec with ID: {saved_openapi_spec.id}")
@@ -253,8 +266,8 @@ class ServerPodScheduler:
             # 1. 클러스터 내부 Service URL로 시도
             for port in ports:
                 if self._is_http_port(port):
-                    # http://<service_name>:port/~~ 형태로 시도
-                    service_url = f"http://{service_name}:{port}"
+                    # http://<service_name.namespace.svc.cluster.local>:port/~~ 형태로 시도
+                    service_url = f"http://{service_name}.{settings.KUBERNETES_TEST_NAMESPACE}.svc.cluster.local:{port}"
                     urls_found = await self._check_swagger_endpoints(service_url, swagger_paths)
                     swagger_urls.extend(urls_found)
                     
@@ -267,7 +280,8 @@ class ServerPodScheduler:
             # 2. fallback: NodePort 타입인 경우 localhost로 시도
             if service_type == "NodePort":
                 node_ports = service.get("node_ports", [])
-                await self._try_nodeport_fallback(service_name, node_ports, swagger_paths, swagger_urls)
+                port_mappings = service.get("port_mappings", {})
+                await self._try_nodeport_fallback(service_name, node_ports, port_mappings, swagger_paths, swagger_urls)
         
         return swagger_urls
 
@@ -314,18 +328,33 @@ class ServerPodScheduler:
             return []
 
     async def _try_nodeport_fallback(self, service_name: str, node_ports: List[int], 
-                                   swagger_paths: List[str], swagger_urls: List[str]):
+                                   port_mappings: Dict[int, int], swagger_paths: List[str], swagger_urls: List[str]):
         """
         NodePort 서비스에 대해 localhost로 fallback 시도
+        localhost URL을 그대로 반환 (OpenAPI 분석에 사용)
         """
         # node_ports 배열에는 이미 NodePort 포트만 들어있음
-        for port in node_ports:
-            localhost_url = f"http://localhost:{port}"
+        for node_port in node_ports:
+            localhost_url = f"http://localhost:{node_port}"
             urls_found = await self._check_swagger_endpoints(localhost_url, swagger_paths)
-            swagger_urls.extend(urls_found)
             
             if urls_found:
+                # localhost URL을 그대로 추가 (OpenAPI 분석에 사용)
+                swagger_urls.extend(urls_found)
                 logger.info(f"Found Swagger URL via NodePort fallback: {urls_found[0]}")
+                
+                # 변환을 위한 메타데이터를 저장 (클래스 속성으로)
+                service_port = port_mappings.get(node_port, node_port)
+                if not hasattr(self, '_nodeport_conversions'):
+                    self._nodeport_conversions = {}
+                
+                for url in urls_found:
+                    self._nodeport_conversions[url] = {
+                        'service_name': service_name,
+                        'service_port': service_port,
+                        'node_port': node_port
+                    }
+                    logger.info(f"Stored conversion info for {url}: localhost:{node_port} -> {service_name}.{settings.KUBERNETES_TEST_NAMESPACE}.svc.cluster.local:{service_port}")
 
     async def _check_swagger_url_with_client(self, client, url: str) -> bool:
         """

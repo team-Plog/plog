@@ -5,7 +5,7 @@ from kubernetes import client
 from k8s.k8s_client import v1_batch
 
 load_dotenv()
-
+from app.core.config import settings
 # job 구조 job_spec -> template -> pod_spec
 def create_k6_job_with_dashboard(job_name: str, script_filename: str, pvc_name: str="k6-script-pvc"):
     """
@@ -74,10 +74,11 @@ def create_k6_job_with_dashboard(job_name: str, script_filename: str, pvc_name: 
     job = client.V1Job(
         metadata=client.V1ObjectMeta(
             name=job_name, 
-            labels=labels  # Job 자체에도 라벨 추가
+            labels=labels,  # Job 자체에도 라벨 추가
+            namespace=settings.KUBERNETES_PLOG_NAMESPACE
         ),
         spec=job_spec
     )
 
-    v1_batch.create_namespaced_job(namespace="default", body=job)
+    v1_batch.create_namespaced_job(namespace=settings.KUBERNETES_PLOG_NAMESPACE, body=job)
     print(f"✅ Job '{job_name}' created to run '/{mount_path}/{script_filename}' with dashboard enabled.")

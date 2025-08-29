@@ -123,6 +123,31 @@ class TestHeaderHistoryModel(Base):
     scenario_id = Column(Integer, ForeignKey("scenario_history.id"))
     scenario = relationship("ScenarioHistoryModel", back_populates="test_headers")
 
+class TestMetricsTimeseriesModel(Base):
+    """10초 단위 시계열 메트릭 데이터 (그래프용)"""
+    __tablename__ = "test_metrics_timeseries"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    
+    # 테스트와 연관관계
+    test_history_id = Column(Integer, ForeignKey("test_history.id"), nullable=False)
+    test_history = relationship("TestHistoryModel")
+    
+    # 시나리오와 연관관계 (null이면 전체 데이터, 값이 있으면 해당 시나리오 데이터)
+    scenario_id = Column(Integer, ForeignKey("scenario_history.id"), nullable=True)
+    scenario = relationship("ScenarioHistoryModel")
+    
+    # 시간 구간 (10초 단위 구간의 시작 시간)
+    timestamp = Column(DateTime, nullable=False)
+    
+    # 메트릭 값들 (10초 구간의 평균/합계 값)
+    tps = Column(Float, nullable=True)          # Transactions per second
+    error_rate = Column(Float, nullable=True)   # Error rate (%)
+    vus = Column(Integer, nullable=True)        # Virtual users
+    avg_response_time = Column(Float, nullable=True)  # Average response time (ms)
+    p95_response_time = Column(Float, nullable=True)  # P95 response time (ms)
+    p99_response_time = Column(Float, nullable=True)  # P99 response time (ms)
+
 class StageHistoryModel(Base):
     __tablename__ = "stage_history"
 
