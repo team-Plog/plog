@@ -3,7 +3,6 @@
   align-items: center;
   padding: var(--spacing-xxs) var(--spacing-xs);
   border-radius: var(--radius-sm);
-  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -13,7 +12,6 @@
   gap: var(--spacing-xs);
   padding: var(--spacing-xxs) var(--spacing-xs);
   border-radius: var(--radius-sm);
-  font-weight: 600;
   white-space: nowrap;
 }
 

@@ -21,7 +21,7 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background-color 0.2s;
-  padding: 4px;
+  padding: var(--spacing-xs);
 }
 
 .menuButton:hover {
@@ -71,7 +71,7 @@
 }
 
 .tableRow:hover {
-  background-color: var(--color-gray-25);
+  background-color: var(--color-gray-100);
 }
 
 .tableRow:last-child {

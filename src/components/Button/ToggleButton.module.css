@@ -27,7 +27,6 @@
 .option.selected {
   background-color: var(--color-white);
   color: var(--color-black);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .icon {
