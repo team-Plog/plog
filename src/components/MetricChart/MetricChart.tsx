@@ -121,6 +121,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
               yAxisId="left"
               stroke={yAxisColors.left}
               tick={{fill: yAxisColors.left, fontSize: 12}}
+              domain={[0, (dataMax: number) => dataMax * 1.2]}
             />
             {hasRightAxis && (
               <YAxis
@@ -128,6 +129,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
                 orientation="right"
                 stroke={yAxisColors.right}
                 tick={{fill: yAxisColors.right, fontSize: 12}}
+                domain={[0, (dataMax: number) => dataMax * 1.2]}
               />
             )}
 
