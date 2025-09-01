@@ -9,10 +9,14 @@ export const getTestHistoryList = (page: number, size: number) =>
     }
   });
 
-  // 프로젝트별 테스트 기록 조회
+// 프로젝트별 테스트 기록 조회
 export const getTestHistoryByProject = (projectId: number) =>
   axios.get(`/test-history/projects/${projectId}`);
 
 // 테스트 기록 상세 조회
 export const getTestHistoryDetail = (testHistoryId: number) =>
   axios.get(`/test-history/${testHistoryId}/details`);
+
+// 테스트 기록 시계열 데이터 조회
+export const getTestHistoryTimeseries = (testHistoryId: number) =>
+  axios.get(`/test-history/${testHistoryId}/timeseries`);

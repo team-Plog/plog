@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import styles from "./ReportViewer.module.css";
-import {Sparkle} from "lucide-react";
-import type {TestData, ReportConfig} from "../../pages/Report/Report";
+import { Sparkle } from "lucide-react";
+import type { TestData, ReportConfig } from "../../pages/Report/Report";
+import MetricChart from "../MetricChart/MetricChart";
+import { getTestHistoryTimeseries } from "../../api";
 
 interface ReportViewerProps {
   reportData: TestData;
@@ -12,14 +14,63 @@ interface ReportViewerProps {
   onTextSelect?: (key: string, text: string) => void;
 }
 
+interface TimeseriesData {
+  overall: {
+    data: Array<{
+      timestamp: string;
+      tps: number;
+      error_rate: number;
+      vus: number;
+      avg_response_time: number;
+      p95_response_time: number;
+      p99_response_time: number;
+    }>;
+  };
+  scenarios: Array<{
+    scenario_name: string;
+    endpoint_summary: string;
+    data: Array<{
+      timestamp: string;
+      tps: number;
+      error_rate: number;
+      vus: number;
+      avg_response_time: number;
+      p95_response_time: number;
+      p99_response_time: number;
+    }>;
+  }>;
+}
+
 const ReportViewer: React.FC<ReportViewerProps> = ({
   reportData,
   reportConfig,
   isEditing = false,
   selectedTextKey,
-  editableTexts = {},
+  editableTexts,
   onTextSelect,
 }) => {
+  const [timeseriesData, setTimeseriesData] = useState<TimeseriesData | null>(null);
+  const [timeseriesLoading, setTimeseriesLoading] = useState<boolean>(false);
+
+  // 시계열 데이터 가져오기
+  useEffect(() => {
+    const fetchTimeseriesData = async () => {
+      if (!reportData.test_history_id) return;
+      
+      setTimeseriesLoading(true);
+      try {
+        const res = await getTestHistoryTimeseries(reportData.test_history_id);
+        setTimeseriesData(res.data.data);
+      } catch (error) {
+        console.error("시계열 데이터 조회 실패:", error);
+      } finally {
+        setTimeseriesLoading(false);
+      }
+    };
+
+    fetchTimeseriesData();
+  }, [reportData.test_history_id]);
+
   const formatDateOnly = (dateString: string) => {
     return new Date(dateString)
       .toLocaleDateString("ko-KR", {
@@ -49,7 +100,8 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
   };
 
   const getEditableText = (key: string, defaultText: string) => {
-    return editableTexts[key] || defaultText;
+    // reportConfig에서 먼저 확인하고, 없으면 editableTexts에서 확인
+    return reportConfig.editableTexts?.[key] || editableTexts?.[key] || defaultText;
   };
 
   const getTextClassName = (baseClass: string, key: string) => {
@@ -62,6 +114,41 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
     }
     return classes.join(' ');
   };
+
+  // 시계열 데이터를 차트 형태로 변환하는 함수
+  const prepareChartData = (data: Array<any>) => {
+    return data.map((item, index) => {
+      const time = new Date(item.timestamp);
+      const minutes = String(Math.floor(index * 10 / 60)).padStart(2, '0');
+      const seconds = String((index * 10) % 60).padStart(2, '0');
+      
+      return {
+        time: `${minutes}:${seconds}`,
+        avg_response_time: item.avg_response_time / 1000, // ms to seconds
+        tps: item.tps,
+        error_rate: item.error_rate,
+        bytes_per_second: item.tps * 1024, // TPS를 Bytes per Second로 근사치 계산
+      };
+    });
+  };
+
+  // 전체 데이터 차트 시리즈 설정
+  const overallChartSeries = [
+    {
+      key: "avg_response_time",
+      name: "Average Response Time",
+      color: "#8884d8",
+      unit: "sec",
+      yAxis: "left" as const,
+    },
+    {
+      key: "bytes_per_second",
+      name: "Bytes per Second",
+      color: "#82ca9d",
+      unit: "bytes/s",
+      yAxis: "right" as const,
+    },
+  ];
 
   return (
     <div className={styles.container}>
@@ -353,6 +440,46 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                   </tbody>
                 </table>
               </div>
+
+              {/* 전체 그래프 추가 */}
+              {reportConfig.includeCharts && timeseriesData?.overall?.data && timeseriesData.overall.data.length > 0 && (
+                <div className={styles.tableContainer}>
+                  <div className={`${styles.tableTitle} CaptionLight`}>
+                    그래프 4-1. 전체 테스트 시계열 분석
+                  </div>
+                  <MetricChart
+                    title="전체 테스트 성능 지표"
+                    data={prepareChartData(timeseriesData.overall.data)}
+                    combinedSeries={overallChartSeries}
+                    height={300}
+                    hideTitle={true}
+                    hideControls={true}
+                    showLegend={false}
+                  />
+                </div>
+              )}
+
+              {/* 시나리오별 그래프 추가 */}
+              {reportConfig.includeCharts && timeseriesData?.scenarios && timeseriesData.scenarios.map((scenario, index) => {
+                if (!scenario.data || scenario.data.length === 0) return null;
+                
+                return (
+                  <div key={index} className={styles.tableContainer}>
+                    <div className={`${styles.tableTitle} CaptionLight`}>
+                      그래프 4-{index + 2}. {scenario.scenario_name} 시계열 분석
+                    </div>
+                    <MetricChart
+                      title={`${scenario.scenario_name} - ${scenario.endpoint_summary}`}
+                      data={prepareChartData(scenario.data)}
+                      combinedSeries={overallChartSeries}
+                      height={300}
+                      hideTitle={true}
+                      hideControls={true}
+                      showLegend={false}
+                    />
+                  </div>
+                );
+              })}
             </div>
 
             <div className={styles.subTitleGroup}>

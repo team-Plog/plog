@@ -27,6 +27,9 @@ interface MetricChartProps {
   color?: string;
   combinedSeries?: CombinedSeries[];
   height?: number;
+  hideTitle?: boolean;      // 제목 숨김 옵션
+  hideControls?: boolean;   // 토글 컨트롤 숨김 옵션
+  showLegend?: boolean;     // 범례 표시 옵션
 }
 
 const MetricChart: React.FC<MetricChartProps> = ({
@@ -36,6 +39,9 @@ const MetricChart: React.FC<MetricChartProps> = ({
   color,
   combinedSeries,
   height = 200,
+  hideTitle = false,
+  hideControls = false,
+  showLegend = true,
 }) => {
   const multiMode = !!(combinedSeries && combinedSeries.length > 0);
 
@@ -48,7 +54,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
       (combinedSeries ?? []).some(
         (s) => (s.yAxis ?? "left") === "right" && visible[s.key]
       ),
-    [combinedSeries, visible] // visible 상태가 바뀔 때도 재계산하도록 추가
+    [combinedSeries, visible]
   );
 
   const toggle = (key: string) =>
@@ -57,7 +63,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
   if (multiMode) {
     const activeSeries = (combinedSeries ?? []).filter((s) => visible[s.key]);
 
-    // Y축 색상을 동적으로 찾기 (왼쪽: tps/users, 오른쪽: responseTime/errorRate 대표 색상)
+    // Y축 색상을 동적으로 찾기
     const yAxisColors = useMemo(() => {
       const leftColor =
         (combinedSeries ?? []).find((s) => (s.yAxis ?? "left") === "left")
@@ -70,31 +76,34 @@ const MetricChart: React.FC<MetricChartProps> = ({
 
     return (
       <div className={styles.chart}>
-        <h3 className="HeadingS">{title}</h3>
-        <div className={styles.toggleGroup}>
-          {(combinedSeries ?? []).map((s) => {
-            const isOn = visible[s.key];
-            return (
-              <label
-                key={s.key}
-                className={`${styles.toggleSwitch} CaptionLight`}
-                title={isOn ? "숨기기" : "보이기"}>
-                <input
-                  type="checkbox"
-                  checked={isOn}
-                  onChange={() => toggle(s.key)}
-                />
-                <span
-                  className={styles.slider}
-                  style={{backgroundColor: isOn ? s.color : "#ccc"}}
-                />
-                <span className={`${styles.toggleLabel} CaptionLight`}>
-                  {s.name}
-                </span>
-              </label>
-            );
-          })}
-        </div>
+        {!hideTitle && <h3 className="HeadingS">{title}</h3>}
+        
+        {!hideControls && (
+          <div className={styles.toggleGroup}>
+            {(combinedSeries ?? []).map((s) => {
+              const isOn = visible[s.key];
+              return (
+                <label
+                  key={s.key}
+                  className={`${styles.toggleSwitch} CaptionLight`}
+                  title={isOn ? "숨기기" : "보이기"}>
+                  <input
+                    type="checkbox"
+                    checked={isOn}
+                    onChange={() => toggle(s.key)}
+                  />
+                  <span
+                    className={styles.slider}
+                    style={{backgroundColor: isOn ? s.color : "#ccc"}}
+                  />
+                  <span className={`${styles.toggleLabel} CaptionLight`}>
+                    {s.name}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        )}
 
         <ResponsiveContainer width="100%" height={height}>
           <AreaChart
@@ -144,17 +153,21 @@ const MetricChart: React.FC<MetricChartProps> = ({
                 return [`${v}${unit}`, ser?.name ?? name];
               }}
             />
-            <Legend
-              content={() => (
-                <div className={styles.legend}>
-                  {combinedSeries?.map((s) => (
-                    <span key={s.key} style={{color: s.color, fontSize: 12}}>
-                      ■ {s.name}
-                    </span>
-                  ))}
-                </div>
-              )}
-            />
+            
+            {showLegend && (
+              <Legend
+                content={() => (
+                  <div className={styles.legend}>
+                    {combinedSeries?.map((s) => (
+                      <span key={s.key} style={{color: s.color, fontSize: 12}}>
+                        ■ {s.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              />
+            )}
+            
             {activeSeries.map((s) => (
               <Area
                 key={s.key}
@@ -181,34 +194,34 @@ const MetricChart: React.FC<MetricChartProps> = ({
     );
   }
 
-  // 단일 시리즈 모드 (변경 없음)
-  // const gradientId = `gradient-${dataKey}`;
-  // return (
-  //   <div className={styles.chart}>
-  //     <h3>{title}</h3>
-  //     <ResponsiveContainer width="100%" height={height}>
-  //       <AreaChart data={data}>
-  //         <defs>
-  //           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-  //             <stop offset="0%" stopColor={color} stopOpacity={0.8} />
-  //             <stop offset="100%" stopColor={color} stopOpacity={0.1} />
-  //           </linearGradient>
-  //         </defs>
-  //         <CartesianGrid strokeDasharray="3 3" />
-  //         <XAxis dataKey="time" />
-  //         <YAxis />
-  //         <Tooltip />
-  //         <Area
-  //           type="monotone"
-  //           dataKey={dataKey!}
-  //           stroke={color}
-  //           fill={`url(#${gradientId})`}
-  //           strokeWidth={2}
-  //         />
-  //       </AreaChart>
-  //     </ResponsiveContainer>
-  //   </div>
-  // );
+  // 단일 시리즈 모드는 그대로 유지 (주석 처리된 부분을 활성화)
+  const gradientId = `gradient-${dataKey}`;
+  return (
+    <div className={styles.chart}>
+      {!hideTitle && <h3 className="HeadingS">{title}</h3>}
+      <ResponsiveContainer width="100%" height={height}>
+        <AreaChart data={data}>
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={0.8} />
+              <stop offset="100%" stopColor={color} stopOpacity={0.1} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="time" />
+          <YAxis />
+          <Tooltip />
+          <Area
+            type="monotone"
+            dataKey={dataKey!}
+            stroke={color}
+            fill={`url(#${gradientId})`}
+            strokeWidth={2}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
 };
 
 export default MetricChart;

@@ -43,6 +43,15 @@ const ReportEditor: React.FC<ReportEditorProps> = ({
       ...prev,
       [key]: value
     }));
+    
+    // 편집된 텍스트를 reportConfig에 저장하여 상위 컴포넌트로 전달
+    onConfigChange({
+      ...reportConfig,
+      editableTexts: {
+        ...reportConfig.editableTexts,
+        [key]: value
+      }
+    });
   };
 
   return (
