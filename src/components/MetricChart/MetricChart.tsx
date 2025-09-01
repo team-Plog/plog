@@ -194,34 +194,34 @@ const MetricChart: React.FC<MetricChartProps> = ({
     );
   }
 
-  // 단일 시리즈 모드는 그대로 유지 (주석 처리된 부분을 활성화)
-  const gradientId = `gradient-${dataKey}`;
-  return (
-    <div className={styles.chart}>
-      {!hideTitle && <h3 className="HeadingS">{title}</h3>}
-      <ResponsiveContainer width="100%" height={height}>
-        <AreaChart data={data}>
-          <defs>
-            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity={0.8} />
-              <stop offset="100%" stopColor={color} stopOpacity={0.1} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="time" />
-          <YAxis />
-          <Tooltip />
-          <Area
-            type="monotone"
-            dataKey={dataKey!}
-            stroke={color}
-            fill={`url(#${gradientId})`}
-            strokeWidth={2}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
-  );
+  // 단일 시리즈 모드
+  // const gradientId = `gradient-${dataKey}`;
+  // return (
+  //   <div className={styles.chart}>
+  //     {!hideTitle && <h3 className="HeadingS">{title}</h3>}
+  //     <ResponsiveContainer width="100%" height={height}>
+  //       <AreaChart data={data}>
+  //         <defs>
+  //           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+  //             <stop offset="0%" stopColor={color} stopOpacity={0.8} />
+  //             <stop offset="100%" stopColor={color} stopOpacity={0.1} />
+  //           </linearGradient>
+  //         </defs>
+  //         <CartesianGrid strokeDasharray="3 3" />
+  //         <XAxis dataKey="time" />
+  //         <YAxis />
+  //         <Tooltip />
+  //         <Area
+  //           type="monotone"
+  //           dataKey={dataKey!}
+  //           stroke={color}
+  //           fill={`url(#${gradientId})`}
+  //           strokeWidth={2}
+  //         />
+  //       </AreaChart>
+  //     </ResponsiveContainer>
+  //   </div>
+  // );
 };
 
 export default MetricChart;

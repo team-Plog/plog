@@ -18,6 +18,7 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  cursor: pointer;
 }
 
 .filledCircle {
@@ -50,6 +51,7 @@
 
 .navButton {
   border: none;
+  background-color: transparent;
   color: var(--color-gray-300);
   padding-left: var(--spacing-xs);
   padding-right: var(--spacing-xs);

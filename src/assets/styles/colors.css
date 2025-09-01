@@ -1,3 +1,4 @@
+/* 라이트 모드 (기본) */
 :root {
   /* Base */
   --color-white: #ffffff;
@@ -37,4 +38,51 @@
   --color-http-options-bg: rgba(13, 90, 167, 0.2);
   --color-http-trace-bg: rgba(144, 144, 144, 0.2);
   --color-http-connect-bg: rgba(144, 144, 144, 0.2);
+}
+
+/* 다크 모드 */
+[data-theme="dark"] {
+  /* Base */
+  --color-white: #1a1a1a;
+  --color-black: #ffffff;
+
+  /* Grayscale */
+  --color-gray-100: rgba(255, 255, 255, 0.05);
+  --color-gray-200: rgba(255, 255, 255, 0.4);
+  --color-gray-300: rgba(255, 255, 255, 0.7);
+
+  /* Accent */
+  --color-accent-primary: #00e6cc;
+  --color-accent-error: #ff4444;
+
+  /* Border / Background */
+  --color-border-primary: rgba(255, 255, 255, 0.1);
+  --color-background-primary: #1a1a1a;
+  --color-background-secondary: #2d2d2d;
+
+  /* Text Colors
+  --color-text-primary: #ffffff;
+  --color-text-secondary: rgba(255, 255, 255, 0.8);
+  --color-text-tertiary: rgba(255, 255, 255, 0.6); */
+
+  /* HTTP Method Colors - 다크 모드에서 약간 더 밝게 */
+  --color-http-get: #7db8ff;
+  --color-http-post: #5dd9a3;
+  --color-http-put: #fdb95a;
+  --color-http-delete: #ff6b6b;
+  --color-http-patch: #6ee8d0;
+  --color-http-head: #a855f7;
+  --color-http-options: #3b82f6;
+  --color-http-trace: #a3a3a3;
+  --color-http-connect: #a3a3a3;
+
+  --color-http-get-bg: rgba(125, 184, 255, 0.15);
+  --color-http-post-bg: rgba(93, 217, 163, 0.15);
+  --color-http-put-bg: rgba(253, 185, 90, 0.15);
+  --color-http-delete-bg: rgba(255, 107, 107, 0.15);
+  --color-http-patch-bg: rgba(110, 232, 208, 0.15);
+  --color-http-head-bg: rgba(168, 85, 247, 0.15);
+  --color-http-options-bg: rgba(59, 130, 246, 0.15);
+  --color-http-trace-bg: rgba(163, 163, 163, 0.15);
+  --color-http-connect-bg: rgba(163, 163, 163, 0.15);
 }
