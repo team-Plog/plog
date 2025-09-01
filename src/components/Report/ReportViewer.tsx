@@ -46,7 +46,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
   reportConfig,
   isEditing = false,
   selectedTextKey,
-  editableTexts = {},
+  editableTexts,
   onTextSelect,
 }) => {
   const [timeseriesData, setTimeseriesData] = useState<TimeseriesData | null>(null);
@@ -100,7 +100,8 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
   };
 
   const getEditableText = (key: string, defaultText: string) => {
-    return editableTexts[key] || defaultText;
+    // reportConfig에서 먼저 확인하고, 없으면 editableTexts에서 확인
+    return reportConfig.editableTexts?.[key] || editableTexts?.[key] || defaultText;
   };
 
   const getTextClassName = (baseClass: string, key: string) => {

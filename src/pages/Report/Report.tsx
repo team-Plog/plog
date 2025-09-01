@@ -105,6 +105,7 @@ export interface ReportConfig {
   includeCharts: boolean;
   customTitle: string;
   customDescription: string;
+  editableTexts?: Record<string, string>;
 }
 
 const Report: React.FC = () => {
