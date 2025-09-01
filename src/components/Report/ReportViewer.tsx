@@ -451,6 +451,9 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                     data={prepareChartData(timeseriesData.overall.data)}
                     combinedSeries={overallChartSeries}
                     height={300}
+                    hideTitle={true}
+                    hideControls={true}
+                    showLegend={false}
                   />
                 </div>
               )}
@@ -469,6 +472,9 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                       data={prepareChartData(scenario.data)}
                       combinedSeries={overallChartSeries}
                       height={300}
+                      hideTitle={true}
+                      hideControls={true}
+                      showLegend={false}
                     />
                   </div>
                 );
