@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from "react";
 import styles from "./Header.module.css";
 import "../../assets/styles/typography.css";
-import {ChevronLeft, ChevronRight, List, Moon} from "lucide-react";
+import {ChevronLeft, ChevronRight, List, Moon, Sun} from "lucide-react";
 import {useNavigate, useLocation} from "react-router-dom";
 import {getProjectDetail} from "../../api";
 
@@ -13,9 +13,31 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [projectTitle, setProjectTitle] = useState<string>("");
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
 
   const goBack = () => window.history.back();
   const goForward = () => window.history.forward();
+
+  // 다크 모드 토글 함수
+  const toggleDarkMode = () => {
+    const newDarkMode = !isDarkMode;
+    setIsDarkMode(newDarkMode);
+    
+    // HTML root element에 data-theme 속성 설정
+    if (newDarkMode) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  };
+
+  // 컴포넌트 마운트 시 저장된 테마 설정 불러오기
+  useEffect(() => {
+    const savedTheme = document.documentElement.getAttribute('data-theme');
+    if (savedTheme === 'dark') {
+      setIsDarkMode(true);
+    }
+  }, []);
 
   // 현재 경로 상태
   const isProjectPage = location.pathname === "/projectDetail";
@@ -133,8 +155,8 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
             <List />
           </div>
         )}
-        <div className={styles.icon}>
-          <Moon />
+        <div className={styles.icon} onClick={toggleDarkMode}>
+          {isDarkMode ? <Sun /> : <Moon />}
         </div>
       </div>
     </div>
