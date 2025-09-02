@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: StatefulSet
+
+metadata:
+  name: semi-medeasy-db-sts
+  namespace: test
+
+spec:
+  serviceName: "semi-medeasy-db-svc-headless"
+  selector:
+    matchLabels:
+      app: semi-medeasy-db
+  template:
+    metadata:
+      labels:
+        app: semi-medeasy-db
+
+    spec:
+      containers:
+        - name: semi-medeasy-db-container
+          image: postgres:17
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  key: db_user
+                  name: semi-medeasy-db-secret
+
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: db_password
+                  name: semi-medeasy-db-secret
+
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  key: db_name
+                  name: semi-medeasy-db-secret
+
+  volumeClaimTemplates:
+    - metadata:
+        name: semi-medeasy-db-pvc
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 2Gi
+        storageClassName: semi-medeasy-db
