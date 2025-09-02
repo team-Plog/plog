@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: semi-medeasy-redis-deployment
+  namespace: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: semi-medeasy-redis
+  template:
+    metadata:
+      labels:
+        app: semi-medeasy-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7
+          ports:
+            - containerPort: 6379
+          command: ["sh", "-c"]
+          args:
+            - "redis-server --requirepass $REDIS_PASSWORD"
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: semi-medeasy-redis-secret
