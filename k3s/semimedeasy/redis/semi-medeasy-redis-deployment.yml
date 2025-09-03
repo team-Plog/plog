@@ -25,5 +25,5 @@ spec:
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  key: password
+                  key: redis_password
                   name: semi-medeasy-redis-secret

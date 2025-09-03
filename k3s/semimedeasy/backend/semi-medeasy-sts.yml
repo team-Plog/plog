@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: StatefulSet
+
+metadata:
+  name: semi-medeasy-sts
+  namespace: test
+
+spec:
+  selector:
+    matchLabels:
+      app: semi-medeasy
+  serviceName: "semi-medeasy"
+  template:
+    metadata:
+      labels:
+        app: semi-medeasy
+
+    spec:
+      imagePullSecrets:
+        - name: gcp-artifact-registry-secret
+      containers:
+        - name: semi-medeasy-container
+          image: asia-northeast3-docker.pkg.dev/citric-replica-450012-a8/plog-image-repo/semi-medeasy:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  key: db_host
+                  name: semi-medeasy-secret
+
+            - name: DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  key: db_port
+                  name: semi-medeasy-secret
+
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  key: db_name
+                  name: semi-medeasy-db-secret
+
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: db_password
+                  name: semi-medeasy-db-secret
+
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  key: db_user
+                  name: semi-medeasy-db-secret
+
+            - name: TOKEN_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: token_secret_key
+                  name: semi-medeasy-secret
+
+            - name: ACCESS_TOKEN_HOUR
+              valueFrom:
+                secretKeyRef:
+                  key: access_token_hour
+                  name: semi-medeasy-secret
+
+            - name: REFRESH_TOKEN_HOUR
+              valueFrom:
+                secretKeyRef:
+                  key: refresh_token_hour
+                  name: semi-medeasy-secret
+
+            - name: REDIS_JWT_HOST
+              valueFrom:
+                secretKeyRef:
+                  key: redis_jwt_host
+                  name: semi-medeasy-secret
+
+            - name: REDIS_JWT_PORT
+              valueFrom:
+                secretKeyRef:
+                  key: redis_jwt_port
+                  name: semi-medeasy-secret
+
+            - name: REDIS_JWT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: redis_password
+                  name: semi-medeasy-redis-secret
+
