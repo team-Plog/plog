@@ -966,8 +966,7 @@ def get_pod_names_by_server_infra_id(db: Session, server_infra_id: int) -> List[
                 related_pods = (
                     db.query(ServerInfraModel)
                     .filter(
-                        ServerInfraModel.group_name == server_infra.group_name,
-                        ServerInfraModel.resource_type.ilike('pod')  # case insensitive
+                        ServerInfraModel.group_name == server_infra.group_name
                     )
                     .all()
                 )
