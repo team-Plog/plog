@@ -3,6 +3,7 @@ from typing import Dict, Optional, List, Tuple
 from influxdb import InfluxDBClient
 from app.core.config import settings
 from datetime import datetime, timedelta
+import pytz
 
 logger = logging.getLogger(__name__)
 
@@ -616,11 +617,15 @@ class InfluxDBService:
             while current_time < end_time:
                 interval_end = min(current_time + interval, end_time)
                 
+                # 한국시간으로 변환
+                kst = pytz.timezone('Asia/Seoul')
+                current_time_kst = current_time.astimezone(kst)
+                
                 # 전체 데이터 조회
                 overall_metrics = self.get_interval_metrics(job_name, current_time, interval_end)
                 if overall_metrics:
                     timeseries_data.append({
-                        'timestamp': current_time,
+                        'timestamp': current_time_kst,  # 한국시간으로 저장
                         'scenario_name': None,  # 전체 데이터
                         **overall_metrics
                     })
@@ -630,7 +635,7 @@ class InfluxDBService:
                     scenario_metrics = self.get_interval_metrics(job_name, current_time, interval_end, scenario_name)
                     if scenario_metrics:
                         timeseries_data.append({
-                            'timestamp': current_time,
+                            'timestamp': current_time_kst,  # 한국시간으로 저장
                             'scenario_name': scenario_name,
                             **scenario_metrics
                         })
@@ -642,4 +647,177 @@ class InfluxDBService:
             
         except Exception as e:
             logger.error(f"Error getting test timeseries data for job {job_name}: {e}")
+            return None
+
+    def get_cpu_metrics(self, pod_name: str, start_time: datetime, end_time: datetime) -> Optional[List[Dict]]:
+        """
+        특정 pod의 CPU 사용량 메트릭 조회 (10초 단위)
+        
+        Args:
+            pod_name: Pod 이름
+            start_time: 시작 시간
+            end_time: 종료 시간
+            
+        Returns:
+            CPU 메트릭 데이터 리스트 또는 None
+            [
+                {
+                    'timestamp': datetime,
+                    'metric_type': 'cpu',
+                    'unit': 'millicores',
+                    'value': float
+                },
+                ...
+            ]
+        """
+        try:
+            # 시간 조건 생성
+            start_str = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+            end_str = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+            
+            # CPU 사용량 쿼리 (millicores 단위)
+            cpu_query = f'''
+                SELECT non_negative_derivative(mean("container_cpu_usage_seconds_total"), 1s) * 1000 as cpu_millicores 
+                FROM "cadvisor_metrics" 
+                WHERE "pod" = '{pod_name}' AND "container" = '' AND "image" = '' 
+                AND time >= '{start_str}' AND time < '{end_str}'
+                GROUP BY time(10s) fill(linear) TZ('Asia/Seoul')
+            '''
+            
+            # 쿼리 실행
+            result = list(self.client.query(cpu_query).get_points())
+            
+            if not result:
+                logger.warning(f"No CPU metrics found for pod: {pod_name}")
+                return None
+            
+            # 결과 처리
+            kst = pytz.timezone('Asia/Seoul')
+            cpu_metrics = []
+            for point in result:
+                if point.get('cpu_millicores') is not None:
+                    utc_time = datetime.fromisoformat(point['time'].replace('Z', '+00:00'))
+                    kst_time = utc_time.astimezone(kst)
+                    cpu_metrics.append({
+                        'timestamp': kst_time,  # 한국시간으로 저장
+                        'metric_type': 'cpu',
+                        'unit': 'millicores',
+                        'value': float(point['cpu_millicores'])
+                    })
+            
+            logger.info(f"Retrieved {len(cpu_metrics)} CPU data points for pod: {pod_name}")
+            return cpu_metrics
+            
+        except Exception as e:
+            logger.error(f"Error getting CPU metrics for pod {pod_name}: {e}")
+            return None
+
+    def get_memory_metrics(self, pod_name: str, start_time: datetime, end_time: datetime) -> Optional[List[Dict]]:
+        """
+        특정 pod의 Memory 사용량 메트릭 조회 (10초 단위)
+        
+        Args:
+            pod_name: Pod 이름
+            start_time: 시작 시간
+            end_time: 종료 시간
+            
+        Returns:
+            Memory 메트릭 데이터 리스트 또는 None
+            [
+                {
+                    'timestamp': datetime,
+                    'metric_type': 'memory',
+                    'unit': 'mb',
+                    'value': float
+                },
+                ...
+            ]
+        """
+        try:
+            # 시간 조건 생성
+            start_str = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+            end_str = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+            
+            # Memory 사용량 쿼리 (MB 단위)
+            memory_query = f'''
+                SELECT mean("container_memory_working_set_bytes") / 1024 / 1024 as memory_mb 
+                FROM "cadvisor_metrics" 
+                WHERE "pod" = '{pod_name}' AND "container" = '' AND "image" = '' 
+                AND time >= '{start_str}' AND time < '{end_str}'
+                GROUP BY time(10s) fill(linear) TZ('Asia/Seoul')
+            '''
+            
+            # 쿼리 실행
+            result = list(self.client.query(memory_query).get_points())
+            
+            if not result:
+                logger.warning(f"No Memory metrics found for pod: {pod_name}")
+                return None
+            
+            # 결과 처리
+            kst = pytz.timezone('Asia/Seoul')
+            memory_metrics = []
+            for point in result:
+                if point.get('memory_mb') is not None:
+                    utc_time = datetime.fromisoformat(point['time'].replace('Z', '+00:00'))
+                    kst_time = utc_time.astimezone(kst)
+                    memory_metrics.append({
+                        'timestamp': kst_time,  # 한국시간으로 저장
+                        'metric_type': 'memory',
+                        'unit': 'mb',
+                        'value': float(point['memory_mb'])
+                    })
+            
+            logger.info(f"Retrieved {len(memory_metrics)} Memory data points for pod: {pod_name}")
+            return memory_metrics
+            
+        except Exception as e:
+            logger.error(f"Error getting Memory metrics for pod {pod_name}: {e}")
+            return None
+
+    def get_resource_metrics_for_test(self, job_name: str) -> Optional[Dict[str, List[Dict]]]:
+        """
+        테스트 기간 동안의 모든 관련 pod들의 CPU/Memory 메트릭 조회
+        
+        Args:
+            job_name: Kubernetes Job 이름
+            
+        Returns:
+            pod별 리소스 메트릭 딕셔너리 또는 None
+            {
+                'pod-name-1': [
+                    {
+                        'timestamp': datetime,
+                        'metric_type': 'cpu' or 'memory',
+                        'unit': 'millicores' or 'mb',
+                        'value': float
+                    },
+                    ...
+                ],
+                ...
+            }
+        """
+        try:
+            # 테스트 시간 범위 조회
+            time_range = self.get_test_time_range(job_name)
+            if not time_range:
+                logger.error(f"Could not get time range for job: {job_name}")
+                return None
+                
+            start_time, end_time = time_range
+            
+            # 5분 여유를 두고 메트릭 수집
+            extended_start = start_time - timedelta(minutes=5)
+            extended_end = end_time + timedelta(minutes=5)
+            
+            logger.info(f"Collecting resource metrics for job {job_name} from {extended_start} to {extended_end}")
+            
+            # 현재는 특정 pod 이름들이 필요하므로, 이 함수는 k6_job_scheduler에서 호출될 때
+            # pod 이름들을 매개변수로 받아서 처리하도록 수정이 필요합니다.
+            # 지금은 기본 구조만 만들어두겠습니다.
+            
+            return {}
+            
+        except Exception as e:
+            logger.error(f"Error getting resource metrics for job {job_name}: {e}")
             return None

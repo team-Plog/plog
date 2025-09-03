@@ -148,6 +148,31 @@ class TestMetricsTimeseriesModel(Base):
     p95_response_time = Column(Float, nullable=True)  # P95 response time (ms)
     p99_response_time = Column(Float, nullable=True)  # P99 response time (ms)
 
+class TestResourceTimeseriesModel(Base):
+    """서버 리소스 시계열 데이터 (CPU, Memory)"""
+    __tablename__ = "test_resource_timeseries"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    
+    # 테스트와 연관관계
+    test_history_id = Column(Integer, ForeignKey("test_history.id"), nullable=False)
+    test_history = relationship("TestHistoryModel")
+    
+    # 서버 인프라와 연관관계
+    server_infra_id = Column(Integer, ForeignKey("server_infra.id"), nullable=False)
+    
+    # 수집 데이터 종류
+    metric_type = Column(String(20), nullable=False)  # 'cpu' or 'memory'
+    
+    # 단위
+    unit = Column(String(20), nullable=False)  # 'millicores' for cpu, 'mb' for memory
+    
+    # 시간
+    timestamp = Column(DateTime, nullable=False)
+    
+    # 측정 값
+    value = Column(Float, nullable=False)
+
 class StageHistoryModel(Base):
     __tablename__ = "stage_history"
 

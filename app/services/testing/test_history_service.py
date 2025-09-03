@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session, joinedload
 
-from app.db.sqlite.models.history_models import TestHistoryModel, ScenarioHistoryModel, StageHistoryModel, TestParameterHistoryModel, TestHeaderHistoryModel, TestMetricsTimeseriesModel
+from app.db.sqlite.models.history_models import TestHistoryModel, ScenarioHistoryModel, StageHistoryModel, TestParameterHistoryModel, TestHeaderHistoryModel, TestMetricsTimeseriesModel, TestResourceTimeseriesModel
 from app.db.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, TagModel, EndpointModel, tags_endpoints
 from app.dto.load_test.load_test_request import LoadTestRequest
 from app.services.project.service import get_project_by_endpoint_id_simple
@@ -791,3 +791,200 @@ def build_test_history_timeseries_response(db: Session, test_history_id: int) ->
     except Exception as e:
         logger.error(f"Error building timeseries response for test_history_id {test_history_id}: {e}")
         return None
+
+
+# === 리소스 메트릭 관련 함수들 ===
+
+def save_test_resource_metrics(db: Session, test_history_id: int, server_infra_id: int, resource_data: List[Dict]) -> bool:
+    """
+    테스트 완료 후 서버 리소스 메트릭 데이터를 저장 (CPU, Memory)
+    
+    Args:
+        db: 데이터베이스 세션
+        test_history_id: 테스트 히스토리 ID
+        server_infra_id: 서버 인프라 ID
+        resource_data: InfluxDB에서 조회한 리소스 데이터 리스트
+                      [
+                          {
+                              'timestamp': datetime,
+                              'metric_type': 'cpu' or 'memory',
+                              'unit': 'millicores' or 'mb',
+                              'value': float
+                          },
+                          ...
+                      ]
+    
+    Returns:
+        bool: 저장 성공 여부
+    """
+    try:
+        if not resource_data:
+            logger.warning(f"No resource data to save for test_history_id: {test_history_id}, server_infra_id: {server_infra_id}")
+            return True
+            
+        # 배치로 저장할 데이터 준비
+        resource_models = []
+        
+        for data_point in resource_data:
+            # 리소스 데이터 모델 생성
+            resource_model = TestResourceTimeseriesModel(
+                test_history_id=test_history_id,
+                server_infra_id=server_infra_id,
+                metric_type=data_point['metric_type'],
+                unit=data_point['unit'],
+                timestamp=data_point['timestamp'],
+                value=data_point['value']
+            )
+            resource_models.append(resource_model)
+        
+        if resource_models:
+            # 배치 저장
+            db.add_all(resource_models)
+            db.commit()
+            
+            logger.info(f"Saved {len(resource_models)} resource data points for test_history_id: {test_history_id}, server_infra_id: {server_infra_id}")
+        else:
+            logger.warning(f"No valid resource data to save for test_history_id: {test_history_id}")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error saving resource metrics: {e}")
+        db.rollback()
+        return False
+
+
+def get_server_infra_ids_by_job_name(db: Session, job_name: str) -> List[int]:
+    """
+    job_name을 통해 연관된 서버 인프라 ID들을 조회
+    job_name -> test_history -> scenario_history -> endpoint -> openapi_spec -> server_infra
+    
+    Args:
+        db: 데이터베이스 세션
+        job_name: k6 Job 이름
+        
+    Returns:
+        서버 인프라 ID 리스트
+    """
+    try:
+        from app.db.sqlite.models.project_models import ServerInfraModel, OpenAPISpecModel, EndpointModel
+        
+        logger.debug(f"Looking up server_infra_ids for job_name: {job_name}")
+        
+        # job_name으로 test_history 조회
+        test_history = get_test_history_by_job_name(db, job_name)
+        if not test_history:
+            logger.warning(f"No test history found for job_name: {job_name}")
+            return []
+            
+        logger.debug(f"Found test_history with {len(test_history.scenarios)} scenarios")
+        
+        # 시나리오들의 endpoint들을 통해 openapi_spec_id 수집
+        openapi_spec_ids = set()
+        for i, scenario in enumerate(test_history.scenarios):
+            logger.debug(f"Processing scenario {i+1}: {scenario.scenario_tag}")
+            if scenario.endpoint:
+                logger.debug(f"  Endpoint found: {scenario.endpoint.id}")
+                if scenario.endpoint.tags:
+                    logger.debug(f"  Found {len(scenario.endpoint.tags)} tags")
+                    for j, tag in enumerate(scenario.endpoint.tags):
+                        if tag.openapi_spec_id:
+                            openapi_spec_ids.add(tag.openapi_spec_id)
+                            logger.debug(f"    Tag {j+1}: openapi_spec_id={tag.openapi_spec_id}")
+                        else:
+                            logger.debug(f"    Tag {j+1}: No openapi_spec_id")
+                else:
+                    logger.debug(f"  No tags found for endpoint")
+            else:
+                logger.debug(f"  No endpoint found for scenario")
+        
+        logger.debug(f"Collected openapi_spec_ids: {openapi_spec_ids}")
+        
+        if not openapi_spec_ids:
+            logger.warning(f"No openapi_spec_ids found for job_name: {job_name}")
+            return []
+            
+        # openapi_spec_id들로 server_infra 조회
+        server_infras = (
+            db.query(ServerInfraModel)
+            .filter(ServerInfraModel.open_api_spec_id.in_(openapi_spec_ids))
+            .all()
+        )
+        
+        logger.debug(f"Found {len(server_infras)} server_infra records")
+        for i, infra in enumerate(server_infras):
+            logger.debug(f"  ServerInfra {i+1}: id={infra.id}, name={infra.name}, resource_type={infra.resource_type}, group_name={infra.group_name}")
+        
+        server_infra_ids = [infra.id for infra in server_infras]
+        logger.info(f"Found {len(server_infra_ids)} server_infra_ids for job_name: {job_name}: {server_infra_ids}")
+        
+        return server_infra_ids
+        
+    except Exception as e:
+        logger.error(f"Error getting server_infra_ids for job_name {job_name}: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return []
+
+
+def get_pod_names_by_server_infra_id(db: Session, server_infra_id: int) -> List[str]:
+    """
+    server_infra_id로 관련된 pod 이름들을 조회
+    resource_type이 'pod'가 아닌 경우 group_name으로 같은 deployment/statefulset의 pod들을 찾음
+    
+    Args:
+        db: 데이터베이스 세션
+        server_infra_id: 서버 인프라 ID
+        
+    Returns:
+        pod 이름 리스트
+    """
+    try:
+        from app.db.sqlite.models.project_models import ServerInfraModel
+        
+        logger.debug(f"Looking up pod names for server_infra_id: {server_infra_id}")
+        
+        # server_infra 조회
+        server_infra = db.query(ServerInfraModel).filter(ServerInfraModel.id == server_infra_id).first()
+        if not server_infra:
+            logger.warning(f"No server_infra found for id: {server_infra_id}")
+            return []
+            
+        logger.debug(f"Found server_infra: name={server_infra.name}, resource_type={server_infra.resource_type}, group_name={server_infra.group_name}")
+        
+        pod_names = []
+        
+        if server_infra.resource_type and server_infra.resource_type.lower() == 'pod':
+            # resource_type이 'pod'인 경우 해당 pod 이름 반환
+            if server_infra.name:
+                pod_names.append(server_infra.name)
+                logger.debug(f"Added pod name (direct): {server_infra.name}")
+        else:
+            # resource_type이 'deployment', 'statefulset' 등인 경우 group_name으로 관련 pod들 조회
+            if server_infra.group_name:
+                logger.debug(f"Looking for related pods with group_name: {server_infra.group_name}")
+                related_pods = (
+                    db.query(ServerInfraModel)
+                    .filter(
+                        ServerInfraModel.group_name == server_infra.group_name,
+                        ServerInfraModel.resource_type.ilike('pod')  # case insensitive
+                    )
+                    .all()
+                )
+                
+                logger.debug(f"Found {len(related_pods)} related pod records")
+                for i, pod in enumerate(related_pods):
+                    if pod.name:
+                        pod_names.append(pod.name)
+                        logger.debug(f"  Related pod {i+1}: {pod.name}")
+                    else:
+                        logger.debug(f"  Related pod {i+1}: No name (skipping)")
+        
+        logger.info(f"Found {len(pod_names)} pod names for server_infra_id: {server_infra_id}: {pod_names}")
+        return pod_names
+        
+    except Exception as e:
+        logger.error(f"Error getting pod names for server_infra_id {server_infra_id}: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return []
