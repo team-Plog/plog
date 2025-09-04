@@ -5,7 +5,7 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session, joinedload
 
 from app.db.sqlite.models.history_models import TestHistoryModel, ScenarioHistoryModel, StageHistoryModel, TestParameterHistoryModel, TestHeaderHistoryModel, TestMetricsTimeseriesModel, TestResourceTimeseriesModel
-from app.db.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, TagModel, EndpointModel, tags_endpoints
+from app.db.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, EndpointModel
 from app.dto.load_test.load_test_request import LoadTestRequest
 from app.services.project.service import get_project_by_endpoint_id_simple
 from app.dto.test_history.test_history_detail_response import (
@@ -589,13 +589,13 @@ def mark_test_as_completed(db: Session, test_history: TestHistoryModel) -> bool:
 
 # === 시계열 메트릭 관련 함수들 ===
 
-def save_test_timeseries_metrics(db: Session, test_history_id: int, timeseries_data: List[Dict]) -> bool:
+def save_test_timeseries_metrics(db: Session, scenario_histories: List[ScenarioHistoryModel], timeseries_data: List[Dict]) -> bool:
     """
     테스트 완료 후 시계열 메트릭 데이터를 저장
     
     Args:
         db: 데이터베이스 세션
-        test_history_id: 테스트 히스토리 ID
+        scenario_histories: 시나리오 히스토리 리스트
         timeseries_data: InfluxDB에서 조회한 시계열 데이터 리스트
                        [
                            {
@@ -616,32 +616,29 @@ def save_test_timeseries_metrics(db: Session, test_history_id: int, timeseries_d
     """
     try:
         if not timeseries_data:
-            logger.warning(f"No timeseries data to save for test_history_id: {test_history_id}")
+            logger.warning(f"No timeseries data to save for scenarios")
             return True
             
         # 시나리오 이름으로 시나리오 ID 매핑을 미리 구성
         scenario_mapping = {}
-        test_history = get_test_history_by_id(db, test_history_id)
-        if test_history:
-            for scenario in test_history.scenarios:
-                scenario_mapping[scenario.scenario_tag] = scenario.id
+        for scenario in scenario_histories:
+            scenario_mapping[scenario.scenario_tag] = scenario.id
         
         # 배치로 저장할 데이터 준비
         timeseries_models = []
         
         for data_point in timeseries_data:
             # 시나리오 ID 결정
-            scenario_id = None
+            scenario_history_id = None
             if data_point.get('scenario_name'):
-                scenario_id = scenario_mapping.get(data_point['scenario_name'])
-                if scenario_id is None:
+                scenario_history_id = scenario_mapping.get(data_point['scenario_name'])
+                if scenario_history_id is None:
                     logger.warning(f"Scenario not found for name: {data_point['scenario_name']}")
                     continue
             
             # 시계열 데이터 모델 생성
             timeseries_model = TestMetricsTimeseriesModel(
-                test_history_id=test_history_id,
-                scenario_id=scenario_id,
+                scenario_history_id=scenario_history_id,
                 timestamp=data_point['timestamp'],
                 tps=data_point.get('tps'),
                 error_rate=data_point.get('error_rate'),
@@ -657,9 +654,9 @@ def save_test_timeseries_metrics(db: Session, test_history_id: int, timeseries_d
             db.add_all(timeseries_models)
             db.commit()
             
-            logger.info(f"Saved {len(timeseries_models)} timeseries data points for test_history_id: {test_history_id}")
+            logger.info(f"Saved {len(timeseries_models)} timeseries data points for scenarios")
         else:
-            logger.warning(f"No valid timeseries data to save for test_history_id: {test_history_id}")
+            logger.warning(f"No valid timeseries data to save for scenarios")
         
         return True
         
@@ -795,13 +792,13 @@ def build_test_history_timeseries_response(db: Session, test_history_id: int) ->
 
 # === 리소스 메트릭 관련 함수들 ===
 
-def save_test_resource_metrics(db: Session, test_history_id: int, server_infra_id: int, resource_data: List[Dict]) -> bool:
+def save_test_resource_metrics(db: Session, scenario_history: ScenarioHistoryModel, server_infra_id: int, resource_data: List[Dict]) -> bool:
     """
     테스트 완료 후 서버 리소스 메트릭 데이터를 저장 (CPU, Memory)
     
     Args:
         db: 데이터베이스 세션
-        test_history_id: 테스트 히스토리 ID
+        scenario_history: 시나리오 히스토리 (해당 서버 인프라와 연결된)
         server_infra_id: 서버 인프라 ID
         resource_data: InfluxDB에서 조회한 리소스 데이터 리스트
                       [
@@ -819,7 +816,7 @@ def save_test_resource_metrics(db: Session, test_history_id: int, server_infra_i
     """
     try:
         if not resource_data:
-            logger.warning(f"No resource data to save for test_history_id: {test_history_id}, server_infra_id: {server_infra_id}")
+            logger.warning(f"No resource data to save for scenarios, server_infra_id: {server_infra_id}")
             return True
             
         # 배치로 저장할 데이터 준비
@@ -828,7 +825,7 @@ def save_test_resource_metrics(db: Session, test_history_id: int, server_infra_i
         for data_point in resource_data:
             # 리소스 데이터 모델 생성
             resource_model = TestResourceTimeseriesModel(
-                test_history_id=test_history_id,
+                scenario_history_id=scenario_history.id,
                 server_infra_id=server_infra_id,
                 metric_type=data_point['metric_type'],
                 unit=data_point['unit'],
@@ -842,9 +839,9 @@ def save_test_resource_metrics(db: Session, test_history_id: int, server_infra_i
             db.add_all(resource_models)
             db.commit()
             
-            logger.info(f"Saved {len(resource_models)} resource data points for test_history_id: {test_history_id}, server_infra_id: {server_infra_id}")
+            logger.info(f"Saved {len(resource_models)} resource data points for scenario_id: {scenario_history.id}, server_infra_id: {server_infra_id}")
         else:
-            logger.warning(f"No valid resource data to save for test_history_id: {test_history_id}")
+            logger.warning(f"No valid resource data to save for scenario_id: {scenario_history.id}, server_infra_id: {server_infra_id}")
         
         return True
         
@@ -987,3 +984,41 @@ def get_pod_names_by_server_infra_id(db: Session, server_infra_id: int) -> List[
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
         return []
+
+
+def get_scenario_by_server_infra_id(db: Session, scenario_histories: List[ScenarioHistoryModel], server_infra_id: int) -> Optional[ScenarioHistoryModel]:
+    """
+    서버 인프라 ID로 연결된 시나리오를 찾는다
+    server_infra -> openapi_spec -> endpoint -> scenario
+    
+    Args:
+        db: 데이터베이스 세션
+        scenario_histories: 시나리오 히스토리 리스트
+        server_infra_id: 서버 인프라 ID
+        
+    Returns:
+        연결된 시나리오 히스토리 또는 None
+    """
+    try:
+        from app.db.sqlite.models.project_models import ServerInfraModel
+        
+        # server_infra 조회
+        server_infra = db.query(ServerInfraModel).filter(ServerInfraModel.id == server_infra_id).first()
+        if not server_infra or not server_infra.open_api_spec_id:
+            logger.warning(f"No server_infra or openapi_spec_id found for server_infra_id: {server_infra_id}")
+            return scenario_histories[0] if scenario_histories else None  # 기본값으로 첫 번째 시나리오 반환
+        
+        # 해당 openapi_spec_id와 연결된 시나리오 찾기
+        for scenario in scenario_histories:
+            if scenario.endpoint and scenario.endpoint.tags:
+                for tag in scenario.endpoint.tags:
+                    if tag.openapi_spec_id == server_infra.open_api_spec_id:
+                        logger.info(f"Found matching scenario {scenario.id} for server_infra_id: {server_infra_id}")
+                        return scenario
+        
+        logger.warning(f"No matching scenario found for server_infra_id: {server_infra_id}, using first scenario")
+        return scenario_histories[0] if scenario_histories else None  # 매칭되지 않으면 첫 번째 시나리오 반환
+        
+    except Exception as e:
+        logger.error(f"Error finding scenario for server_infra_id {server_infra_id}: {e}")
+        return scenario_histories[0] if scenario_histories else None

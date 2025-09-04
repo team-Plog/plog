@@ -20,7 +20,8 @@ from app.services.testing.test_history_service import (
     save_test_timeseries_metrics,
     save_test_resource_metrics,
     get_server_infra_ids_by_job_name,
-    get_pod_names_by_server_infra_id
+    get_pod_names_by_server_infra_id,
+    get_scenario_by_server_infra_id
 )
 
 logger = logging.getLogger(__name__)
@@ -141,7 +142,7 @@ class K6JobScheduler:
                 # 5. 시계열 메트릭 데이터 수집 및 저장
                 timeseries_data = self.influxdb_service.get_test_timeseries_data(job_name)
                 if timeseries_data:
-                    save_success = save_test_timeseries_metrics(db, test_history.id, timeseries_data)
+                    save_success = save_test_timeseries_metrics(db, scenario_histories, timeseries_data)
                     if save_success:
                         logger.info(f"Saved {len(timeseries_data)} timeseries data points for job: {job_name}")
                     else:
@@ -166,7 +167,7 @@ class K6JobScheduler:
         finally:
             db.close()
 
-    def _collect_and_save_resource_metrics(self, db: Session, test_history: TestHistoryModel, job_name: str):
+    def _collect_and_save_resource_metrics(self, db: Session, test_history: TestHistoryModel):
         """
         서버 리소스 메트릭(CPU, Memory) 수집 및 저장
         
@@ -176,19 +177,24 @@ class K6JobScheduler:
             job_name: k6 Job 이름
         """
         try:
-            logger.info(f"Starting resource metrics collection for job: {job_name}")
-            
-            # 1. job_name으로 연관된 server_infra_id들 조회
-            logger.debug(f"Step 1: Looking up server_infra_ids for job: {job_name}")
+            scenario_histories = test_history.scenarios
+            scenario_history_ids = [sh.id for sh in scenario_histories]
+
+            if not scenario_histories:
+                logger.warning(f"Empty scenario histories")
+                return
+
+            for scenario_history in scenario_histories:
+                endpoint = scenario_history.endpoint
+
+
+
             server_infra_ids = get_server_infra_ids_by_job_name(db, job_name)
-            logger.info(f"Found {len(server_infra_ids)} server_infra_ids: {server_infra_ids}")
-            
+
             if not server_infra_ids:
                 logger.warning(f"No server_infra_ids found for job: {job_name} - skipping resource metrics collection")
                 return
 
-            # 2. 테스트 시간 범위 조회
-            logger.debug(f"Step 2: Getting time range for job: {job_name}")
             time_range = self.influxdb_service.get_test_time_range(job_name)
             if not time_range:
                 logger.warning(f"No time range found for job: {job_name} - skipping resource metrics collection")
@@ -206,15 +212,17 @@ class K6JobScheduler:
 
             # 3. 각 server_infra_id에 대해 pod들을 조회하고 메트릭 수집
             for i, server_infra_id in enumerate(server_infra_ids, 1):
-                logger.info(f"Step 3.{i}: Processing server_infra_id: {server_infra_id}")
-                
                 pod_names = get_pod_names_by_server_infra_id(db, server_infra_id)
-                logger.info(f"Found {len(pod_names)} pods for server_infra_id {server_infra_id}: {pod_names}")
-                
                 if not pod_names:
                     logger.warning(f"No pod names found for server_infra_id: {server_infra_id} - skipping")
                     continue
 
+                # 해당 서버 인프라와 연결된 시나리오 찾기
+                matched_scenario = get_scenario_by_server_infra_id(db, test_history.scenarios, server_infra_id)
+                if not matched_scenario:
+                    logger.warning(f"No matching scenario found for server_infra_id: {server_infra_id} - skipping")
+                    continue
+                
                 # 4. 각 pod에 대해 CPU, Memory 메트릭 수집
                 for j, pod_name in enumerate(pod_names, 1):
                     logger.info(f"Step 4.{j}: Collecting metrics for pod: {pod_name}")
@@ -225,7 +233,7 @@ class K6JobScheduler:
                         cpu_metrics = self.influxdb_service.get_cpu_metrics(pod_name, extended_start, extended_end)
                         if cpu_metrics:
                             logger.info(f"Retrieved {len(cpu_metrics)} CPU data points for pod: {pod_name}")
-                            save_success = save_test_resource_metrics(db, test_history.id, server_infra_id, cpu_metrics)
+                            save_success = save_test_resource_metrics(db, matched_scenario, server_infra_id, cpu_metrics)
                             if save_success:
                                 logger.info(f"✓ Saved {len(cpu_metrics)} CPU data points for pod: {pod_name}")
                                 total_saved_points += len(cpu_metrics)
@@ -239,7 +247,7 @@ class K6JobScheduler:
                         memory_metrics = self.influxdb_service.get_memory_metrics(pod_name, extended_start, extended_end)
                         if memory_metrics:
                             logger.info(f"Retrieved {len(memory_metrics)} Memory data points for pod: {pod_name}")
-                            save_success = save_test_resource_metrics(db, test_history.id, server_infra_id, memory_metrics)
+                            save_success = save_test_resource_metrics(db, matched_scenario, server_infra_id, memory_metrics)
                             if save_success:
                                 logger.info(f"✓ Saved {len(memory_metrics)} Memory data points for pod: {pod_name}")
                                 total_saved_points += len(memory_metrics)

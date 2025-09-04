@@ -2,14 +2,6 @@ from sqlalchemy import Column, Integer, String, Text, ForeignKey, Table, DateTim
 from sqlalchemy.orm import relationship
 from app.db.sqlite.database import Base
 
-# 중간 테이블 endpoints <-> tags
-tags_endpoints = Table(
-    "tag_endpoint",
-    Base.metadata,
-    Column("endpoint_id", ForeignKey("endpoint.id", ondelete="CASCADE"), primary_key=True),
-    Column("tag_id", ForeignKey("tag.id", ondelete="CASCADE"), primary_key=True)
-)
-
 # 프로젝트
 class ProjectModel(Base):
     __tablename__ = "project"
@@ -30,7 +22,7 @@ class OpenAPISpecModel(Base):
     project_id = Column(Integer, ForeignKey("project.id"))
 
     project = relationship("ProjectModel", back_populates="openapi_specs")
-    tags = relationship("TagModel", back_populates="openapi_spec", cascade="all, delete")
+    endpoints = relationship("EndpointModel", back_populates="openapi_spec", cascade="all, delete")
     server_infras = relationship("ServerInfraModel", back_populates="openapi_spec")
 
 # 서버와 연결된 POD 정보
@@ -48,17 +40,6 @@ class ServerInfraModel(Base):
     namespace = Column(String, nullable=True)
 
 
-# 태그
-class TagModel(Base):
-    __tablename__ = "tag"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=True)
-    description = Column(String, nullable=True)
-    openapi_spec_id = Column(Integer, ForeignKey("openapi_spec.id"))
-
-    openapi_spec = relationship("OpenAPISpecModel", back_populates="tags")
-    endpoints = relationship("EndpointModel", secondary=tags_endpoints, back_populates="tags")
-
 # 엔드포인트
 class EndpointModel(Base):
     __tablename__ = "endpoint"
@@ -67,10 +48,14 @@ class EndpointModel(Base):
     method = Column(String, nullable=True)
     summary = Column(Text)
     description = Column(Text)
+    tag_name = Column(String, nullable=True)
+    tag_description = Column(String, nullable=True)
+    openapi_spec_id = Column(Integer, ForeignKey("openapi_spec.id"))
 
-    tags = relationship("TagModel", secondary=tags_endpoints, back_populates="endpoints")
     scenarios = relationship("ScenarioHistoryModel", back_populates="endpoint")
     parameters = relationship("ParameterModel", back_populates="endpoint", cascade="all, delete")
+    openapi_spec = relationship("OpenAPISpecModel", back_populates="endpoints")
+
 
 # 파라미터
 class ParameterModel(Base):

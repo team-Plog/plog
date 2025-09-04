@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session, selectinload
 from app.db import get_db
 from app.dto.project.openapi import ProjectResponse
 from app.dto.project.project_detail_response import ProjectDetailResponse
+from app.dto.project.project_detail_converter import ProjectDetailConverter
 from app.dto.project.register_project_request import RegisterProjectRequest
-from app.db.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, TagModel, EndpointModel
+from app.db.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, EndpointModel
 from app.common.response.code import SuccessCode, FailureCode
 from app.common.response.response_template import ResponseTemplate
 
@@ -69,15 +70,15 @@ async def get_project_info(
 ):
     project = db.query(ProjectModel).options(
         selectinload(ProjectModel.openapi_specs)
-        .selectinload(OpenAPISpecModel.tags)
-        .selectinload(TagModel.endpoints)
+        .selectinload(OpenAPISpecModel.endpoints)
         .selectinload(EndpointModel.parameters)
     ).filter(ProjectModel.id == project_id).first()
 
     if not project:
         ResponseTemplate.fail(FailureCode.NOT_FOUND_DATA)
 
-    response = ProjectDetailResponse.model_validate(project).model_dump()
+    # 반정규화된 구조를 기존 응답 형식으로 변환
+    response = ProjectDetailConverter.convert_to_response(project)
 
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response)
 

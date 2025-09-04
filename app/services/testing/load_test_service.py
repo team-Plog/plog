@@ -1,7 +1,7 @@
 from typing import List
 
 from sqlalchemy.orm import Session
-from app.db.sqlite.models.project_models import EndpointModel, OpenAPISpecModel, TagModel
+from app.db.sqlite.models.project_models import EndpointModel, OpenAPISpecModel
 from app.dto.load_test.load_test_request import LoadTestRequest, ScenarioConfig
 from fastapi import HTTPException
 
@@ -20,7 +20,7 @@ def generate_k6_script(payload: LoadTestRequest, job_name: str, db: Session) -> 
     # base_url 조회 (첫 시나리오 기준으로 openapi_spec_id 역추적)
     first_scenario = payload.scenarios[0]
     endpoint = get_endpoint_by_id(db, first_scenario.endpoint_id)
-    openapi_spec = db.query(OpenAPISpecModel).join(OpenAPISpecModel.tags).join(TagModel.endpoints).filter(
+    openapi_spec = db.query(OpenAPISpecModel).join(OpenAPISpecModel.endpoints).filter(
         EndpointModel.id == endpoint.id).first()
 
     if not openapi_spec or not openapi_spec.base_url:

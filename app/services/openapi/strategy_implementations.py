@@ -4,7 +4,7 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 from collections import defaultdict
-from app.db.sqlite.models.project_models import OpenAPISpecModel, EndpointModel, TagModel, ParameterModel
+from app.db.sqlite.models.project_models import OpenAPISpecModel, EndpointModel, ParameterModel
 from app.dto.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 from app.services.openapi.analysis_strategy import OpenAPIAnalysisStrategy
 
@@ -122,19 +122,25 @@ class DirectOpenAPIStrategy(OpenAPIAnalysisStrategy):
         # 3. tag description 매핑
         tag_defs = {tag["name"]: tag.get("description", "") for tag in openapi_data.get("tags", [])}
 
-        # 4. endpoint 저장 & 태그 분류 & 파라미터 파싱
-        tag_map = defaultdict(list)
-        all_endpoints = []  # DB에 들어갈 endpoint들
+        # 4. endpoint 저장 & 파라미터 파싱 (반정규화된 구조)
+        all_endpoints = []
         components = openapi_data.get("components", {})
 
         paths = openapi_data.get("paths", {})
         for path, methods in paths.items():
             for method, details in methods.items():
+                # 태그 정보 처리 (첫 번째 태그 사용, 없으면 Default)
+                tags = details.get("tags", ["Default"])
+                primary_tag = tags[0] if tags else "Default"
+                tag_description = tag_defs.get(primary_tag, "")
+                
                 endpoint_model = EndpointModel(
                     path=path,
                     method=method.upper(),
                     summary=details.get("summary", ""),
-                    description=details.get("description", "")
+                    description=details.get("description", ""),
+                    tag_name=primary_tag,
+                    tag_description=tag_description
                 )
                 
                 # 파라미터 파싱
@@ -182,22 +188,8 @@ class DirectOpenAPIStrategy(OpenAPIAnalysisStrategy):
                 endpoint_model.parameters = parameters
                 all_endpoints.append(endpoint_model)
 
-                tags = details.get("tags", ["Default"])
-                for tag in tags:
-                    tag_map[tag].append(endpoint_model)
-
-        # 5. tag 모델 생성 + 연결
-        tag_models = []
-        for tag_name, endpoint_models in tag_map.items():
-            tag_model = TagModel(
-                name=tag_name,
-                description=tag_defs.get(tag_name, ""),
-            )
-            # 연관관계 매핑
-            tag_model.openapi_spec = openapi_spec_model
-            tag_model.endpoints = endpoint_models
-
-            tag_models.append(tag_model)
+        # endpoints를 openapi_spec에 연결
+        openapi_spec_model.endpoints = all_endpoints
 
         return openapi_spec_model
 
@@ -359,8 +351,7 @@ class SwaggerUIStrategy(OpenAPIAnalysisStrategy):
                 if name and name not in tag_defs:
                     tag_defs[name] = t.get("description", "") or ""
 
-        # 엔드포인트/태그 & 파라미터 파싱
-        tag_map = defaultdict(list)
+        # 엔드포인트 & 파라미터 파싱 (반정규화된 구조)
         all_endpoints: List[EndpointModel] = []
 
         for spec in openapi_data_list:
@@ -372,11 +363,19 @@ class SwaggerUIStrategy(OpenAPIAnalysisStrategy):
                 for method, details in methods.items():
                     if not isinstance(details, dict):
                         continue
+                    
+                    # 태그 정보 처리 (첫 번째 태그 사용, 없으면 Default)
+                    tags = details.get("tags") or ["Default"]
+                    primary_tag = tags[0] if tags else "Default"
+                    tag_description = tag_defs.get(primary_tag, "")
+                    
                     endpoint_model = EndpointModel(
                         path=path,
                         method=str(method).upper(),
                         summary=details.get("summary", "") or "",
-                        description=details.get("description", "") or ""
+                        description=details.get("description", "") or "",
+                        tag_name=primary_tag,
+                        tag_description=tag_description
                     )
                     
                     # 파라미터 파싱
@@ -426,19 +425,7 @@ class SwaggerUIStrategy(OpenAPIAnalysisStrategy):
                     endpoint_model.parameters = parameters
                     all_endpoints.append(endpoint_model)
 
-                    tags = details.get("tags") or ["Default"]
-                    for tag in tags:
-                        tag_map[tag].append(endpoint_model)
-
-        # 태그 모델 매핑
-        tag_models: List[TagModel] = []
-        for tag_name, endpoint_models in tag_map.items():
-            tag_model = TagModel(
-                name=tag_name,
-                description=tag_defs.get(tag_name, ""),
-            )
-            tag_model.openapi_spec = openapi_spec_model
-            tag_model.endpoints = endpoint_models
-            tag_models.append(tag_model)
+        # endpoints를 openapi_spec에 연결
+        openapi_spec_model.endpoints = all_endpoints
 
         return openapi_spec_model

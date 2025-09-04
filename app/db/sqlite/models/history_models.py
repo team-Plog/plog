@@ -129,12 +129,8 @@ class TestMetricsTimeseriesModel(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     
-    # 테스트와 연관관계
-    test_history_id = Column(Integer, ForeignKey("test_history.id"), nullable=False)
-    test_history = relationship("TestHistoryModel")
-    
     # 시나리오와 연관관계 (null이면 전체 데이터, 값이 있으면 해당 시나리오 데이터)
-    scenario_id = Column(Integer, ForeignKey("scenario_history.id"), nullable=True)
+    scenario_history_id = Column(Integer, ForeignKey("scenario_history.id"), nullable=True)
     scenario = relationship("ScenarioHistoryModel")
     
     # 시간 구간 (10초 단위 구간의 시작 시간)
@@ -155,8 +151,8 @@ class TestResourceTimeseriesModel(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     
     # 테스트와 연관관계
-    test_history_id = Column(Integer, ForeignKey("test_history.id"), nullable=False)
-    test_history = relationship("TestHistoryModel")
+    scenario_history_id = Column(Integer, ForeignKey("scenario_history.id"), nullable=True)
+    scenario = relationship("ScenarioHistoryModel")
     
     # 서버 인프라와 연관관계
     server_infra_id = Column(Integer, ForeignKey("server_infra.id"), nullable=False)
