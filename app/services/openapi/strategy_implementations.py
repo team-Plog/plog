@@ -1,10 +1,12 @@
 import re
 from typing import List, Dict, Any
 from urllib.parse import urljoin, urlparse
+from datetime import datetime
 
 import httpx
 from collections import defaultdict
-from app.db.sqlite.models.project_models import OpenAPISpecModel, EndpointModel, ParameterModel
+from sqlalchemy.orm import Session
+from app.db.sqlite.models.project_models import OpenAPISpecModel, OpenAPISpecVersionModel, EndpointModel, ParameterModel
 from app.dto.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 from app.services.openapi.analysis_strategy import OpenAPIAnalysisStrategy
 
@@ -92,7 +94,7 @@ class DirectOpenAPIStrategy(OpenAPIAnalysisStrategy):
         if not self._initialized:
             self._initialized = True
     
-    async def analyze(self, request: OpenAPISpecRegisterRequest) -> OpenAPISpecModel:
+    async def analyze(self, request: OpenAPISpecRegisterRequest, db: Session = None) -> OpenAPISpecModel:
         async with httpx.AsyncClient(follow_redirects=True) as client:
             response = await client.get(str(request.open_api_url))
             response.raise_for_status()
@@ -111,18 +113,43 @@ class DirectOpenAPIStrategy(OpenAPIAnalysisStrategy):
             parsed_url = urlparse(str(request.open_api_url))
             base_url = f"{parsed_url.scheme}://{parsed_url.netloc}" if parsed_url.scheme and parsed_url.netloc else str(request.open_api_url)
 
-        # 2. openapi 스펙 모델 생성
-        openapi_spec_model = OpenAPISpecModel(
-            title=title,
-            version=version,
-            base_url=base_url,
-            project_id=request.project_id,
+        # 2. 동일한 base_url을 가진 openapi_spec이 존재하는지 확인
+        existing_spec = None
+        if db:
+            existing_spec = db.query(OpenAPISpecModel).filter(
+                OpenAPISpecModel.base_url == base_url,
+                OpenAPISpecModel.project_id == request.project_id
+            ).first()
+        
+        # 존재하면 기존 것을 사용, 없으면 새로 생성
+        if existing_spec:
+            openapi_spec_model = existing_spec
+        else:
+            openapi_spec_model = OpenAPISpecModel(
+                title=title,
+                version=version,
+                base_url=base_url,
+                project_id=request.project_id,
+            )
+        
+        # 3. OpenAPI 스펙 버전 생성
+        if db and existing_spec:
+            # 기존 버전들을 모두 비활성화
+            db.query(OpenAPISpecVersionModel).filter(
+                OpenAPISpecVersionModel.open_api_spec_id == existing_spec.id
+            ).update({"is_activate": False})
+        
+        openapi_spec_version = OpenAPISpecVersionModel(
+            created_at=datetime.now(),
+            commit_hash=getattr(request, 'commit_hash', None),
+            is_activate=True,
+            open_api_spec_id=openapi_spec_model.id if existing_spec else None
         )
 
-        # 3. tag description 매핑
+        # 4. tag description 매핑
         tag_defs = {tag["name"]: tag.get("description", "") for tag in openapi_data.get("tags", [])}
 
-        # 4. endpoint 저장 & 파라미터 파싱 (반정규화된 구조)
+        # 5. endpoint 저장 & 파라미터 파싱 (반정규화된 구조)
         all_endpoints = []
         components = openapi_data.get("components", {})
 
@@ -140,7 +167,8 @@ class DirectOpenAPIStrategy(OpenAPIAnalysisStrategy):
                     summary=details.get("summary", ""),
                     description=details.get("description", ""),
                     tag_name=primary_tag,
-                    tag_description=tag_description
+                    tag_description=tag_description,
+                    openapi_spec_version_id=None  # 나중에 설정
                 )
                 
                 # 파라미터 파싱
@@ -188,8 +216,16 @@ class DirectOpenAPIStrategy(OpenAPIAnalysisStrategy):
                 endpoint_model.parameters = parameters
                 all_endpoints.append(endpoint_model)
 
-        # endpoints를 openapi_spec에 연결
-        openapi_spec_model.endpoints = all_endpoints
+        # endpoints를 openapi_spec_version에 연결
+        for endpoint in all_endpoints:
+            endpoint.openapi_spec_version = openapi_spec_version
+        openapi_spec_version.endpoints = all_endpoints
+        
+        # openapi_spec_version을 openapi_spec에 연결
+        if not existing_spec:
+            openapi_spec_model.openapi_spec_versions = [openapi_spec_version]
+        else:
+            openapi_spec_model.openapi_spec_versions.append(openapi_spec_version)
 
         return openapi_spec_model
 
@@ -229,7 +265,7 @@ class SwaggerUIStrategy(OpenAPIAnalysisStrategy):
 
         return sorted(set(cands), key=lambda x: (-score(x), x))
 
-    async def analyze(self, request: OpenAPISpecRegisterRequest) -> OpenAPISpecModel:
+    async def analyze(self, request: OpenAPISpecRegisterRequest, db: Session = None) -> OpenAPISpecModel:
         """
         Swagger UI에서 OpenAPI 스펙 URL을 찾아 파싱.
         - data-url
@@ -335,12 +371,37 @@ class SwaggerUIStrategy(OpenAPIAnalysisStrategy):
 
         base_url = pick_base_url(primary, ranked[0] if ranked else swagger_ui_url)
 
-        # OpenAPISpecModel 구성
-        openapi_spec_model = OpenAPISpecModel(
-            title=title,
-            version=version,
-            base_url=base_url,
-            project_id=request.project_id,
+        # 동일한 base_url을 가진 openapi_spec이 존재하는지 확인
+        existing_spec = None
+        if db:
+            existing_spec = db.query(OpenAPISpecModel).filter(
+                OpenAPISpecModel.base_url == base_url,
+                OpenAPISpecModel.project_id == request.project_id
+            ).first()
+        
+        # 존재하면 기존 것을 사용, 없으면 새로 생성
+        if existing_spec:
+            openapi_spec_model = existing_spec
+        else:
+            openapi_spec_model = OpenAPISpecModel(
+                title=title,
+                version=version,
+                base_url=base_url,
+                project_id=request.project_id,
+            )
+        
+        # OpenAPI 스펙 버전 생성
+        if db and existing_spec:
+            # 기존 버전들을 모두 비활성화
+            db.query(OpenAPISpecVersionModel).filter(
+                OpenAPISpecVersionModel.open_api_spec_id == existing_spec.id
+            ).update({"is_activate": False})
+        
+        openapi_spec_version = OpenAPISpecVersionModel(
+            created_at=datetime.now(),
+            commit_hash=getattr(request, 'commit_hash', None),
+            is_activate=True,
+            open_api_spec_id=openapi_spec_model.id if existing_spec else None
         )
 
         # 태그 설명 맵 결합
@@ -375,7 +436,8 @@ class SwaggerUIStrategy(OpenAPIAnalysisStrategy):
                         summary=details.get("summary", "") or "",
                         description=details.get("description", "") or "",
                         tag_name=primary_tag,
-                        tag_description=tag_description
+                        tag_description=tag_description,
+                        openapi_spec_version_id=None  # 나중에 설정
                     )
                     
                     # 파라미터 파싱
@@ -425,7 +487,15 @@ class SwaggerUIStrategy(OpenAPIAnalysisStrategy):
                     endpoint_model.parameters = parameters
                     all_endpoints.append(endpoint_model)
 
-        # endpoints를 openapi_spec에 연결
-        openapi_spec_model.endpoints = all_endpoints
+        # endpoints를 openapi_spec_version에 연결
+        for endpoint in all_endpoints:
+            endpoint.openapi_spec_version = openapi_spec_version
+        openapi_spec_version.endpoints = all_endpoints
+        
+        # openapi_spec_version을 openapi_spec에 연결
+        if not existing_spec:
+            openapi_spec_model.openapi_spec_versions = [openapi_spec_version]
+        else:
+            openapi_spec_model.openapi_spec_versions.append(openapi_spec_version)
 
         return openapi_spec_model

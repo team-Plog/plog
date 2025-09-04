@@ -851,79 +851,6 @@ def save_test_resource_metrics(db: Session, scenario_history: ScenarioHistoryMod
         return False
 
 
-def get_server_infra_ids_by_job_name(db: Session, job_name: str) -> List[int]:
-    """
-    job_name을 통해 연관된 서버 인프라 ID들을 조회
-    job_name -> test_history -> scenario_history -> endpoint -> openapi_spec -> server_infra
-    
-    Args:
-        db: 데이터베이스 세션
-        job_name: k6 Job 이름
-        
-    Returns:
-        서버 인프라 ID 리스트
-    """
-    try:
-        from app.db.sqlite.models.project_models import ServerInfraModel, OpenAPISpecModel, EndpointModel
-        
-        logger.debug(f"Looking up server_infra_ids for job_name: {job_name}")
-        
-        # job_name으로 test_history 조회
-        test_history = get_test_history_by_job_name(db, job_name)
-        if not test_history:
-            logger.warning(f"No test history found for job_name: {job_name}")
-            return []
-            
-        logger.debug(f"Found test_history with {len(test_history.scenarios)} scenarios")
-        
-        # 시나리오들의 endpoint들을 통해 openapi_spec_id 수집
-        openapi_spec_ids = set()
-        for i, scenario in enumerate(test_history.scenarios):
-            logger.debug(f"Processing scenario {i+1}: {scenario.scenario_tag}")
-            if scenario.endpoint:
-                logger.debug(f"  Endpoint found: {scenario.endpoint.id}")
-                if scenario.endpoint.tags:
-                    logger.debug(f"  Found {len(scenario.endpoint.tags)} tags")
-                    for j, tag in enumerate(scenario.endpoint.tags):
-                        if tag.openapi_spec_id:
-                            openapi_spec_ids.add(tag.openapi_spec_id)
-                            logger.debug(f"    Tag {j+1}: openapi_spec_id={tag.openapi_spec_id}")
-                        else:
-                            logger.debug(f"    Tag {j+1}: No openapi_spec_id")
-                else:
-                    logger.debug(f"  No tags found for endpoint")
-            else:
-                logger.debug(f"  No endpoint found for scenario")
-        
-        logger.debug(f"Collected openapi_spec_ids: {openapi_spec_ids}")
-        
-        if not openapi_spec_ids:
-            logger.warning(f"No openapi_spec_ids found for job_name: {job_name}")
-            return []
-            
-        # openapi_spec_id들로 server_infra 조회
-        server_infras = (
-            db.query(ServerInfraModel)
-            .filter(ServerInfraModel.open_api_spec_id.in_(openapi_spec_ids))
-            .all()
-        )
-        
-        logger.debug(f"Found {len(server_infras)} server_infra records")
-        for i, infra in enumerate(server_infras):
-            logger.debug(f"  ServerInfra {i+1}: id={infra.id}, name={infra.name}, resource_type={infra.resource_type}, group_name={infra.group_name}")
-        
-        server_infra_ids = [infra.id for infra in server_infras]
-        logger.info(f"Found {len(server_infra_ids)} server_infra_ids for job_name: {job_name}: {server_infra_ids}")
-        
-        return server_infra_ids
-        
-    except Exception as e:
-        logger.error(f"Error getting server_infra_ids for job_name {job_name}: {e}")
-        import traceback
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        return []
-
-
 def get_pod_names_by_server_infra_id(db: Session, server_infra_id: int) -> List[str]:
     """
     server_infra_id로 관련된 pod 이름들을 조회
@@ -938,8 +865,6 @@ def get_pod_names_by_server_infra_id(db: Session, server_infra_id: int) -> List[
     """
     try:
         from app.db.sqlite.models.project_models import ServerInfraModel
-        
-        logger.debug(f"Looking up pod names for server_infra_id: {server_infra_id}")
         
         # server_infra 조회
         server_infra = db.query(ServerInfraModel).filter(ServerInfraModel.id == server_infra_id).first()

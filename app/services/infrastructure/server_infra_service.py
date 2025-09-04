@@ -1,5 +1,7 @@
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
+
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.sqlite.models.project_models import ServerInfraModel
@@ -92,7 +94,19 @@ class ServerInfraService:
             logger.error(f"Error getting server_infra by name {name}: {e}")
             return None
 
-    def update_server_infra_openapi_spec(self, db: Session, server_infra_id: int, 
+    def get_server_infra_exists_group_names(self, db: Session) -> List[str]:
+        stmt = select(ServerInfraModel.group_name).distinct()
+        result = db.execute(stmt).scalars().all()
+
+        return result
+
+    def get_server_infra_group_names_with_openapi_spec_id(self, db: Session)-> List[Tuple[int, str]]:
+        stmt = select(ServerInfraModel.openapi_spec_id, ServerInfraModel.group_name).distinct()
+        result = db.execute(stmt).all()
+
+        return result
+
+    def update_server_infra_openapi_spec(self, db: Session, server_infra_id: int,
                                         open_api_spec_id: int) -> bool:
         """
         ServerInfra의 open_api_spec_id를 업데이트합니다.

@@ -8,8 +8,10 @@ import httpx
 
 from app.core.config import settings
 from app.db.sqlite.database import SessionLocal
+from app.db.sqlite.models import ServerInfraModel
 from app.services.monitoring.pod_monitor_service import PodMonitorService
 from app.services.infrastructure.server_infra_service import ServerInfraService
+from app.services.monitoring.svc_monitor_service import SvcMonitorService
 from app.services.openapi.strategy_factory import analyze_openapi_with_strategy
 from app.services.openapi.service import save_openapi_spec
 from app.dto.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
@@ -38,6 +40,7 @@ class ServerPodScheduler:
         self.pod_warning_hours = getattr(settings, 'POD_SCHEDULER_WARNING_HOURS', 6)
         
         self.pod_monitor = PodMonitorService(namespace=settings.KUBERNETES_TEST_NAMESPACE)
+        self.svc_monitor = SvcMonitorService(namespace=settings.KUBERNETES_TEST_NAMESPACE)
         self.server_infra_service = ServerInfraService()
         self.is_running = False
         self._scheduler_thread = None
@@ -100,22 +103,62 @@ class ServerPodScheduler:
         db = SessionLocal()
         try:
             # 1. test namespace에 실행 중인 POD를 스캔
-            running_pods = self.pod_monitor.get_running_pods()
-            logger.info(f"Found {len(running_pods)} running pods in test namespace")
-            
-            # 2. server_infra 테이블에 저장되어 있는 정보와 비교
+            # running_pods = self.pod_monitor.get_running_pods()
+            # logger.info(f"Found {len(running_pods)} running pods in test namespace")
+
+            # TODO 1. Service 스캔 -> Serivce에 속하는 POD Names 추출
+            # TODO 2. Service Name을 Groupname으로 조회
+            # TODO 3. 스캔한 POD Names와 Groupname을 가진 POD 정보를 동기화 (Insert Delete)
+            existing_services = self.server_infra_service.get_server_infra_group_names_with_openapi_spec_id(db)
+            existing_service_map = {group_name: spec_id for spec_id, group_name in existing_services}
             existing_pod_names = self.server_infra_service.get_existing_pod_names(db, "test")
-            
+
+            service_map = self.svc_monitor.get_pods_for_all_services()
+
+            new_server_infras = []
+            delete_server_infra_names = []
+
+            for service_name, pod_names in service_map.items():
+                # 기존에 등록된 서버 여부 branch
+                if service_name in existing_service_map:
+                    spec_id = existing_service_map[service_name]
+
+                    for pod_name in pod_names:
+                        # 새롭게 추가된 파드
+                        detailed_pod_info = self.pod_monitor.get_pod_details_with_owner_info(pod_name)
+                        if pod_name not in existing_pod_names:
+                            server_infra = ServerInfraModel(
+                                openapi_spec_id=spec_id,
+                                resource_type=detailed_pod_info.get("resource_type"), # DEPLOYMENT, DAEMONSET, STATEFULSET
+                                name = pod_name,
+                                service_type= detailed_pod_info.get("service_type"), # SERVER, DATABASE
+                                environment="K3S",
+                                group_name = service_name,
+                                label= detailed_pod_info.get("label"),
+                                namespace=settings.KUBERNETES_TEST_NAMESPACE,
+                            )
+                            new_server_infras.extend([server_infra])
+
+                    for exist_pod_name in existing_pod_names:
+                        if exist_pod_name not in pod_names:
+                            delete_server_infra_names.append(exist_pod_name)
+
+                # 새롭게 추가된 서버 처리
+                else:
+                    # TODO OpenAPIModel 생성, 해당하는 모든 파드 insert
+                    # service_name, pod_names
+                    # server인 pod_name
+
             for pod_info in running_pods:
                 pod_name = pod_info['name']
-                
+
                 # 아직 저장되어 있지 않은 POD들에 대해서만 처리
                 if pod_name not in existing_pod_names:
                     logger.info(f"Processing new pod: {pod_name}")
-                    
+
                     # 3. pod의 상세정보 중 ownerReferences를 타고 ReplicaSet -> Deployment까지 진행
                     detailed_pod_info = self.pod_monitor.get_pod_details_with_owner_info(pod_name)
-                    
+
                     if detailed_pod_info:
                         # SERVER 타입 POD에 대해서만 서비스 발견 및 OpenAPI 분석 수행
                         if detailed_pod_info.get("service_type") == "SERVER":
@@ -127,7 +170,7 @@ class ServerPodScheduler:
                                 pod_info=detailed_pod_info,
                                 open_api_spec_id=None
                             )
-                            
+
                             if server_infra:
                                 logger.info(f"Successfully saved database pod {pod_name} to server_infra table")
                             else:

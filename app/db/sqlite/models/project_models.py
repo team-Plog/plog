@@ -20,17 +20,30 @@ class OpenAPISpecModel(Base):
     version = Column(String, nullable=True)
     base_url = Column(String, nullable=False)
     project_id = Column(Integer, ForeignKey("project.id"))
-
     project = relationship("ProjectModel", back_populates="openapi_specs")
-    endpoints = relationship("EndpointModel", back_populates="openapi_spec", cascade="all, delete")
-    server_infras = relationship("ServerInfraModel", back_populates="openapi_spec")
+
+    openapi_spec_versions = relationship("OpenAPISpecVersionModel", back_populates="openapi_spec")
+    server_infras = relationship("ServerInfraModel", back_populates="openapi_spec_version")
+
+class OpenAPISpecVersionModel(Base):
+    __tablename__ = "openapi_spec_version"
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, nullable=False)
+    commit_hash = Column(String, nullable=False)
+    is_activate = Column(Boolean, nullable=False)
+    open_api_spec_id = Column(Integer, ForeignKey("openapi_spec.id"))
+    openapi_spec = relationship("OpenAPISpecModel", back_populates="openapi_spec_versions")
+
+    endpoints = relationship("EndpointModel", back_populates="openapi_spec_version", cascade="all, delete")
+
 
 # 서버와 연결된 POD 정보
 class ServerInfraModel(Base):
     __tablename__ = "server_infra"
     id = Column(Integer, primary_key=True, index=True)
-    open_api_spec_id = Column(Integer, ForeignKey("openapi_spec.id"))
+    openapi_spec_id = Column(Integer, ForeignKey("openapi_spec.id"))
     openapi_spec = relationship("OpenAPISpecModel", back_populates="server_infras")
+
     resource_type = Column(String, nullable=True) # POD, DEPLOYMENT, SERVICE
     environment = Column(String, nullable=True) # K3S, ONPREMISE, LOCAL
     service_type = Column(String, nullable=True) # SERVER, DATABASE
@@ -50,11 +63,11 @@ class EndpointModel(Base):
     description = Column(Text)
     tag_name = Column(String, nullable=True)
     tag_description = Column(String, nullable=True)
-    openapi_spec_id = Column(Integer, ForeignKey("openapi_spec.id"))
+    openapi_spec_version_id = Column(Integer, ForeignKey("openapi_spec_version.id"))
 
     scenarios = relationship("ScenarioHistoryModel", back_populates="endpoint")
     parameters = relationship("ParameterModel", back_populates="endpoint", cascade="all, delete")
-    openapi_spec = relationship("OpenAPISpecModel", back_populates="endpoints")
+    openapi_spec_version = relationship("OpenAPISpecVersionModel", back_populates="endpoints")
 
 
 # 파라미터
