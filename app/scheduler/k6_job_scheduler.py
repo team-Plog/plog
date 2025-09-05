@@ -139,14 +139,7 @@ class K6JobScheduler:
 
                 # 5. 시계열 메트릭 데이터 수집 및 저장
                 timeseries_data = self.influxdb_service.get_test_timeseries_data(job_name)
-                if timeseries_data:
-                    save_success = save_test_timeseries_metrics(db, scenario_histories, timeseries_data)
-                    if save_success:
-                        logger.info(f"Saved {len(timeseries_data)} timeseries data points for job: {job_name}")
-                    else:
-                        logger.error(f"Failed to save timeseries data for job: {job_name}")
-                else:
-                    logger.warning(f"No timeseries data found for job: {job_name} - skipping timeseries save")
+                save_success = save_test_timeseries_metrics(db, scenario_histories, timeseries_data)
 
                 # 6. 서버 리소스 메트릭 수집 및 저장 (CPU, Memory)
                 self._collect_and_save_resource_metrics(db, test_history)
