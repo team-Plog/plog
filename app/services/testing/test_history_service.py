@@ -851,7 +851,7 @@ def save_test_resource_metrics(db: Session, scenario_history: ScenarioHistoryMod
         return False
 
 
-def get_pod_names_by_server_infra_id(db: Session, server_infra_id: int) -> List[str]:
+def get_group_pods_names_by_server_infra_id(db: Session, server_infra_id: int) -> List[str]:
     """
     server_infra_id로 관련된 pod 이름들을 조회
     resource_type이 'pod'가 아닌 경우 group_name으로 같은 deployment/statefulset의 pod들을 찾음
@@ -872,20 +872,17 @@ def get_pod_names_by_server_infra_id(db: Session, server_infra_id: int) -> List[
             logger.warning(f"No server_infra found for id: {server_infra_id}")
             return []
             
-        logger.debug(f"Found server_infra: name={server_infra.name}, resource_type={server_infra.resource_type}, group_name={server_infra.group_name}")
-        
         pod_names = []
         
         if server_infra.resource_type and server_infra.resource_type.lower() == 'pod':
             # resource_type이 'pod'인 경우 해당 pod 이름 반환
             if server_infra.name:
                 pod_names.append(server_infra.name)
-                logger.debug(f"Added pod name (direct): {server_infra.name}")
         else:
             # resource_type이 'deployment', 'statefulset' 등인 경우 group_name으로 관련 pod들 조회
             if server_infra.group_name:
                 logger.debug(f"Looking for related pods with group_name: {server_infra.group_name}")
-                related_pods = (
+                group_pods = (
                     db.query(ServerInfraModel)
                     .filter(
                         ServerInfraModel.group_name == server_infra.group_name
@@ -893,17 +890,12 @@ def get_pod_names_by_server_infra_id(db: Session, server_infra_id: int) -> List[
                     .all()
                 )
                 
-                logger.debug(f"Found {len(related_pods)} related pod records")
-                for i, pod in enumerate(related_pods):
+                for i, pod in enumerate(group_pods):
                     if pod.name:
                         pod_names.append(pod.name)
-                        logger.debug(f"  Related pod {i+1}: {pod.name}")
-                    else:
-                        logger.debug(f"  Related pod {i+1}: No name (skipping)")
-        
-        logger.info(f"Found {len(pod_names)} pod names for server_infra_id: {server_infra_id}: {pod_names}")
+
         return pod_names
-        
+
     except Exception as e:
         logger.error(f"Error getting pod names for server_infra_id {server_infra_id}: {e}")
         import traceback
