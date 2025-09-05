@@ -11,7 +11,6 @@ import ApiGroupCard from "../../components/ApiGroupCard/ApiGroupCard";
 import ApiTestConfigCard, {type ApiTestConfig} from "../../components/ApiTestConfigCard/ApiTestConfigCard";
 import type {OpenApiSpec} from "../../assets/mockProjectData";
 import {deleteProject, getProjectDetail, generateLoadTestScript, deleteOpenAPI, deleteEndpoint} from "../../api";
-import type {LoadTestingRequest} from "../../api";
 import ApiTree from "../../components/ApiTree/ApiTree";
 import WarningModal from "../../components/WarningModal/WarningModal";
 
@@ -310,10 +309,13 @@ const ProjectDetail: React.FC = () => {
       id: Date.now().toString(),
       endpoint_id: endpointId,
       endpoint_path: endpoint.path,
+      method: endpoint.method as "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
       scenario_name: `${groupName}_${endpoint.method}_${endpoint.path.split('/').pop()}`,
       think_time: 1,
       executor: 'constant-vus',
       stages: [{ duration: '10s', target: 10 }],
+      parameters: [],
+      headers: [],
     };
     setApiTestConfigs((prev) => [...prev, newConfig]);
   };
@@ -386,14 +388,31 @@ const ProjectDetail: React.FC = () => {
       return;
     }
 
+    // openApiSpecs에서 해당 endpoint의 method를 찾는 로직 추가
+    let method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH" = "GET";
+    
+    for (const spec of openApiSpecs) {
+      for (const tag of spec.tags) {
+        for (const ep of tag.endpoints) {
+          if (ep.path === endpoint) {
+            method = ep.method;
+            break;
+          }
+        }
+      }
+    }
+
     const newConfig: ApiTestConfig = {
       id: Date.now().toString(),
       endpoint_id: endpointId,
       endpoint_path: endpoint,
+      method: method,
       scenario_name: `scenario_${Date.now()}`,
       think_time: 1,
       executor: 'constant-vus',
       stages: [{ duration: '10s', target: 10 }],
+      parameters: [],
+      headers: [],
     };
     setApiTestConfigs((prev) => [...prev, newConfig]);
   };
@@ -447,7 +466,8 @@ const ProjectDetail: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const loadTestRequest: LoadTestingRequest = {
+      // 새로운 API 요청 형식에 맞게 데이터 구성
+      const loadTestRequest = {
         title: scenarioTitle,
         description: scenarioDescription || "설명 없음",
         target_tps: targetTps ? parseFloat(targetTps) : undefined,
@@ -459,6 +479,16 @@ const ProjectDetail: React.FC = () => {
           stages: config.stages,
           response_time_target: config.response_time_target,
           error_rate_target: config.error_rate_target,
+          // 새로 추가된 필드들
+          parameters: config.parameters?.filter(p => p.name && p.value).map(p => ({
+            name: p.name,
+            param_type: p.param_type,
+            value: p.value,
+          })) || [],
+          headers: config.headers?.filter(h => h.header_key && h.header_value).map(h => ({
+            header_key: h.header_key,
+            header_value: h.header_value,
+          })) || [],
         })),
       };
 
