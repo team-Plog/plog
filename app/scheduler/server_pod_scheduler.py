@@ -8,7 +8,7 @@ import httpx
 
 from app.core.config import settings
 from app.db.sqlite.database import SessionLocal
-from app.db.sqlite.models import ServerInfraModel
+from app.db.sqlite.models import ServerInfraModel, OpenAPISpecModel
 from app.services.monitoring.pod_monitor_service import PodMonitorService
 from app.services.infrastructure.server_infra_service import ServerInfraService
 from app.services.monitoring.svc_monitor_service import SvcMonitorService
@@ -102,175 +102,115 @@ class ServerPodScheduler:
         """Pod 상태를 처리"""
         db = SessionLocal()
         try:
-            # 1. test namespace에 실행 중인 POD를 스캔
-            # running_pods = self.pod_monitor.get_running_pods()
-            # logger.info(f"Found {len(running_pods)} running pods in test namespace")
+            logger.info("✅ Starting pod status processing")
+            # Get existing services and pods
+            saved_services = self.server_infra_service.get_server_infra_group_names_with_openapi_spec_id(db)
+            saved_service_map = {group_name: spec_id for spec_id, group_name in saved_services}
+            existing_group_names = self.server_infra_service.get_server_infra_exists_group_names(db)
+            existing_services_set = set(existing_group_names)
 
-            # TODO 1. Service 스캔 -> Serivce에 속하는 POD Names 추출
-            # TODO 2. Service Name을 Groupname으로 조회
-            # TODO 3. 스캔한 POD Names와 Groupname을 가진 POD 정보를 동기화 (Insert Delete)
-            existing_services = self.server_infra_service.get_server_infra_group_names_with_openapi_spec_id(db)
-            existing_service_map = {group_name: spec_id for spec_id, group_name in existing_services}
-            existing_pod_names = self.server_infra_service.get_existing_pod_names(db, "test")
-
-            service_map = self.svc_monitor.get_pods_for_all_services()
+            scan_service_map = self.svc_monitor.get_pods_for_all_services()
 
             new_server_infras = []
             delete_server_infra_names = []
 
-            for service_name, pod_names in service_map.items():
-                # 기존에 등록된 서버 여부 branch
-                if service_name in existing_service_map:
-                    spec_id = existing_service_map[service_name]
+            for service_name, pod_names in scan_service_map.items():
+                if service_name in existing_services_set:
+                    # Existing service: sync pods
+                    spec_id = saved_service_map.get(service_name)
+                    service_saved_pod_names = self.server_infra_service.get_existing_pod_names_by_group(
+                        db, service_name, settings.KUBERNETES_TEST_NAMESPACE
+                    )
 
+                    # Add new pods
                     for pod_name in pod_names:
-                        # 새롭게 추가된 파드
-                        detailed_pod_info = self.pod_monitor.get_pod_details_with_owner_info(pod_name)
-                        if pod_name not in existing_pod_names:
+                        if pod_name not in service_saved_pod_names:
+                            detailed_pod_info = self.pod_monitor.get_pod_details_with_owner_info(pod_name)
+                            
                             server_infra = ServerInfraModel(
-                                openapi_spec_id=spec_id,
+                                openapi_spec_id=spec_id,  # OpenAPI spec이 있으면 ID, 없으면 None
                                 resource_type=detailed_pod_info.get("resource_type"), # DEPLOYMENT, DAEMONSET, STATEFULSET
-                                name = pod_name,
-                                service_type= detailed_pod_info.get("service_type"), # SERVER, DATABASE
+                                name=pod_name,
+                                service_type=detailed_pod_info.get("service_type"), # SERVER, DATABASE
                                 environment="K3S",
-                                group_name = service_name,
-                                label= detailed_pod_info.get("label"),
+                                group_name=service_name,  # 서비스 이름
+                                label=detailed_pod_info.get("label"),
                                 namespace=settings.KUBERNETES_TEST_NAMESPACE,
                             )
-                            new_server_infras.extend([server_infra])
+                            new_server_infras.append(server_infra)
 
-                    for exist_pod_name in existing_pod_names:
-                        if exist_pod_name not in pod_names:
-                            delete_server_infra_names.append(exist_pod_name)
+                    # Mark pods for deletion
+                    for saved_pod_name in service_saved_pod_names:
+                        if saved_pod_name not in pod_names:
+                            delete_server_infra_names.append(saved_pod_name)
 
-                # 새롭게 추가된 서버 처리
+                # New service processing
                 else:
-                    # TODO OpenAPIModel 생성, 해당하는 모든 파드 insert
-                    # service_name, pod_names
-                    # server인 pod_name
-
-            for pod_info in running_pods:
-                pod_name = pod_info['name']
-
-                # 아직 저장되어 있지 않은 POD들에 대해서만 처리
-                if pod_name not in existing_pod_names:
-                    logger.info(f"Processing new pod: {pod_name}")
-
-                    # 3. pod의 상세정보 중 ownerReferences를 타고 ReplicaSet -> Deployment까지 진행
-                    detailed_pod_info = self.pod_monitor.get_pod_details_with_owner_info(pod_name)
-
-                    if detailed_pod_info:
-                        # SERVER 타입 POD에 대해서만 서비스 발견 및 OpenAPI 분석 수행
+                    logger.info(f"✅ New service detected: {service_name}")
+                    saved_openapi_spec = None
+                    
+                    # Find SERVER pod for OpenAPI registration
+                    for pod_name in pod_names:
+                        detailed_pod_info = self.pod_monitor.get_pod_details_with_owner_info(pod_name)
+                        
                         if detailed_pod_info.get("service_type") == "SERVER":
-                            await self._process_server_pod(db, detailed_pod_info)
-                        else:
-                            # DATABASE 타입은 기존대로 저장만
-                            server_infra = self.server_infra_service.create_server_infra(
-                                db=db,
-                                pod_info=detailed_pod_info,
-                                open_api_spec_id=None
+                            services = self.pod_monitor.find_services_for_pod(detailed_pod_info["labels"])
+                            swagger_urls = await self._discover_swagger_urls_with_fallback(services)
+
+                            if not swagger_urls:
+                                continue
+
+                            # OpenAPI 분석 요청 생성
+                            openapi_request = OpenAPISpecRegisterRequest(
+                                open_api_url=swagger_urls[0],
+                                project_id=1  # 기본 프로젝트 ID 사용
                             )
 
-                            if server_infra:
-                                logger.info(f"Successfully saved database pod {pod_name} to server_infra table")
-                            else:
-                                logger.error(f"Failed to save database pod {pod_name} to server_infra table")
-                    else:
-                        logger.error(f"Failed to get detailed info for pod {pod_name}")
-                else:
-                    logger.debug(f"Pod {pod_name} already exists in server_infra table")
+                            # OpenAPI 분석 수행
+                            analysis_result = await analyze_openapi_with_strategy(openapi_request)
+
+                            if analysis_result:
+                                logger.info(f"✅ OpenAPI spec analyzed for {pod_name}")
+                                analysis_result = self._convert_nodeport_url_if_needed(analysis_result, swagger_urls[0])
+                                saved_openapi_spec = save_openapi_spec(db, analysis_result)
+                                break
+
+                    # Save all pods to ServerInfra
+                    for pod_name in pod_names:
+                        detailed_pod_info = self.pod_monitor.get_pod_details_with_owner_info(pod_name)
+                        
+                        server_infra = ServerInfraModel(
+                            openapi_spec_id=saved_openapi_spec.id if saved_openapi_spec else None,
+                            resource_type=detailed_pod_info.get("resource_type"),  # DEPLOYMENT, DAEMONSET, STATEFULSET
+                            name=pod_name,
+                            service_type=detailed_pod_info.get("service_type"),  # SERVER, DATABASE
+                            environment="K3S",
+                            group_name=service_name,  # 서비스 이름
+                            label=detailed_pod_info.get("label"),
+                            namespace=settings.KUBERNETES_TEST_NAMESPACE,
+                        )
+                        new_server_infras.append(server_infra)
+
+            # Apply changes
+            if new_server_infras:
+                db.add_all(new_server_infras)
+                logger.info(f"✅ Added {len(new_server_infras)} new pods")
+            
+            if delete_server_infra_names:
+                deleted_count = db.query(ServerInfraModel).filter(
+                    ServerInfraModel.name.in_(delete_server_infra_names)
+                ).delete(synchronize_session=False)
+                logger.info(f"✅ Deleted {deleted_count} obsolete pods")
+            
+            if new_server_infras or delete_server_infra_names:
+                db.commit()
+                logger.info("✅ Pod status processing completed")
 
         except Exception as e:
             logger.error(f"Error processing pod status: {e}")
+            db.rollback()
         finally:
             db.close()
-
-    async def _process_server_pod(self, db: Session, pod_info: Dict[str, Any]):
-        """
-        SERVER 타입 POD에 대해 서비스 발견과 OpenAPI 분석을 수행합니다.
-        조건을 만족하지 않으면 Pod 정보를 저장하지 않아서 다음 스캔에서 재시도하도록 합니다.
-        
-        Args:
-            db: 데이터베이스 세션
-            pod_info: Pod 상세 정보
-        """
-        pod_name = pod_info.get("name")
-        pod_labels = pod_info.get("labels", {})
-        
-        try:
-            # 1. Pod의 라벨을 기반으로 연결된 Service 찾기
-            logger.info(f"Finding services for pod {pod_name} with labels: {pod_labels}")
-            services = self.pod_monitor.find_services_for_pod(pod_labels)
-            
-            if not services:
-                logger.warning(f"No services found for pod {pod_name} - skipping save for retry")
-                return  # 서비스가 없으면 저장하지 않음 (배포 중일 가능성)
-            
-            logger.info(f"Found {len(services)} services for pod {pod_name}: {[s['name'] for s in services]}")
-            
-            # 2. 서비스를 기반으로 Swagger URL 탐지 (클러스터 내부 IP 사용)
-            swagger_urls = await self._discover_swagger_urls_with_fallback(services)
-            
-            if not swagger_urls:
-                logger.warning(f"No Swagger URLs found for pod {pod_name} - skipping save for retry")
-                return  # Swagger URL이 없으면 저장하지 않음 (애플리케이션 시작 중일 가능성)
-            
-            # 3. 첫 번째로 발견된 Swagger URL로 OpenAPI 분석 수행
-            swagger_url = swagger_urls[0]
-            logger.info(f"Analyzing OpenAPI spec from URL: {swagger_url}")
-            
-            try:
-                # OpenAPI 분석 요청 생성
-                openapi_request = OpenAPISpecRegisterRequest(
-                    open_api_url=swagger_url,
-                    project_id=1  # 기본 프로젝트 ID 사용
-                )
-                
-                # OpenAPI 분석 수행
-                analysis_result = await analyze_openapi_with_strategy(openapi_request)
-                
-                if analysis_result:
-                    logger.info(f"Successfully analyzed OpenAPI spec for pod {pod_name}")
-                    
-                    # NodePort fallback URL인 경우 base_url을 service_name:port로 변환
-                    if hasattr(self, '_nodeport_conversions') and swagger_url in self._nodeport_conversions:
-                        conversion_info = self._nodeport_conversions[swagger_url]
-                        original_base_url = analysis_result.base_url
-                        # localhost:node_port를 service_name.namespace:service_port로 변환
-                        service_with_namespace = f"{conversion_info['service_name']}.{settings.KUBERNETES_TEST_NAMESPACE}.svc.cluster.local"
-                        converted_base_url = original_base_url.replace(
-                            f"localhost:{conversion_info['node_port']}", 
-                            f"{service_with_namespace}:{conversion_info['service_port']}"
-                        )
-                        analysis_result.base_url = converted_base_url
-                        logger.info(f"Converted base_url for k6 job access: {original_base_url} -> {converted_base_url}")
-                    
-                    # OpenAPI 분석 결과를 데이터베이스에 저장
-                    saved_openapi_spec = await save_openapi_spec(db, analysis_result)
-                    logger.info(f"Saved OpenAPI spec with ID: {saved_openapi_spec.id}")
-                    
-                    # server_infra 테이블에 저장 (OpenAPI spec과 연결)
-                    server_infra = self.server_infra_service.create_server_infra(
-                        db=db,
-                        pod_info=pod_info,
-                        open_api_spec_id=saved_openapi_spec.id  # 저장된 OpenAPI spec ID 사용
-                    )
-                    
-                    if server_infra:
-                        logger.info(f"Successfully saved server pod {pod_name} with OpenAPI spec connection")
-                    else:
-                        logger.error(f"Failed to save server pod {pod_name} - database error")
-                else:
-                    logger.warning(f"OpenAPI analysis returned no result for {swagger_url} - skipping save for retry")
-                    return  # OpenAPI 분석 실패하면 저장하지 않음 (API 준비 중일 가능성)
-                    
-            except Exception as openapi_error:
-                logger.error(f"Failed to analyze OpenAPI spec from {swagger_url}: {openapi_error} - skipping save for retry")
-                return  # OpenAPI 분석 실패하면 저장하지 않음 (API 준비 중일 가능성)
-                
-        except Exception as e:
-            logger.error(f"Error processing server pod {pod_name}: {e} - skipping save for retry")
-            return  # 전체 처리 실패하면 저장하지 않음
 
     async def _discover_swagger_urls_with_fallback(self, services: List[Dict[str, Any]]) -> List[str]:
         """
@@ -284,20 +224,11 @@ class ServerPodScheduler:
         """
         swagger_urls = []
         
-        # 일반적인 Swagger 엔드포인트 패턴들 (성공 확률이 높은 순서로 정렬)
         swagger_paths = [
-            "/v3/api-docs",         # Spring Boot 기본 경로 (가장 높은 성공률)
-            "/swagger-ui",          # 일반적인 Swagger UI
-            "/swagger-ui/index.html", # Swagger UI 인덱스 페이지
-            "/api/swagger",         # API 네임스페이스 하위
-            "/swagger",             # 간단한 swagger 경로
-            "/docs",                # 문서 경로
-            "/api/docs",            # API 문서 경로
-            "/openapi.json",        # OpenAPI JSON 스펙
-            "/swagger.json",        # Swagger JSON 스펙
-            "/v1/api-docs",         # 버전별 API 문서
-            "/v2/api-docs",         # 버전별 API 문서
-            "/api-docs"             # API 문서
+            "/v3/api-docs", "/swagger-ui", "/swagger-ui/index.html",
+            "/api/swagger", "/swagger", "/docs", "/api/docs",
+            "/openapi.json", "/swagger.json", "/v1/api-docs",
+            "/v2/api-docs", "/api-docs"
         ]
         
         for service in services:
@@ -306,21 +237,19 @@ class ServerPodScheduler:
             ports = service["ports"]
             service_type = service.get("type", "ClusterIP")
             
-            # 1. 클러스터 내부 Service URL로 시도
+            # Try cluster internal URLs
             for port in ports:
                 if self._is_http_port(port):
-                    # http://<service_name.namespace.svc.cluster.local>:port/~~ 형태로 시도
                     service_url = f"http://{service_name}.{settings.KUBERNETES_TEST_NAMESPACE}.svc.cluster.local:{port}"
                     urls_found = await self._check_swagger_endpoints(service_url, swagger_paths)
                     swagger_urls.extend(urls_found)
                     
-                    # cluster IP로도 시도
                     if cluster_ip and cluster_ip != "None":
                         cluster_url = f"http://{cluster_ip}:{port}"
                         urls_found = await self._check_swagger_endpoints(cluster_url, swagger_paths)
                         swagger_urls.extend(urls_found)
             
-            # 2. fallback: NodePort 타입인 경우 localhost로 시도
+            # NodePort fallback
             if service_type == "NodePort":
                 node_ports = service.get("node_ports", [])
                 port_mappings = service.get("port_mappings", {})
@@ -334,35 +263,23 @@ class ServerPodScheduler:
         세마포어로 동시 연결 수 제한, 클라이언트 재사용, 조기 종료 최적화 적용
         """
         potential_urls = [f"{base_url}{swagger_path}" for swagger_path in swagger_paths]
-        logger.info(f"Checking {len(potential_urls)} URLs in parallel for {base_url}")
-        
-        # 세마포어로 최대 5개 동시 요청 제한
         semaphore = asyncio.Semaphore(5)
         
         async def check_single_url_with_semaphore(client, url):
             async with semaphore:
                 return await self._check_swagger_url_with_client(client, url)
         
-        # 클라이언트 재사용으로 모든 요청 처리 (리다이렉트 자동 따르기)
         async with httpx.AsyncClient(timeout=3, follow_redirects=True) as client:
-            # 모든 URL 체크 작업 생성 (URL과 함께 쌍으로 저장)
             tasks = [(asyncio.create_task(check_single_url_with_semaphore(client, url)), url) 
                     for url in potential_urls]
             
-            # 병렬로 모든 작업 실행하고 결과 수집
             try:
                 task_list = [task for task, _ in tasks]
                 results = await asyncio.gather(*task_list, return_exceptions=True)
                 
-                # 결과 확인하여 첫 번째 성공한 URL 찾기
                 for i, (result, (_, url)) in enumerate(zip(results, tasks)):
-                    logger.info(f"Result for {url}: {result} (type: {type(result)})")
-                    
                     if result is True:
-                        logger.info(f"Found Swagger URL: {url}")
                         return [url]
-                    elif isinstance(result, Exception):
-                        logger.debug(f"Error checking URL {url}: {result}")
                         
             except Exception as e:
                 logger.error(f"Error in parallel URL checking: {e}")
@@ -382,11 +299,7 @@ class ServerPodScheduler:
             urls_found = await self._check_swagger_endpoints(localhost_url, swagger_paths)
             
             if urls_found:
-                # localhost URL을 그대로 추가 (OpenAPI 분석에 사용)
                 swagger_urls.extend(urls_found)
-                logger.info(f"Found Swagger URL via NodePort fallback: {urls_found[0]}")
-                
-                # 변환을 위한 메타데이터를 저장 (클래스 속성으로)
                 service_port = port_mappings.get(node_port, node_port)
                 if not hasattr(self, '_nodeport_conversions'):
                     self._nodeport_conversions = {}
@@ -397,7 +310,6 @@ class ServerPodScheduler:
                         'service_port': service_port,
                         'node_port': node_port
                     }
-                    logger.info(f"Stored conversion info for {url}: localhost:{node_port} -> {service_name}.{settings.KUBERNETES_TEST_NAMESPACE}.svc.cluster.local:{service_port}")
 
     async def _check_swagger_url_with_client(self, client, url: str) -> bool:
         """
@@ -405,21 +317,15 @@ class ServerPodScheduler:
         """
         try:
             response = await client.get(url)
-            logger.info(f"Response for {url}: status={response.status_code}, content-type={response.headers.get('content-type', 'unknown')}")
-            
+
             if response.status_code == 200:
                 content = response.text
-                logger.info(f"Response content preview for {url}: {content[:200]}...")
-                
                 content_lower = content.lower()
-                # Swagger 관련 키워드들이 포함되어 있는지 확인
                 swagger_keywords = [
                     "swagger", "openapi", "api documentation", 
                     "swagger-ui", "redoc", "rapidoc"
                 ]
-                
                 keyword_found = any(keyword in content_lower for keyword in swagger_keywords)
-                logger.info(f"Keyword check for {url}: found={keyword_found}")
                 
                 if keyword_found:
                     return True
@@ -432,15 +338,14 @@ class ServerPodScheduler:
                         "openapi" in json_data or 
                         "info" in json_data
                     )
-                    logger.info(f"JSON check for {url}: is_dict={isinstance(json_data, dict)}, has_swagger_keys={json_check}")
-                    
+
                     if json_check:
                         return True
-                except Exception as json_error:
-                    logger.info(f"JSON parse failed for {url}: {json_error}")
+                except Exception:
+                    pass
                     
-        except Exception as e:
-            logger.debug(f"Failed to check Swagger URL {url}: {e}")
+        except Exception:
+            pass
             
         return False
     
@@ -456,11 +361,32 @@ class ServerPodScheduler:
         """
         포트가 HTTP 서비스 포트인지 추정합니다.
         """
-        # 일반적인 HTTP 포트들
         common_http_ports = [80, 8080, 3000, 4000, 5000, 8000, 9000]
-        
-        # 8000-9999 범위의 포트들도 HTTP일 가능성이 높음
         return port in common_http_ports or (8000 <= port <= 9999)
+    
+    def _convert_nodeport_url_if_needed(self, analysis_result, swagger_url):
+        """
+        NodePort fallback URL인 경우 base_url을 service_name:port로 변환
+        
+        Args:
+            analysis_result: OpenAPI 분석 결과
+            swagger_url: 변환 확인할 Swagger URL
+            
+        Returns:
+            변환된 analysis_result (변환이 필요하지 않으면 원본 반환)
+        """
+        if hasattr(self, '_nodeport_conversions') and swagger_url in self._nodeport_conversions:
+            conversion_info = self._nodeport_conversions[swagger_url]
+            original_base_url = analysis_result.base_url
+            
+            service_with_namespace = f"{conversion_info['service_name']}.{settings.KUBERNETES_TEST_NAMESPACE}.svc.cluster.local"
+            converted_base_url = original_base_url.replace(
+                f"localhost:{conversion_info['node_port']}",
+                f"{service_with_namespace}:{conversion_info['service_port']}"
+            )
+            analysis_result.base_url = converted_base_url
+            
+        return analysis_result
 
 
 # 전역 스케줄러 인스턴스

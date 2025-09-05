@@ -59,7 +59,7 @@ class SvcMonitorService:
                     "name": service.metadata.name,
                     "namespace": service.metadata.namespace,
                     "cluster_ip": service.spec.cluster_ip,
-                    "external_ips": service.spec.external_ips or [],
+                    "external_ips": service.spec.external_i_ps or [],
                     "ports": ports,
                     "type": service.spec.type,
                     "selector": service.spec.selector or {},
@@ -119,6 +119,7 @@ class SvcMonitorService:
     def get_pods_for_all_services(self) -> Dict[str, List[str]]:
         """
         네임스페이스의 모든 Service와 매칭되는 Pod 목록을 반환합니다.
+        Headless Service (cluster_ip가 "None"인 경우)는 제외합니다.
 
         Returns:
             Service 이름을 키로 하고 Pod 이름 리스트를 값으로 하는 딕셔너리
@@ -134,6 +135,13 @@ class SvcMonitorService:
             
             for service in services:
                 service_name = service["name"]
+                cluster_ip = service["cluster_ip"]
+                
+                # Headless Service (cluster_ip가 "None")는 제외
+                if cluster_ip == "None":
+                    logger.debug(f"Skipping headless service: {service_name}")
+                    continue
+                    
                 pod_names = self.get_pod_names_matching_service(service_name)
                 service_pod_mapping[service_name] = pod_names
                 

@@ -23,13 +23,13 @@ class OpenAPISpecModel(Base):
     project = relationship("ProjectModel", back_populates="openapi_specs")
 
     openapi_spec_versions = relationship("OpenAPISpecVersionModel", back_populates="openapi_spec")
-    server_infras = relationship("ServerInfraModel", back_populates="openapi_spec_version")
+    server_infras = relationship("ServerInfraModel", back_populates="openapi_spec")
 
 class OpenAPISpecVersionModel(Base):
     __tablename__ = "openapi_spec_version"
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime, nullable=False)
-    commit_hash = Column(String, nullable=False)
+    commit_hash = Column(String, nullable=True)
     is_activate = Column(Boolean, nullable=False)
     open_api_spec_id = Column(Integer, ForeignKey("openapi_spec.id"))
     openapi_spec = relationship("OpenAPISpecModel", back_populates="openapi_spec_versions")
