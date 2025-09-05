@@ -43,8 +43,9 @@ class ProjectDetailConverter:
         """
         # endpoint들을 tag별로 그룹화
         tags_dict = {}
+        activate_spec = spec.openapi_spec_versions[0]
         
-        for endpoint in spec.endpoints:
+        for endpoint in activate_spec.endpoints:
             tag_name = endpoint.tag_name or "Default"
             tag_description = endpoint.tag_description or ""
             
