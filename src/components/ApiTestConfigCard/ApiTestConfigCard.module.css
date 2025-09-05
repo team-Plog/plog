@@ -24,13 +24,6 @@
   flex: 1;
 }
 
-.linkIcon {
-  width: var(--icon-size-md);
-  height: var(--icon-size-md);
-  color: var(--color-gray-200);
-  flex-shrink: 0;
-}
-
 .endpoint {
   color: var(--color-black);
   white-space: nowrap;
@@ -63,9 +56,66 @@
 }
 
 .configSection {
+  margin-bottom: var(--spacing-lg);
+}
+
+.configSection:last-child {
+  margin-bottom: 0;
+}
+
+.toggleButton {
+  width: 100%;
+  background: none;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s ease;
+  background-color: var(--color-gray-100);
+}
+
+.toggleButton:hover {
+  background-color: var(--color-gray-100);
+}
+
+.toggleLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.toggleIcon {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  color: var(--color-gray-200);
+}
+
+/* 토글 버튼이 열렸을 때 하단 모서리 제거 및 하단 보더 제거 */
+.toggleButtonOpen {
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border-bottom: none;
+}
+
+/* 셰브론 아이콘 스타일 */
+.chevronIcon {
+  width: 20px;
+  height: 20px;
+  color: var(--color-gray-300);
+  transition: transform 0.2s ease;
+}
+
+.configContent {
+  border: 1px solid var(--color-border-primary);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  padding: var(--spacing-lg);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+  background-color: var(--color-gray-100);
 }
 
 .configItem {
@@ -87,6 +137,17 @@
   display: flex;
   gap: var(--spacing-sm);
   flex-wrap: nowrap;
+}
+
+.parameterRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.parameterRow > * {
+  flex: 1;
+  min-width: 0;
 }
 
 .stagesSection {
@@ -123,12 +184,6 @@
   align-items: center;
 }
 
-.headerWithButton {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
 .labelWithButton {
   display: flex;
   justify-content: space-between;
@@ -158,18 +213,6 @@
   color: var(--color-gray-200);
 }
 
-.inputWithButton {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  min-width: 0;
-}
-
-.inputWithButton > *:first-child {
-  flex: 1;
-  min-width: 0;
-}
-
 .removeStepButton {
   background: none;
   border: none;
@@ -195,10 +238,4 @@
 
 .stageItem {
   width: 100%;
-}
-
-/* 토글 버튼 컨테이너 반응형 처리 */
-.toggleContainer {
-  min-width: 0;
-  flex: 1;
 }

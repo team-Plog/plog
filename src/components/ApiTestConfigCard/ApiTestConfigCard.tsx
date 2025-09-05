@@ -1,6 +1,5 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
-  Link,
   X,
   Clock,
   UserRound,
@@ -10,9 +9,16 @@ import {
   Minus,
   AlertTriangle,
   Target,
+  Cog,
+  Play,
+  ChevronRight,
+  ChevronUp,
+  Key,
+  ChartColumn,
 } from "lucide-react";
-import {InputWithIcon} from "../../components/Input";
+import {InputWithIcon, InputField} from "../../components/Input";
 import ToggleButton from "../../components/Button/ToggleButton";
+import HttpMethodTag from "../../components/Tag/HttpMethodTag";
 import styles from "./ApiTestConfigCard.module.css";
 
 interface Stage {
@@ -20,16 +26,30 @@ interface Stage {
   target: number;
 }
 
+interface Parameter {
+  name: string;
+  param_type: 'path' | 'query' | 'requestBody';
+  value: string;
+}
+
+interface Header {
+  header_key: string;
+  header_value: string;
+}
+
 export interface ApiTestConfig {
   id: string;
   endpoint_id: number;
   endpoint_path: string;
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   scenario_name: string;
   think_time: number;
   executor: 'constant-vus' | 'ramping-vus';
   response_time_target?: number;
   error_rate_target?: number;
   stages: Stage[];
+  parameters?: Parameter[];
+  headers?: Header[];
 }
 
 interface ApiTestConfigCardProps {
@@ -43,33 +63,65 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
   onRemove,
   onChange,
 }) => {
+  const [isRequestConfigOpen, setIsRequestConfigOpen] = useState(false);
+  const [isExecutionConfigOpen, setIsExecutionConfigOpen] = useState(true);
+
+  // 초기 데이터 설정 - 기본 필드들을 항상 보이도록
+  useEffect(() => {
+    const headers = config.headers || [];
+    const parameters = config.parameters || [];
+
+    // 헤더가 없으면 기본 헤더 하나 추가
+    if (headers.length === 0) {
+      updateConfig({ 
+        headers: [{ header_key: '', header_value: '' }] 
+      });
+    }
+
+    // GET 메서드의 경우 기본 파라미터들 추가
+    if (config.method === 'GET') {
+      const hasPathParam = parameters.some(p => p.param_type === 'path');
+      const hasQueryParam = parameters.some(p => p.param_type === 'query');
+      
+      if (!hasPathParam || !hasQueryParam) {
+        const newParameters = [...parameters];
+        if (!hasPathParam) {
+          newParameters.push({ name: '', param_type: 'path', value: '' });
+        }
+        if (!hasQueryParam) {
+          newParameters.push({ name: '', param_type: 'query', value: '' });
+        }
+        updateConfig({ parameters: newParameters });
+      }
+    }
+
+    // POST 메서드의 경우 기본 requestBody 추가
+    if (config.method === 'POST') {
+      const hasRequestBody = parameters.some(p => p.param_type === 'requestBody');
+      if (!hasRequestBody) {
+        const newParameters = [...parameters, { name: 'requestBody', param_type: 'requestBody' as const, value: '' }];
+        updateConfig({ parameters: newParameters });
+      }
+    }
+  }, [config.method]);
+
   const updateConfig = (updates: Partial<ApiTestConfig>) => {
     onChange({ ...config, ...updates });
   };
 
   // 숫자만 입력받는 헬퍼 함수
   const handleNumberInput = (value: string): number => {
-    // 빈 문자열이면 0 반환
     if (value === '') return 0;
-    
-    // 숫자만 허용 (소수점 포함)
     const numericValue = value.replace(/[^0-9.]/g, '');
     const parsedValue = parseFloat(numericValue);
-    
-    // NaN이면 0 반환, 그렇지 않으면 파싱된 값 반환
     return isNaN(parsedValue) ? 0 : parsedValue;
   };
 
   // 정수만 입력받는 헬퍼 함수
   const handleIntegerInput = (value: string): number => {
-    // 빈 문자열이면 0 반환
     if (value === '') return 0;
-    
-    // 숫자만 허용 (정수만)
     const numericValue = value.replace(/[^0-9]/g, '');
     const parsedValue = parseInt(numericValue);
-    
-    // NaN이면 0 반환, 그렇지 않으면 파싱된 값 반환
     return isNaN(parsedValue) ? 0 : parsedValue;
   };
 
@@ -95,9 +147,7 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
     updateConfig({ stages: newStages });
   };
 
-  // duration 입력값 필터링 (숫자, s, m, h만 허용)
   const handleDurationInput = (value: string): string => {
-    // 숫자, s, m, h만 허용하고 나머지 문자는 제거
     return value.replace(/[^0-9smh]/g, '');
   };
 
@@ -106,24 +156,140 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
     updateStage(index, 'duration', filteredValue);
   };
 
-  return (
-    <div className={styles.container}>
-      {/* 헤더 */}
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <Link className={styles.linkIcon} />
-          <span className={`${styles.endpoint} TitleL`}>{config.endpoint_path}</span>
-        </div>
-        <button
-          className={styles.removeButton}
-          onClick={onRemove}
-          type="button">
-          <X />
-        </button>
-      </div>
+  // Header 관련 함수들
+  const updateHeader = (index: number, field: keyof Header, value: string) => {
+    const newHeaders = [...(config.headers || [])];
+    newHeaders[index][field] = value;
+    updateConfig({ headers: newHeaders });
+  };
 
-      {/* 설정 */}
-      <div className={styles.configSection}>
+  // Parameter 관련 함수들
+  const updateParameter = (index: number, field: keyof Parameter, value: string) => {
+    const newParameters = [...(config.parameters || [])];
+    newParameters[index][field] = value;
+    updateConfig({ parameters: newParameters });
+  };
+
+  const renderRequestConfig = () => {
+    if (!isRequestConfigOpen) return null;
+
+    const method = config.method;
+    const headers = config.headers || [];
+    const parameters = config.parameters || [];
+
+    return (
+      <div className={styles.configContent}>
+        {/* 헤더 설정 */}
+        <div className={styles.configItem}>
+          <span className={`${styles.configLabel} CaptionBold`}>헤더</span>
+          <div className={styles.parameterRow}>
+            <InputWithIcon
+              icon={<Key />}
+              value={headers[0]?.header_key || ''}
+              onChange={(value) => updateHeader(0, 'header_key', value)}
+              placeholder="Key"
+            />
+            <InputWithIcon
+              icon={<ChartColumn />}
+              value={headers[0]?.header_value || ''}
+              onChange={(value) => updateHeader(0, 'header_value', value)}
+              placeholder="Value"
+            />
+          </div>
+        </div>
+
+        {/* GET 메서드인 경우 */}
+        {method === 'GET' && (
+          <>
+            {/* 경로 변수 */}
+            <div className={styles.configItem}>
+              <span className={`${styles.configLabel} CaptionBold`}>경로 변수</span>
+              <div className={styles.parameterRow}>
+                <InputWithIcon
+                  icon={<Key />}
+                  value={parameters.find(p => p.param_type === 'path')?.name || ''}
+                  onChange={(value) => {
+                    const index = parameters.findIndex(p => p.param_type === 'path');
+                    if (index >= 0) {
+                      updateParameter(index, 'name', value);
+                    }
+                  }}
+                  placeholder="Path"
+                />
+                <InputWithIcon
+                  icon={<ChartColumn />}
+                  value={parameters.find(p => p.param_type === 'path')?.value || ''}
+                  onChange={(value) => {
+                    const index = parameters.findIndex(p => p.param_type === 'path');
+                    if (index >= 0) {
+                      updateParameter(index, 'value', value);
+                    }
+                  }}
+                  placeholder="Value"
+                />
+              </div>
+            </div>
+
+            {/* 쿼리 파라미터 */}
+            <div className={styles.configItem}>
+              <span className={`${styles.configLabel} CaptionBold`}>쿼리 파라미터</span>
+              <div className={styles.parameterRow}>
+                <InputWithIcon
+                  icon={<Key />}
+                  value={parameters.find(p => p.param_type === 'query')?.name || ''}
+                  onChange={(value) => {
+                    const index = parameters.findIndex(p => p.param_type === 'query');
+                    if (index >= 0) {
+                      updateParameter(index, 'name', value);
+                    }
+                  }}
+                  placeholder="Param"
+                />
+                <InputWithIcon
+                  icon={<ChartColumn />}
+                  value={parameters.find(p => p.param_type === 'query')?.value || ''}
+                  onChange={(value) => {
+                    const index = parameters.findIndex(p => p.param_type === 'query');
+                    if (index >= 0) {
+                      updateParameter(index, 'value', value);
+                    }
+                  }}
+                  placeholder="Value"
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* POST 메서드인 경우 */}
+        {method === 'POST' && (
+          <div className={styles.configItem}>
+            <span className={`${styles.configLabel} CaptionBold`}>요청 본문</span>
+            <InputField
+              placeholder="JSON 형식의 요청 본문을 입력하세요"
+              value={parameters.find(p => p.param_type === 'requestBody')?.value || ''}
+              onChange={(value) => {
+                const existingIndex = parameters.findIndex(p => p.param_type === 'requestBody');
+                if (existingIndex >= 0) {
+                  updateParameter(existingIndex, 'value', value);
+                } else {
+                  const newParameters = [...parameters, { name: 'requestBody', param_type: 'requestBody' as const, value }];
+                  updateConfig({ parameters: newParameters });
+                }
+              }}
+              multiline
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderExecutionConfig = () => {
+    if (!isExecutionConfigOpen) return null;
+
+    return (
+      <div className={styles.configContent}>
         {/* 시나리오 이름 */}
         <div className={styles.configItem}>
           <span className={`${styles.configLabel} CaptionBold`}>
@@ -137,42 +303,42 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
           />
         </div>
 
-        {/* 요청 간 대기시간 */}
-        <div className={styles.configItem}>
-          <span className={`${styles.configLabel} CaptionBold`}>
-            요청 간 대기시간 (초)
-          </span>
-          <InputWithIcon
-            icon={<Clock />}
-            value={config.think_time.toString()}
-            onChange={(value) => updateConfig({ think_time: handleNumberInput(value) })}
-            placeholder="1"
-          />
+        {/* 요청 간 대기시간 & 응답시간 목표 */}
+        <div className={styles.horizontalGroup}>
+          <div className={styles.configItem}>
+            <span className={`${styles.configLabel} CaptionBold`}>
+              요청 간 대기시간 (초)
+            </span>
+            <InputWithIcon
+              icon={<Clock />}
+              value={config.think_time.toString()}
+              onChange={(value) => updateConfig({ think_time: handleNumberInput(value) })}
+              placeholder="1"
+            />
+          </div>
+          <div className={styles.configItem}>
+            <span className={`${styles.configLabel} CaptionBold`}>
+              응답시간 목표 (ms, 선택)
+            </span>
+            <InputWithIcon
+              icon={<Clock />}
+              value={config.response_time_target?.toString() || ''}
+              onChange={(value) => {
+                if (value === '') {
+                  updateConfig({ response_time_target: undefined });
+                } else {
+                  updateConfig({ response_time_target: handleNumberInput(value) });
+                }
+              }}
+              placeholder="예: 100"
+            />
+          </div>
         </div>
 
-        {/* 응답시간 목표 (선택사항) */}
+        {/* 에러율 목표 */}
         <div className={styles.configItem}>
           <span className={`${styles.configLabel} CaptionBold`}>
-            응답시간 목표 (ms, 선택사항)
-          </span>
-          <InputWithIcon
-            icon={<Clock />}
-            value={config.response_time_target?.toString() || ''}
-            onChange={(value) => {
-              if (value === '') {
-                updateConfig({ response_time_target: undefined });
-              } else {
-                updateConfig({ response_time_target: handleNumberInput(value) });
-              }
-            }}
-            placeholder="예: 100"
-          />
-        </div>
-
-        {/* 에러율 목표 (선택사항) */}
-        <div className={styles.configItem}>
-          <span className={`${styles.configLabel} CaptionBold`}>
-            에러율 목표 (%, 선택사항)
+            에러율 목표 (%, 선택)
           </span>
           <InputWithIcon
             icon={<AlertTriangle />}
@@ -191,7 +357,7 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
         {/* 실행 모드 */}
         <div className={styles.configItem}>
           <span className={`${styles.configLabel} CaptionBold`}>
-            실행 모드
+            사용자 수 조절 방식
           </span>
           <ToggleButton
             options={[
@@ -201,11 +367,10 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
             selectedValue={config.executor}
             onChange={(value) => {
               const newExecutor = value as 'constant-vus' | 'ramping-vus';
-              // 고정 모드로 변경할 때는 첫 번째 단계만 유지
               if (newExecutor === 'constant-vus' && config.stages.length > 1) {
                 updateConfig({ 
                   executor: newExecutor,
-                  stages: [config.stages[0]] // 첫 번째 단계만 유지
+                  stages: [config.stages[0]]
                 });
               } else {
                 updateConfig({ executor: newExecutor });
@@ -240,7 +405,6 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
           </div>
 
           {(config.executor === 'constant-vus' ? [config.stages[0]] : config.stages).map((stage, index) => {
-            // 고정 모드에서는 실제 인덱스를 0으로, 점진적 증가에서는 실제 인덱스 사용
             const actualIndex = config.executor === 'constant-vus' ? 0 : index;
             
             return (
@@ -277,6 +441,62 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
             );
           })}
         </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className={styles.container}>
+      {/* 헤더 */}
+      <div className={styles.header}>
+        <div className={styles.headerLeft}>
+          <HttpMethodTag method={config.method} />
+          <span className={`${styles.endpoint} TitleL`}>{config.endpoint_path}</span>
+        </div>
+        <button
+          className={styles.removeButton}
+          onClick={onRemove}
+          type="button">
+          <X />
+        </button>
+      </div>
+
+      {/* 요청 설정 섹션 */}
+      <div className={styles.configSection}>
+        <button
+          className={`${styles.toggleButton} ${isRequestConfigOpen ? styles.toggleButtonOpen : ''}`}
+          onClick={() => setIsRequestConfigOpen(!isRequestConfigOpen)}
+          type="button"
+        >
+          <div className={styles.toggleLeft}>
+            <Cog className={styles.toggleIcon} />
+            <span className="BodyBold">요청 설정</span>
+          </div>
+          {isRequestConfigOpen ? 
+            <ChevronUp className={styles.chevronIcon} /> : 
+            <ChevronRight className={styles.chevronIcon} />
+          }
+        </button>
+        {renderRequestConfig()}
+      </div>
+
+      {/* 실행 파라미터 섹션 */}
+      <div className={styles.configSection}>
+        <button
+          className={`${styles.toggleButton} ${isExecutionConfigOpen ? styles.toggleButtonOpen : ''}`}
+          onClick={() => setIsExecutionConfigOpen(!isExecutionConfigOpen)}
+          type="button"
+        >
+          <div className={styles.toggleLeft}>
+            <Play className={styles.toggleIcon} />
+            <span className="BodyBold">실행 파라미터</span>
+          </div>
+          {isExecutionConfigOpen ? 
+            <ChevronUp className={styles.chevronIcon} /> : 
+            <ChevronRight className={styles.chevronIcon} />
+          }
+        </button>
+        {renderExecutionConfig()}
       </div>
     </div>
   );
