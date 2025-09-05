@@ -10,8 +10,8 @@ def get_project_by_endpoint_id_simple(db: Session, endpoint_id: int) -> ProjectM
     """endpoint_id로 프로젝트 조회 - 관계 활용"""
     endpoint = db.query(EndpointModel).filter(EndpointModel.id == endpoint_id).first()
 
-    if endpoint and endpoint.openapi_spec and endpoint.openapi_spec.project:
+    if endpoint.openapi_spec_version.openapi_spec.project:
         # 첫 번째 태그의 openapi_spec을 통해 프로젝트 조회
-        return endpoint.openapi_spec.project
+        return endpoint.openapi_spec_version.openapi_spec.project
 
     raise ApiException(FailureCode.NOT_FOUND_DATA, f"Endpoint {endpoint_id} not found")
