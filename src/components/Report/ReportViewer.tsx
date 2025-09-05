@@ -454,7 +454,6 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                     height={300}
                     hideTitle={true}
                     hideControls={true}
-                    showLegend={false}
                   />
                 </div>
               )}
@@ -475,7 +474,6 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                       height={300}
                       hideTitle={true}
                       hideControls={true}
-                      showLegend={false}
                     />
                   </div>
                 );
