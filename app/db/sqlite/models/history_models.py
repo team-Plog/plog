@@ -56,6 +56,7 @@ class TestHistoryModel(Base):
     test_duration = Column(Float, nullable=True)  # seconds
 
     scenarios = relationship("ScenarioHistoryModel", back_populates="test_history", cascade="all, delete-orphan")
+    test_metrics = relationship("TestMetricsTimeseriesModel", back_populates="test_history", cascade="all, delete-orphan")
 
 
 class ScenarioHistoryModel(Base):
@@ -101,6 +102,7 @@ class ScenarioHistoryModel(Base):
     stages = relationship("StageHistoryModel", back_populates="scenario", cascade="all, delete-orphan")
     test_parameters = relationship("TestParameterHistoryModel", back_populates="scenario", cascade="all, delete-orphan")
     test_headers = relationship("TestHeaderHistoryModel", back_populates="scenario", cascade="all, delete-orphan")
+    test_metrics = relationship("TestMetricsTimeseriesModel", back_populates="scenario", cascade="all, delete-orphan")
 
 class TestParameterHistoryModel(Base):
     __tablename__ = "test_parameter_history"
@@ -131,7 +133,10 @@ class TestMetricsTimeseriesModel(Base):
     
     # 시나리오와 연관관계 (null이면 전체 데이터, 값이 있으면 해당 시나리오 데이터)
     scenario_history_id = Column(Integer, ForeignKey("scenario_history.id"), nullable=True)
-    scenario = relationship("ScenarioHistoryModel")
+    scenario = relationship("ScenarioHistoryModel", back_populates="test_metrics")
+
+    test_history_id = Column(Integer, ForeignKey("test_history.id"), nullable=True)
+    test_history = relationship("TestHistoryModel", back_populates="test_metrics")
     
     # 시간 구간 (10초 단위 구간의 시작 시간)
     timestamp = Column(DateTime, nullable=False)

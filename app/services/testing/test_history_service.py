@@ -639,6 +639,7 @@ def save_test_timeseries_metrics(db: Session, scenario_histories: List[ScenarioH
             # 시계열 데이터 모델 생성
             timeseries_model = TestMetricsTimeseriesModel(
                 scenario_history_id=scenario_history_id,
+                test_history_id=scenario.test_history_id,
                 timestamp=data_point['timestamp'],
                 tps=data_point.get('tps'),
                 error_rate=data_point.get('error_rate'),
@@ -689,7 +690,7 @@ def get_test_timeseries_metrics(db: Session, test_history_id: int) -> List[TestM
         return []
 
 
-def get_test_timeseries_metrics_by_scenario(db: Session, test_history_id: int, scenario_id: Optional[int] = None) -> List[TestMetricsTimeseriesModel]:
+def get_test_timeseries_metrics_by_scenario(db: Session, test_history_id: Optional[int] = None, scenario_history_id: Optional[int] = None) -> List[TestMetricsTimeseriesModel]:
     """
     특정 시나리오의 시계열 메트릭 데이터 조회
     
@@ -704,13 +705,13 @@ def get_test_timeseries_metrics_by_scenario(db: Session, test_history_id: int, s
     try:
         query = db.query(TestMetricsTimeseriesModel).filter(
             TestMetricsTimeseriesModel.test_history_id == test_history_id,
-            TestMetricsTimeseriesModel.scenario_id == scenario_id
+            TestMetricsTimeseriesModel.scenario_history_id == scenario_history_id
         )
         
         return query.order_by(TestMetricsTimeseriesModel.timestamp.asc()).all()
         
     except Exception as e:
-        logger.error(f"Error getting timeseries metrics for scenario {scenario_id}: {e}")
+        logger.error(f"Error getting timeseries metrics for scenario {scenario_history_id}: {e}")
         return []
 
 
