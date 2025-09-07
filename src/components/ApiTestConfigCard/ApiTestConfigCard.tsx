@@ -587,7 +587,7 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
           type="button">
           <div className={styles.toggleLeft}>
             <Cog className={styles.toggleIcon} />
-            <span className="TitleS">요청 설정</span>
+            <span className={`${styles.toggleTitle} TitleS`}>요청 설정</span>
           </div>
           {isRequestConfigOpen ? (
             <ChevronUp className={styles.chevronIcon} />
@@ -608,7 +608,7 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
           type="button">
           <div className={styles.toggleLeft}>
             <Play className={styles.toggleIcon} />
-            <span className="TitleS">실행 파라미터</span>
+            <span className={`${styles.toggleTitle} TitleS`}>실행 파라미터</span>
           </div>
           {isExecutionConfigOpen ? (
             <ChevronUp className={styles.chevronIcon} />
