@@ -85,6 +85,7 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  min-width: 0;
 }
 
 .toggleIcon {
@@ -101,10 +102,19 @@
 
 /* 셰브론 아이콘 스타일 */
 .chevronIcon {
-  width: 20px;
-  height: 20px;
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
   color: var(--color-gray-300);
   transition: transform 0.2s ease;
+}
+
+.toggleTitle {
+  color: var(--color-black);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
 }
 
 .configContent {
