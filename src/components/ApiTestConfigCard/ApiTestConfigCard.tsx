@@ -219,20 +219,50 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
         {/* 헤더 설정 - 모든 메서드에 표시 */}
         <div className={styles.configItem}>
           <span className={`${styles.configLabel} CaptionBold`}>헤더</span>
-          <div className={styles.parameterRow}>
-            <InputWithIcon
-              icon={<Key />}
-              value={headers[0]?.header_key || ""}
-              onChange={(value) => updateHeader(0, "header_key", value)}
-              placeholder="Key"
-            />
-            <InputWithIcon
-              icon={<ChartColumn />}
-              value={headers[0]?.header_value || ""}
-              onChange={(value) => updateHeader(0, "header_value", value)}
-              placeholder="Value"
-            />
-          </div>
+          {headers.map((header, index) => (
+            <div key={index} className={styles.parameterRow}>
+              <InputWithIcon
+                icon={<Key />}
+                value={header.header_key}
+                onChange={(value) => updateHeader(index, "header_key", value)}
+                placeholder="Key"
+              />
+              <InputWithIcon
+                icon={<ChartColumn />}
+                value={header.header_value}
+                onChange={(value) => updateHeader(index, "header_value", value)}
+                placeholder="Value"
+              />
+
+              <div className={styles.headerButtons}>
+                {index === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateConfig({
+                        headers: [
+                          ...headers,
+                          {header_key: "", header_value: ""},
+                        ],
+                      })
+                    }
+                    className={styles.addButton}>
+                    <Plus />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newHeaders = headers.filter((_, i) => i !== index);
+                      updateConfig({headers: newHeaders});
+                    }}
+                    className={styles.removeButton}>
+                    <Minus />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* GET 메서드인 경우 */}

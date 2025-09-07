@@ -4,16 +4,31 @@ import {InputField} from "../../components/Input";
 import {Button} from "../../components/Button/Button";
 import Header from "../../components/Header/Header";
 import styles from "./ProjectDetail.module.css";
-import {MoreHorizontal, Play, Plus, Save, ChevronLeft, ChevronRight} from "lucide-react";
+import {
+  MoreHorizontal,
+  Play,
+  Plus,
+  Save,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import UrlModal from "../../components/UrlModal/UrlModal";
 import ActionMenu from "../../components/ActionMenu/ActionMenu";
 import ApiGroupCard from "../../components/ApiGroupCard/ApiGroupCard";
-import ApiTestConfigCard, {type ApiTestConfig} from "../../components/ApiTestConfigCard/ApiTestConfigCard";
+import ApiTestConfigCard, {
+  type ApiTestConfig,
+} from "../../components/ApiTestConfigCard/ApiTestConfigCard";
 import type {OpenApiSpec} from "../../assets/mockProjectData";
-import {deleteProject, getProjectDetail, generateLoadTestScript, deleteOpenAPI, deleteEndpoint} from "../../api";
+import {
+  deleteProject,
+  getProjectDetail,
+  generateLoadTestScript,
+  deleteOpenAPI,
+  deleteEndpoint,
+} from "../../api";
 import ApiTree from "../../components/ApiTree/ApiTree";
 import WarningModal from "../../components/WarningModal/WarningModal";
-import { type HttpMethod } from "../../components/Tag/types";
+import {type HttpMethod} from "../../components/Tag/types";
 
 interface ProjectData {
   id: number;
@@ -76,7 +91,8 @@ const ProjectDetail: React.FC = () => {
   const COLLAPSE_THRESHOLD = 12; // 이 너비 이하로 줄어들면 자동으로 접힘
 
   // 임시 저장 키 생성
-  const getTempSaveKey = (projectId: number) => `temp_save_project_${projectId}`;
+  const getTempSaveKey = (projectId: number) =>
+    `temp_save_project_${projectId}`;
 
   // 임시 저장된 데이터 불러오기
   const loadTempSaveData = useCallback((projectId: number) => {
@@ -114,7 +130,7 @@ const ProjectDetail: React.FC = () => {
       const key = getTempSaveKey(projectId);
       localStorage.setItem(key, JSON.stringify(tempData));
       console.log("💾 임시 저장 완료:", tempData);
-      
+
       // 사용자에게 피드백 제공
       alert("입력된 데이터가 임시 저장되었습니다.");
     } catch (error) {
@@ -153,7 +169,7 @@ const ProjectDetail: React.FC = () => {
         });
         setOpenApiSpecs(data.openapi_specs);
         console.log("📩 프로젝트 상세 정보: ", data);
-        
+
         // 프로젝트 데이터 로딩 후 임시 저장된 데이터 복원
         loadTempSaveData(data.id);
       })
@@ -164,46 +180,59 @@ const ProjectDetail: React.FC = () => {
   }, [projectId, navigate, loadTempSaveData]);
 
   // 리사이즈 핸들러
-  const handleMouseDown = useCallback((side: 'left' | 'right') => (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (side === 'left') {
-      setIsLeftResizing(true);
-    } else {
-      setIsRightResizing(true);
-    }
-  }, []);
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!containerRef.current) return;
-
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const containerWidth = containerRect.width;
-    const mouseX = e.clientX - containerRect.left;
-
-    if (isLeftResizing) {
-      const newLeftWidth = (mouseX / containerWidth) * 100;
-      
-      if (newLeftWidth < COLLAPSE_THRESHOLD) {
-        setIsLeftCollapsed(true);
-        setLeftWidth(MIN_PANEL_WIDTH);
-      } else if (newLeftWidth >= MIN_PANEL_WIDTH && newLeftWidth <= MAX_PANEL_WIDTH) {
-        setLeftWidth(newLeftWidth);
-        setIsLeftCollapsed(false);
+  const handleMouseDown = useCallback(
+    (side: "left" | "right") => (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (side === "left") {
+        setIsLeftResizing(true);
+      } else {
+        setIsRightResizing(true);
       }
-    }
+    },
+    []
+  );
 
-    if (isRightResizing) {
-      const newRightWidth = ((containerWidth - mouseX) / containerWidth) * 100;
-      
-      if (newRightWidth < COLLAPSE_THRESHOLD) {
-        setIsRightCollapsed(true);
-        setRightWidth(MIN_PANEL_WIDTH);
-      } else if (newRightWidth >= MIN_PANEL_WIDTH && newRightWidth <= MAX_PANEL_WIDTH) {
-        setRightWidth(newRightWidth);
-        setIsRightCollapsed(false);
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const containerWidth = containerRect.width;
+      const mouseX = e.clientX - containerRect.left;
+
+      if (isLeftResizing) {
+        const newLeftWidth = (mouseX / containerWidth) * 100;
+
+        if (newLeftWidth < COLLAPSE_THRESHOLD) {
+          setIsLeftCollapsed(true);
+          setLeftWidth(MIN_PANEL_WIDTH);
+        } else if (
+          newLeftWidth >= MIN_PANEL_WIDTH &&
+          newLeftWidth <= MAX_PANEL_WIDTH
+        ) {
+          setLeftWidth(newLeftWidth);
+          setIsLeftCollapsed(false);
+        }
       }
-    }
-  }, [isLeftResizing, isRightResizing]);
+
+      if (isRightResizing) {
+        const newRightWidth =
+          ((containerWidth - mouseX) / containerWidth) * 100;
+
+        if (newRightWidth < COLLAPSE_THRESHOLD) {
+          setIsRightCollapsed(true);
+          setRightWidth(MIN_PANEL_WIDTH);
+        } else if (
+          newRightWidth >= MIN_PANEL_WIDTH &&
+          newRightWidth <= MAX_PANEL_WIDTH
+        ) {
+          setRightWidth(newRightWidth);
+          setIsRightCollapsed(false);
+        }
+      }
+    },
+    [isLeftResizing, isRightResizing]
+  );
 
   const handleMouseUp = useCallback(() => {
     setIsLeftResizing(false);
@@ -212,16 +241,16 @@ const ProjectDetail: React.FC = () => {
 
   useEffect(() => {
     if (isLeftResizing || isRightResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
 
       return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
       };
     }
   }, [isLeftResizing, isRightResizing, handleMouseMove, handleMouseUp]);
@@ -284,7 +313,7 @@ const ProjectDetail: React.FC = () => {
 
   // OpenAPI Spec ID를 찾는 헬퍼 함수
   const findOpenApiSpecId = (serverId: string): number | null => {
-    const spec = openApiSpecs.find(spec => spec.id.toString() === serverId);
+    const spec = openApiSpecs.find((spec) => spec.id.toString() === serverId);
     return spec ? spec.id : null;
   };
 
@@ -311,10 +340,12 @@ const ProjectDetail: React.FC = () => {
       endpoint_id: endpointId,
       endpoint_path: endpoint.path,
       method: endpoint.method as HttpMethod,
-      scenario_name: `${groupName}_${endpoint.method}_${endpoint.path.split('/').pop()}`,
+      scenario_name: `${groupName}_${endpoint.method}_${endpoint.path
+        .split("/")
+        .pop()}`,
       think_time: 1,
-      executor: 'constant-vus',
-      stages: [{ duration: '10s', target: 10 }],
+      executor: "constant-vus",
+      stages: [{duration: "10s", target: 10}],
       parameters: [],
       headers: [],
     };
@@ -334,7 +365,7 @@ const ProjectDetail: React.FC = () => {
       console.log("🗑️ 서버 삭제 중:", openApiSpecId);
       await deleteOpenAPI(openApiSpecId);
       console.log("✅ 서버 삭제 완료");
-      
+
       // 프로젝트 데이터 새로고침
       await refreshProjectData();
       alert("서버가 성공적으로 삭제되었습니다.");
@@ -345,18 +376,22 @@ const ProjectDetail: React.FC = () => {
   };
 
   // 그룹 삭제 핸들러 (그룹 내 모든 엔드포인트 삭제)
-  const handleDeleteGroup = async (serverId: string, groupId: string, endpointIds: string[]) => {
+  const handleDeleteGroup = async (
+    serverId: string,
+    groupId: string,
+    endpointIds: string[]
+  ) => {
     try {
-      console.log("🗑️ 그룹 삭제 중:", { serverId, groupId, endpointIds });
-      
+      console.log("🗑️ 그룹 삭제 중:", {serverId, groupId, endpointIds});
+
       // 그룹 내 모든 엔드포인트를 순차적으로 삭제
       for (const endpointId of endpointIds) {
         await deleteEndpoint(parseInt(endpointId));
         console.log(`✅ 엔드포인트 삭제 완료: ${endpointId}`);
       }
-      
+
       console.log("✅ 그룹 내 모든 엔드포인트 삭제 완료");
-      
+
       // 프로젝트 데이터 새로고침
       await refreshProjectData();
       alert("그룹이 성공적으로 삭제되었습니다.");
@@ -372,7 +407,7 @@ const ProjectDetail: React.FC = () => {
       console.log("🗑️ 엔드포인트 삭제 중:", endpointId);
       await deleteEndpoint(parseInt(endpointId));
       console.log("✅ 엔드포인트 삭제 완료");
-      
+
       // 프로젝트 데이터 새로고침
       await refreshProjectData();
       alert("엔드포인트가 성공적으로 삭제되었습니다.");
@@ -382,54 +417,28 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
-  const handleAddApiTest = (endpoint: string) => {
-    const endpointId = findEndpointId(endpoint);
+  const handleAddApiTest = (
+    endpointPath: string,
+    method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
+  ) => {
+    const endpointId = findEndpointId(endpointPath);
     if (!endpointId) {
-      console.error("엔드포인트 ID를 찾을 수 없습니다:", endpoint);
-      return;
-    }
-
-    // openApiSpecs에서 해당 endpoint의 method를 찾는 로직 개선
-    let method: HttpMethod = "GET"; // 기본값
-    let found = false;
-    
-    // 더 안전한 방식으로 메소드 찾기
-    for (const spec of openApiSpecs) {
-      if (found) break;
-      for (const tag of spec.tags) {
-        if (found) break;
-        for (const ep of tag.endpoints) {
-          if (ep.path === endpoint) {
-            method = ep.method as HttpMethod;
-            found = true;
-            console.log(`✅ 엔드포인트 ${endpoint}의 메소드: ${method}`);
-            break;
-          }
-        }
-      }
-    }
-
-    if (!found) {
-      console.error(`❌ 엔드포인트 ${endpoint}의 메소드를 찾을 수 없습니다. 데이터를 확인해주세요.`);
-      // 메소드를 찾을 수 없으면 함수를 종료하여 잘못된 설정이 생성되는 것을 방지
-      alert(`엔드포인트 ${endpoint}의 HTTP 메소드를 찾을 수 없습니다. 데이터를 확인해주세요.`);
+      console.error("엔드포인트 ID를 찾을 수 없습니다:", endpointPath);
       return;
     }
 
     const newConfig: ApiTestConfig = {
       id: Date.now().toString(),
       endpoint_id: endpointId,
-      endpoint_path: endpoint,
-      method: method,
+      endpoint_path: endpointPath,
+      method, // ✅ ApiGroupCard에서 받은 method 그대로 사용
       scenario_name: `scenario_${Date.now()}`,
       think_time: 1,
-      executor: 'constant-vus',
-      stages: [{ duration: '10s', target: 10 }],
+      executor: "constant-vus",
+      stages: [{duration: "10s", target: 10}],
       parameters: [],
       headers: [],
     };
-    
-    console.log("🔧 새로운 API 테스트 설정 생성:", newConfig);
     setApiTestConfigs((prev) => [...prev, newConfig]);
   };
 
@@ -438,8 +447,8 @@ const ProjectDetail: React.FC = () => {
   };
 
   const handleConfigChange = (updatedConfig: ApiTestConfig) => {
-    setApiTestConfigs((prev) => 
-      prev.map((config) => 
+    setApiTestConfigs((prev) =>
+      prev.map((config) =>
         config.id === updatedConfig.id ? updatedConfig : config
       )
     );
@@ -474,7 +483,9 @@ const ProjectDetail: React.FC = () => {
 
     if (invalidDurations.length > 0) {
       alert(
-        `다음 테스트 시간 형식이 올바르지 않습니다:\n${invalidDurations.join('\n')}\n\n올바른 형식: 숫자 + 단위 (예: 10s, 5m, 1h)`
+        `다음 테스트 시간 형식이 올바르지 않습니다:\n${invalidDurations.join(
+          "\n"
+        )}\n\n올바른 형식: 숫자 + 단위 (예: 10s, 5m, 1h)`
       );
       return;
     }
@@ -496,15 +507,21 @@ const ProjectDetail: React.FC = () => {
           response_time_target: config.response_time_target,
           error_rate_target: config.error_rate_target,
           // 새로 추가된 필드들
-          parameters: config.parameters?.filter(p => p.name && p.value).map(p => ({
-            name: p.name,
-            param_type: p.param_type,
-            value: p.value,
-          })) || [],
-          headers: config.headers?.filter(h => h.header_key && h.header_value).map(h => ({
-            header_key: h.header_key,
-            header_value: h.header_value,
-          })) || [],
+          parameters:
+            config.parameters
+              ?.filter((p) => p.name && p.value)
+              .map((p) => ({
+                name: p.name,
+                param_type: p.param_type,
+                value: p.value,
+              })) || [],
+          headers:
+            config.headers
+              ?.filter((h) => h.header_key && h.header_value)
+              .map((h) => ({
+                header_key: h.header_key,
+                header_value: h.header_value,
+              })) || [],
         })),
       };
 
@@ -517,14 +534,14 @@ const ProjectDetail: React.FC = () => {
       clearTempSaveData(projectId);
 
       // 테스트 페이지로 이동하면서 job_name을 전달
-      navigate("/test", { 
-        state: { 
+      navigate("/test", {
+        state: {
           projectId,
           projectTitle: projectData?.title,
           jobName: response.data.data.job_name,
           fileName: response.data.data.file_name,
-          testTitle: scenarioTitle
-        } 
+          testTitle: scenarioTitle,
+        },
       });
     } catch (error) {
       console.error("❌ 로드 테스트 시작 실패:", error);
@@ -548,7 +565,10 @@ const ProjectDetail: React.FC = () => {
   }
 
   // 중앙 영역의 너비 계산
-  const centerWidth = 100 - (isLeftCollapsed ? 0 : leftWidth) - (isRightCollapsed ? 0 : rightWidth);
+  const centerWidth =
+    100 -
+    (isLeftCollapsed ? 0 : leftWidth) -
+    (isRightCollapsed ? 0 : rightWidth);
 
   return (
     <div className={styles.container}>
@@ -562,14 +582,15 @@ const ProjectDetail: React.FC = () => {
       <Header />
       <div className={styles.mainContent} ref={containerRef}>
         {/* 왼쪽 영역 */}
-        <div 
-          className={`${styles.leftSection} ${isLeftCollapsed ? styles.collapsed : ''}`}
+        <div
+          className={`${styles.leftSection} ${
+            isLeftCollapsed ? styles.collapsed : ""
+          }`}
           style={{
-            width: isLeftCollapsed ? '0px' : `${leftWidth}%`,
-            minWidth: isLeftCollapsed ? '0px' : `${leftWidth}%`,
-            maxWidth: isLeftCollapsed ? '0px' : `${leftWidth}%`,
-          }}
-        >
+            width: isLeftCollapsed ? "0px" : `${leftWidth}%`,
+            minWidth: isLeftCollapsed ? "0px" : `${leftWidth}%`,
+            maxWidth: isLeftCollapsed ? "0px" : `${leftWidth}%`,
+          }}>
           <div className={styles.scrollArea}>
             {openApiSpecs.length > 0 ? (
               <ApiTree
@@ -591,8 +612,7 @@ const ProjectDetail: React.FC = () => {
               variant="secondary"
               icon={<Plus />}
               onClick={() => setIsModalOpen(true)}
-              responsive={true}
-            >
+              responsive={true}>
               API 서버 등록
             </Button>
           </div>
@@ -600,28 +620,28 @@ const ProjectDetail: React.FC = () => {
 
         {/* 왼쪽 리사이저 */}
         {!isLeftCollapsed && (
-          <div 
-            className={`${styles.resizer} ${isLeftResizing ? styles.active : ''}`}
-            onMouseDown={handleMouseDown('left')}
+          <div
+            className={`${styles.resizer} ${
+              isLeftResizing ? styles.active : ""
+            }`}
+            onMouseDown={handleMouseDown("left")}
           />
         )}
 
         {/* 접힌 왼쪽 패널 토글 버튼 */}
         {isLeftCollapsed && (
-          <button 
+          <button
             className={`${styles.collapsedToggle} ${styles.leftCollapsedToggle}`}
             onClick={toggleLeftPanel}
-            type="button"
-          >
+            type="button">
             <ChevronRight />
           </button>
         )}
 
         {/* 가운데 영역 */}
-        <div 
+        <div
           className={styles.centerSection}
-          style={{ width: `${centerWidth}%` }}
-        >
+          style={{width: `${centerWidth}%`}}>
           <div className={styles.scrollArea}>
             <div className={styles.projectInfo}>
               <div className={styles.projectHeader}>
@@ -698,32 +718,34 @@ const ProjectDetail: React.FC = () => {
 
         {/* 접힌 오른쪽 패널 토글 버튼 */}
         {isRightCollapsed && (
-          <button 
+          <button
             className={`${styles.collapsedToggle} ${styles.rightCollapsedToggle}`}
             onClick={toggleRightPanel}
-            type="button"
-          >
+            type="button">
             <ChevronLeft />
           </button>
         )}
 
         {/* 오른쪽 리사이저 */}
         {!isRightCollapsed && (
-          <div 
-            className={`${styles.resizer} ${isRightResizing ? styles.active : ''}`}
-            onMouseDown={handleMouseDown('right')}
+          <div
+            className={`${styles.resizer} ${
+              isRightResizing ? styles.active : ""
+            }`}
+            onMouseDown={handleMouseDown("right")}
           />
         )}
 
         {/* 오른쪽 영역 */}
-        <div 
-          className={`${styles.rightSection} ${isRightCollapsed ? styles.collapsed : ''}`}
+        <div
+          className={`${styles.rightSection} ${
+            isRightCollapsed ? styles.collapsed : ""
+          }`}
           style={{
-            width: isRightCollapsed ? '0px' : `${rightWidth}%`,
-            minWidth: isRightCollapsed ? '0px' : `${rightWidth}%`,
-            maxWidth: isRightCollapsed ? '0px' : `${rightWidth}%`,
-          }}
-        >
+            width: isRightCollapsed ? "0px" : `${rightWidth}%`,
+            minWidth: isRightCollapsed ? "0px" : `${rightWidth}%`,
+            maxWidth: isRightCollapsed ? "0px" : `${rightWidth}%`,
+          }}>
           <div className={styles.formArea}>
             <div className={styles.inputContainer}>
               <InputField
@@ -756,13 +778,12 @@ const ProjectDetail: React.FC = () => {
             </div>
           </div>
           <div className={styles.buttonGroup}>
-            <Button 
-              variant="secondary" 
+            <Button
+              variant="secondary"
               icon={<Save />}
               onClick={handleTempSave}
               disabled={isSaving}
-              responsive={true}
-            >
+              responsive={true}>
               {isSaving ? "저장 중..." : "임시 저장"}
             </Button>
             <Button
@@ -770,8 +791,7 @@ const ProjectDetail: React.FC = () => {
               icon={<Play />}
               onClick={handleRunLoadTest}
               disabled={isSubmitting}
-              responsive={true}
-            >
+              responsive={true}>
               {isSubmitting ? "테스트 시작 중..." : "테스트 실행하기"}
             </Button>
           </div>
