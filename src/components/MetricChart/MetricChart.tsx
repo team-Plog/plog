@@ -27,9 +27,9 @@ interface MetricChartProps {
   color?: string;
   combinedSeries?: CombinedSeries[];
   height?: number;
-  hideTitle?: boolean;      // 제목 숨김 옵션
-  hideControls?: boolean;   // 토글 컨트롤 숨김 옵션
-  showLegend?: boolean;     // 범례 표시 옵션
+  hideTitle?: boolean; // 제목 숨김 옵션
+  hideControls?: boolean; // 토글 컨트롤 숨김 옵션
+  showLegend?: boolean; // 범례 표시 옵션
 }
 
 const MetricChart: React.FC<MetricChartProps> = ({
@@ -65,19 +65,29 @@ const MetricChart: React.FC<MetricChartProps> = ({
 
     // Y축 색상을 동적으로 찾기
     const yAxisColors = useMemo(() => {
-      const leftColor =
+      const leftActive = activeSeries.find(
+        (s) => (s.yAxis ?? "left") === "left"
+      )?.color;
+      const rightActive = activeSeries.find((s) => s.yAxis === "right")?.color;
+
+      // 활성 시리즈가 없을 때를 위한 폴백(전체 정의 중 첫 번째)
+      const leftFallback =
         (combinedSeries ?? []).find((s) => (s.yAxis ?? "left") === "left")
           ?.color || "#8884d8";
-      const rightColor =
+      const rightFallback =
         (combinedSeries ?? []).find((s) => s.yAxis === "right")?.color ||
         "#82ca9d";
-      return {left: leftColor, right: rightColor};
-    }, [combinedSeries]);
+
+      return {
+        left: leftActive ?? leftFallback,
+        right: rightActive ?? rightFallback,
+      };
+    }, [activeSeries, combinedSeries]);
 
     return (
       <div className={styles.chart}>
         {!hideTitle && <h3 className="HeadingS">{title}</h3>}
-        
+
         {!hideControls && (
           <div className={styles.toggleGroup}>
             {(combinedSeries ?? []).map((s) => {
@@ -153,7 +163,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
                 return [`${v}${unit}`, ser?.name ?? name];
               }}
             />
-            
+
             {showLegend && (
               <Legend
                 content={() => (
@@ -167,7 +177,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
                 )}
               />
             )}
-            
+
             {activeSeries.map((s) => (
               <Area
                 key={s.key}
