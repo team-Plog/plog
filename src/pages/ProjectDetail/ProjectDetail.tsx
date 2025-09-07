@@ -297,6 +297,146 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
+  const buildDefaultFromSchema = (schema: any): any => {
+    if (!schema) return null;
+
+    // OpenAPI-like로 value에 감싼 형태 지원
+    if (schema.value) return buildDefaultFromSchema(schema.value);
+
+    // 타입이 명시되지 않은 경우, 구조로 추론
+    const inferredType =
+      schema.type ??
+      (schema.properties ? "object" : schema.items ? "array" : undefined);
+
+    const t = inferredType;
+
+    // enum만 존재하면 첫 값 사용
+    if (!t && Array.isArray(schema.enum) && schema.enum.length > 0) {
+      return schema.enum[0];
+    }
+
+    switch (t) {
+      case "object": {
+        const obj: Record<string, any> = {};
+        const props = schema.properties ?? {};
+        const keys = Object.keys(props);
+        for (const key of keys) {
+          obj[key] = buildDefaultFromSchema(props[key]);
+        }
+        return obj;
+      }
+      case "array": {
+        // 배열 example이 이미 배열 형태라면 그대로 반환
+        if (Array.isArray(schema.example)) {
+          return schema.example;
+        }
+
+        // 문자열 예제를 배열로 파싱 시도
+        if (typeof schema.example === "string" && schema.example.trim()) {
+          // 1. JSON 파싱 시도 (예: "[1,2,3]", '["a","b","c"]' 등)
+          try {
+            const parsed = JSON.parse(schema.example);
+            if (Array.isArray(parsed)) {
+              return parsed;
+            }
+          } catch {
+            // JSON 파싱 실패 시 콤마 분리로 시도
+          }
+
+          // 2. 콤마로 분리하여 배열 생성 (예: "1,2,3", "a,b,c" 등)
+          const parts = schema.example
+            .split(",")
+            .map((s: string) => s.trim())
+            .filter(Boolean);
+
+          if (parts.length > 0) {
+            const itemType = schema.items?.type;
+
+            // 타입에 따라 적절히 변환
+            const coerce = (x: string) => {
+              if (itemType === "integer" || itemType === "number") {
+                const num = Number(x);
+                return Number.isFinite(num) ? num : x; // 숫자 변환 실패 시 원본 문자열 유지
+              }
+              if (itemType === "boolean") {
+                return x.toLowerCase() === "true";
+              }
+              return x;
+            };
+
+            return parts.map(coerce);
+          }
+        }
+
+        // example이 없거나 파싱에 실패한 경우, items 스키마로 기본 배열 생성
+        const items = schema.items ?? {};
+        return [buildDefaultFromSchema(items)];
+      }
+      case "integer":
+      case "number":
+        if (schema.example !== undefined) {
+          const n = Number(schema.example);
+          return Number.isFinite(n) ? n : 0;
+        }
+        return 0;
+      case "boolean":
+        if (schema.example !== undefined) {
+          if (typeof schema.example === "boolean") return schema.example;
+          if (typeof schema.example === "string")
+            return schema.example.toLowerCase() === "true";
+        }
+        return false;
+      case "string":
+      default:
+        // 예제가 있고 배열 타입이 아닌 경우에만 사용
+        if (schema.example !== undefined) {
+          return schema.example;
+        }
+        // 날짜/시간 포맷이라도 예제 우선, 없으면 빈 문자열
+        return "";
+    }
+  };
+
+  // endpoint.parameters에서 requestBody 스키마를 찾아 JSON 문자열 생성
+  const getDefaultRequestBodyFromEndpoint = (endpoint: any): string => {
+    if (!endpoint?.parameters) return "";
+
+    const bodyParam = endpoint.parameters.find(
+      (p: any) => p.param_type === "requestBody"
+    );
+    if (!bodyParam) return "";
+
+    const schemaRoot = bodyParam.value; // object 또는 array(또는 value 래핑)
+    const defaultObj = buildDefaultFromSchema(schemaRoot);
+
+    try {
+      return JSON.stringify(defaultObj, null, 2);
+    } catch {
+      return "";
+    }
+  };
+
+  // path + method로 정확히 endpoint 원본 객체 찾기
+  const findEndpointByPathAndMethod = (
+    specs: OpenApiSpec[],
+    path: string,
+    method: string
+  ): any | null => {
+    for (const spec of specs) {
+      for (const tag of spec.tags ?? []) {
+        for (const ep of tag.endpoints ?? []) {
+          if (
+            ep.path === path &&
+            (ep.method ?? "").toUpperCase() === method.toUpperCase()
+          ) {
+            return ep;
+          }
+        }
+      }
+    }
+    return null;
+  };
+
   // endpoint_id를 찾는 헬퍼 함수
   const findEndpointId = (path: string): number | null => {
     for (const spec of openApiSpecs) {
@@ -322,32 +462,43 @@ const ProjectDetail: React.FC = () => {
     serverName: string,
     groupName: string
   ) => {
-    console.log(`선택된 엔드포인트:`, {
-      server: serverName,
-      group: groupName,
-      path: endpoint.path,
-      method: endpoint.method,
-    });
+    const method = endpoint.method as HttpMethod;
 
-    const endpointId = findEndpointId(endpoint.path);
-    if (!endpointId) {
-      console.error("엔드포인트 ID를 찾을 수 없습니다:", endpoint.path);
+    // 🔎 원본 endpoint 객체를 path+method로 정확히 찾기
+    const endpointObj = findEndpointByPathAndMethod(
+      openApiSpecs,
+      endpoint.path,
+      method
+    );
+    if (!endpointObj) {
+      console.error("엔드포인트를 찾을 수 없습니다:", endpoint.path, method);
       return;
     }
+
+    // ✅ ID도 원본에서 정확히
+    const endpointId = endpointObj.id;
+
+    // ✅ 기본 요청 본문 생성 (POST/PUT/PATCH/DELETE 모두 지원)
+    const needsBody = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+    const defaultBody = needsBody
+      ? getDefaultRequestBodyFromEndpoint(endpointObj)
+      : "";
 
     const newConfig: ApiTestConfig = {
       id: Date.now().toString(),
       endpoint_id: endpointId,
       endpoint_path: endpoint.path,
-      method: endpoint.method as HttpMethod,
+      method,
       scenario_name: `${groupName}_${endpoint.method}_${endpoint.path
         .split("/")
         .pop()}`,
       think_time: 1,
       executor: "constant-vus",
       stages: [{duration: "10s", target: 10}],
-      parameters: [],
-      headers: [],
+      parameters: needsBody
+        ? [{name: "requestBody", param_type: "requestBody", value: defaultBody}]
+        : [],
+      headers: [{header_key: "", header_value: ""}],
     };
     setApiTestConfigs((prev) => [...prev, newConfig]);
   };
@@ -421,23 +572,39 @@ const ProjectDetail: React.FC = () => {
     endpointPath: string,
     method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
   ) => {
-    const endpointId = findEndpointId(endpointPath);
-    if (!endpointId) {
-      console.error("엔드포인트 ID를 찾을 수 없습니다:", endpointPath);
+    // 🔎 원본 endpoint 객체를 path+method로 정확히 찾기
+    const endpointObj = findEndpointByPathAndMethod(
+      openApiSpecs,
+      endpointPath,
+      method
+    );
+    if (!endpointObj) {
+      console.error("엔드포인트를 찾을 수 없습니다:", endpointPath, method);
       return;
     }
+
+    // ✅ ID도 원본에서 정확히
+    const endpointId = endpointObj.id;
+
+    // ✅ 기본 요청 본문 생성 (POST/PUT/PATCH/DELETE 모두 지원)
+    const needsBody = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+    const defaultBody = needsBody
+      ? getDefaultRequestBodyFromEndpoint(endpointObj)
+      : "";
 
     const newConfig: ApiTestConfig = {
       id: Date.now().toString(),
       endpoint_id: endpointId,
       endpoint_path: endpointPath,
-      method, // ✅ ApiGroupCard에서 받은 method 그대로 사용
+      method, // 그대로
       scenario_name: `scenario_${Date.now()}`,
       think_time: 1,
       executor: "constant-vus",
       stages: [{duration: "10s", target: 10}],
-      parameters: [],
-      headers: [],
+      parameters: needsBody
+        ? [{name: "requestBody", param_type: "requestBody", value: defaultBody}]
+        : [],
+      headers: [{header_key: "", header_value: ""}],
     };
     setApiTestConfigs((prev) => [...prev, newConfig]);
   };
