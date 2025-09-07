@@ -24,6 +24,7 @@ interface TimeseriesData {
       avg_response_time: number;
       p95_response_time: number;
       p99_response_time: number;
+      [key: string]: any; // 동적 필드 지원
     }>;
   };
   scenarios: Array<{
@@ -37,6 +38,7 @@ interface TimeseriesData {
       avg_response_time: number;
       p95_response_time: number;
       p99_response_time: number;
+      [key: string]: any; // 동적 필드 지원
     }>;
   }>;
 }
@@ -100,7 +102,6 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
   };
 
   const getEditableText = (key: string, defaultText: string) => {
-    // reportConfig에서 먼저 확인하고, 없으면 editableTexts에서 확인
     return reportConfig.editableTexts?.[key] || editableTexts?.[key] || defaultText;
   };
 
@@ -119,36 +120,90 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
   const prepareChartData = (data: Array<any>) => {
     return data.map((item, index) => {
       const time = new Date(item.timestamp);
-      const minutes = String(Math.floor(index * 10 / 60)).padStart(2, '0');
-      const seconds = String((index * 10) % 60).padStart(2, '0');
+      const minutes = String(Math.floor(index * 5 / 60)).padStart(2, '0');
+      const seconds = String((index * 5) % 60).padStart(2, '0');
       
-      return {
+      const result: any = {
         time: `${minutes}:${seconds}`,
-        avg_response_time: item.avg_response_time / 1000, // ms to seconds
-        tps: item.tps,
-        error_rate: item.error_rate,
-        bytes_per_second: item.tps * 1024, // TPS를 Bytes per Second로 근사치 계산
+        timestamp: item.timestamp,
       };
+
+      // 모든 메트릭을 동적으로 추가
+      Object.keys(item).forEach(key => {
+        if (key !== 'timestamp') {
+          if (key.includes('response_time')) {
+            // 응답시간 메트릭은 ms를 초로 변환
+            result[key] = item[key] / 1000;
+          } else {
+            result[key] = item[key];
+          }
+        }
+      });
+
+      return result;
     });
   };
 
-  // 전체 데이터 차트 시리즈 설정
-  const overallChartSeries = [
-    {
-      key: "avg_response_time",
-      name: "Average Response Time",
-      color: "#8884d8",
-      unit: "sec",
-      yAxis: "left" as const,
-    },
-    {
-      key: "bytes_per_second",
-      name: "Bytes per Second",
-      color: "#82ca9d",
-      unit: "bytes/s",
-      yAxis: "right" as const,
-    },
-  ];
+  // 그룹 1: TPS, Error Rate, VUS 차트 시리즈 생성
+  const createGroup1ChartSeries = () => {
+    return [
+      {
+        key: "tps",
+        name: "TPS (Transactions per Second)",
+        color: "#8884d8",
+        unit: "req/s",
+        yAxis: "left" as const,
+      },
+      {
+        key: "error_rate",
+        name: "Error Rate",
+        color: "#ff7300",
+        unit: "%",
+        yAxis: "right" as const,
+      },
+      {
+        key: "vus",
+        name: "Virtual Users",
+        color: "#dee2e6",
+        unit: "users",
+        yAxis: "right" as const,
+      },
+    ];
+  };
+
+  // 그룹 2: VUS, Average Response Time, P95 Response Time, P99 Response Time 차트 시리즈 생성
+  const createGroup2ChartSeries = () => {
+    return [
+      {
+        key: "vus",
+        name: "Virtual Users",
+        color: "#dee2e6",
+        unit: "users",
+        yAxis: "right" as const,
+      },
+      {
+        key: "avg_response_time",
+        name: "Average Response Time",
+        color: "#82ca9d",
+        unit: "sec",
+        yAxis: "left" as const,
+      },
+      {
+        key: "p95_response_time",
+        name: "P95 Response Time",
+        color: "#ffc658",
+        unit: "sec",
+        yAxis: "left" as const,
+      },
+      {
+        key: "p99_response_time",
+        name: "P99 Response Time",
+        color: "#ff7c7c",
+        unit: "sec",
+        yAxis: "left" as const,
+      },
+    ];
+  };
 
   return (
     <div className={styles.container}>
@@ -441,45 +496,85 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                 </table>
               </div>
 
-              {/* 전체 그래프 추가 */}
+              {/* 전체 그래프 추가 - 그룹 1: TPS, Error Rate, VUS */}
               {reportConfig.includeCharts && timeseriesData?.overall?.data && timeseriesData.overall.data.length > 0 && (
                 <div className={styles.tableContainer}>
                   <div className={`${styles.tableTitle} CaptionLight`}>
-                    그래프 4-1. 전체 테스트 시계열 분석
+                    그래프 4-1. 전체 테스트 시계열 분석 1 (TPS, Error Rate, VUS)
                   </div>
                   <MetricChart
-                    title="전체 테스트 성능 지표"
+                    title="전체 테스트 성능 지표 1"
                     data={prepareChartData(timeseriesData.overall.data)}
-                    combinedSeries={overallChartSeries}
-                    height={300}
+                    combinedSeries={createGroup1ChartSeries()}
+                    height={400}
                     hideTitle={true}
                     hideControls={true}
+                    showLegend={true}
                   />
                 </div>
               )}
 
-              {/* 시나리오별 그래프 추가 */}
+              {/* 전체 그래프 추가 - 그룹 2: VUS, Response Times */}
+              {reportConfig.includeCharts && timeseriesData?.overall?.data && timeseriesData.overall.data.length > 0 && (
+                <div className={styles.tableContainer}>
+                  <div className={`${styles.tableTitle} CaptionLight`}>
+                    그래프 4-2. 전체 테스트 시계열 분석 2 (VUS, Response Times)
+                  </div>
+                  <MetricChart
+                    title="전체 테스트 성능 지표 2"
+                    data={prepareChartData(timeseriesData.overall.data)}
+                    combinedSeries={createGroup2ChartSeries()}
+                    height={400}
+                    hideTitle={true}
+                    hideControls={true}
+                    showLegend={true}
+                  />
+                </div>
+              )}
+
+              {/* 시나리오별 그래프 추가 - 그룹 1과 그룹 2로 분리 */}
               {reportConfig.includeCharts && timeseriesData?.scenarios && timeseriesData.scenarios.map((scenario, index) => {
                 if (!scenario.data || scenario.data.length === 0) return null;
                 
                 return (
-                  <div key={index} className={styles.tableContainer}>
-                    <div className={`${styles.tableTitle} CaptionLight`}>
-                      그래프 4-{index + 2}. {scenario.scenario_name} 시계열 분석
+                  <React.Fragment key={index}>
+                    {/* 그룹 1: TPS, Error Rate, VUS */}
+                    <div className={styles.tableContainer}>
+                      <div className={`${styles.tableTitle} CaptionLight`}>
+                        그래프 4-{3 + index * 2}. {scenario.scenario_name} 시계열 분석 1 (TPS, Error Rate, VUS)
+                      </div>
+                      <MetricChart
+                        title={`${scenario.scenario_name} - ${scenario.endpoint_summary} 1`}
+                        data={prepareChartData(scenario.data)}
+                        combinedSeries={createGroup1ChartSeries()}
+                        height={400}
+                        hideTitle={true}
+                        hideControls={true}
+                        showLegend={true}
+                      />
                     </div>
-                    <MetricChart
-                      title={`${scenario.scenario_name} - ${scenario.endpoint_summary}`}
-                      data={prepareChartData(scenario.data)}
-                      combinedSeries={overallChartSeries}
-                      height={300}
-                      hideTitle={true}
-                      hideControls={true}
-                    />
-                  </div>
+
+                    {/* 그룹 2: VUS, Response Times */}
+                    <div className={styles.tableContainer}>
+                      <div className={`${styles.tableTitle} CaptionLight`}>
+                        그래프 4-{4 + index * 2}. {scenario.scenario_name} 시계열 분석 2 (VUS, Response Times)
+                      </div>
+                      <MetricChart
+                        title={`${scenario.scenario_name} - ${scenario.endpoint_summary} 2`}
+                        data={prepareChartData(scenario.data)}
+                        combinedSeries={createGroup2ChartSeries()}
+                        height={400}
+                        hideTitle={true}
+                        hideControls={true}
+                        showLegend={true}
+                      />
+                    </div>
+                  </React.Fragment>
                 );
               })}
             </div>
 
+            {/* 나머지 섹션들은 기존과 동일... */}
             <div className={styles.subTitleGroup}>
               <div className={`${styles.subTitle} TitleS`}>
                 응답시간 상세 결과
@@ -871,7 +966,6 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                     <td>0.0%</td>
                     <td>0.0%</td>
                   </tr>
-
                   <tr>
                     <td>DB Server</td>
                     <td>0.0%</td>
@@ -901,7 +995,6 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                     <td>0.0%</td>
                     <td>0.0%</td>
                   </tr>
-
                   <tr>
                     <td>DB Server</td>
                     <td>0.0%</td>
