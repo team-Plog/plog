@@ -218,7 +218,22 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
       <div className={styles.configContent}>
         {/* 헤더 설정 - 모든 메서드에 표시 */}
         <div className={styles.configItem}>
-          <span className={`${styles.configLabel} CaptionBold`}>헤더</span>
+          <div className={styles.labelWithButton}>
+            <span className={`${styles.configLabel} CaptionBold`}>헤더</span>
+            <button
+              type="button"
+              onClick={() =>
+                updateConfig({
+                  headers: [
+                    ...headers,
+                    {header_key: "", header_value: ""},
+                  ],
+                })
+              }
+              className={styles.addButton}>
+              <Plus />
+            </button>
+          </div>
           {headers.map((header, index) => (
             <div key={index} className={styles.parameterRow}>
               <InputWithIcon
@@ -234,22 +249,8 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
                 placeholder="Value"
               />
 
-              <div className={styles.headerButtons}>
-                {index === 0 ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateConfig({
-                        headers: [
-                          ...headers,
-                          {header_key: "", header_value: ""},
-                        ],
-                      })
-                    }
-                    className={styles.addButton}>
-                    <Plus />
-                  </button>
-                ) : (
+              {headers.length > 1 && (
+                <div className={styles.headerButtons}>
                   <button
                     type="button"
                     onClick={() => {
@@ -259,8 +260,8 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
                     className={styles.removeButton}>
                     <Minus />
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
