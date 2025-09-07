@@ -76,8 +76,9 @@ def generate_k6_script(payload: LoadTestRequest, job_name: str, db: Session) -> 
                 script_lines.append(f"  http.{method}('{url_parts['url']}', {url_parts['body']});")
         else:
             # Body가 없는 요청 (GET, DELETE 등)
+            # Query parameter는 이미 URL에 포함되어 있음
             if scenario.headers:
-                script_lines.append(f"  http.{method}('{url_parts['url']}', null, {{ headers }});")
+                script_lines.append(f"  http.{method}('{url_parts['url']}', {{ headers }});")
             else:
                 script_lines.append(f"  http.{method}('{url_parts['url']}');")
         
