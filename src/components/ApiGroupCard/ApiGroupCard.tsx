@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { ChevronRight, ChevronDown, Plus } from 'lucide-react';
-import HttpMethodTag from '../Tag/HttpMethodTag';
-import styles from './ApiGroupCard.module.css';
+import React, {useState} from "react";
+import {ChevronRight, ChevronDown, Plus} from "lucide-react";
+import HttpMethodTag from "../Tag/HttpMethodTag";
+import styles from "./ApiGroupCard.module.css";
 
 interface ApiEndpoint {
   id: number;
   path: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   summary: string;
   description: string;
 }
@@ -15,14 +15,14 @@ interface ApiGroupCardProps {
   groupName: string;
   baseUrl: string;
   endpoints: ApiEndpoint[];
-  onAddEndpoint?: (endpoint: string) => void;
+  onAddEndpoint?: (endpointPath: string, method: ApiEndpoint["method"]) => void;
 }
 
-const ApiGroupCard: React.FC<ApiGroupCardProps> = ({ 
-  groupName, 
-  baseUrl, 
+const ApiGroupCard: React.FC<ApiGroupCardProps> = ({
+  groupName,
+  baseUrl,
   endpoints,
-  onAddEndpoint
+  onAddEndpoint,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -30,9 +30,12 @@ const ApiGroupCard: React.FC<ApiGroupCardProps> = ({
     setIsExpanded(!isExpanded);
   };
 
-  const handleAddEndpoint = (endpoint: string) => {
+  const handleAddEndpoint = (
+    endpointPath: string,
+    method: ApiEndpoint["method"]
+  ) => {
     if (onAddEndpoint) {
-      onAddEndpoint(endpoint);
+      onAddEndpoint(endpointPath, method);
     }
   };
 
@@ -49,24 +52,27 @@ const ApiGroupCard: React.FC<ApiGroupCardProps> = ({
           </button>
         </div>
       </div>
-      
+
       {isExpanded && (
         <div className={styles.endpointsContainer}>
           {endpoints.map((endpoint) => (
             <div key={endpoint.id} className={styles.endpointItem}>
               <div className={styles.endpointInfo}>
                 <HttpMethodTag method={endpoint.method} />
-                <span className={`${styles.endpoint} TitleS`}>{endpoint.path}</span>
-                <span className={`${styles.description} Body`}>{endpoint.summary}</span>
+                <span className={`${styles.endpoint} TitleS`}>
+                  {endpoint.path}
+                </span>
+                <span className={`${styles.description} Body`}>
+                  {endpoint.summary}
+                </span>
               </div>
-              <button 
-                className={styles.addButton} 
+              <button
+                className={styles.addButton}
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleAddEndpoint(endpoint.path);
-                }}
-              >
+                  handleAddEndpoint(endpoint.path, endpoint.method);
+                }}>
                 <Plus />
               </button>
             </div>
