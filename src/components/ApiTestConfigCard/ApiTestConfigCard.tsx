@@ -19,6 +19,7 @@ import {
 import {InputWithIcon, InputField} from "../../components/Input";
 import ToggleButton from "../../components/Button/ToggleButton";
 import HttpMethodTag from "../../components/Tag/HttpMethodTag";
+import { type HttpMethod } from "../../components/Tag/types";
 import styles from "./ApiTestConfigCard.module.css";
 
 interface Stage {
@@ -41,7 +42,7 @@ export interface ApiTestConfig {
   id: string;
   endpoint_id: number;
   endpoint_path: string;
-  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+  method: HttpMethod; // 전체 HttpMethod 타입 사용
   scenario_name: string;
   think_time: number;
   executor: "constant-vus" | "ramping-vus";
@@ -65,20 +66,27 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
 }) => {
   const [isRequestConfigOpen, setIsRequestConfigOpen] = useState(false);
   const [isExecutionConfigOpen, setIsExecutionConfigOpen] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // 초기 데이터 설정 - 기본 필드들을 항상 보이도록
+  // 초기 데이터 설정 - 메서드별 필요한 필드들 초기화
   useEffect(() => {
-    const headers = config.headers || [];
-    const parameters = config.parameters || [];
+    // 이미 초기화되었다면 실행하지 않음
+    if (isInitialized) return;
 
-    // 헤더가 없으면 기본 헤더 하나 추가
+    let shouldUpdate = false;
+    const updates: Partial<ApiTestConfig> = {};
+
+    // 헤더 초기화 - 모든 메서드에 기본 헤더 하나 추가
+    const headers = config.headers || [];
     if (headers.length === 0) {
-      updateConfig({
-        headers: [{header_key: "", header_value: ""}],
-      });
+      updates.headers = [{header_key: "", header_value: ""}];
+      shouldUpdate = true;
     }
 
-    // GET 메서드의 경우 기본 파라미터들 추가
+    // parameters 초기화
+    const parameters = config.parameters || [];
+
+    // GET 메서드의 경우
     if (config.method === "GET") {
       const hasPathParam = parameters.some((p) => p.param_type === "path");
       const hasQueryParam = parameters.some((p) => p.param_type === "query");
@@ -91,12 +99,13 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
         if (!hasQueryParam) {
           newParameters.push({name: "", param_type: "query", value: ""});
         }
-        updateConfig({parameters: newParameters});
+        updates.parameters = newParameters;
+        shouldUpdate = true;
       }
     }
 
-    // POST 메서드의 경우 기본 requestBody 추가
-    if (config.method === "POST") {
+    // POST, PUT, PATCH 메서드의 경우 requestBody 추가
+    if (["POST", "PUT", "PATCH"].includes(config.method)) {
       const hasRequestBody = parameters.some(
         (p) => p.param_type === "requestBody"
       );
@@ -105,10 +114,18 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
           ...parameters,
           {name: "requestBody", param_type: "requestBody" as const, value: ""},
         ];
-        updateConfig({parameters: newParameters});
+        updates.parameters = newParameters;
+        shouldUpdate = true;
       }
     }
-  }, [config.method]);
+
+    // 변경사항이 있을 때만 업데이트
+    if (shouldUpdate) {
+      onChange({...config, ...updates});
+    }
+
+    setIsInitialized(true);
+  }, [config.method, isInitialized]); // onChange를 의존성에서 제거
 
   const updateConfig = (updates: Partial<ApiTestConfig>) => {
     onChange({...config, ...updates});
@@ -169,6 +186,12 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
   // Header 관련 함수들
   const updateHeader = (index: number, field: keyof Header, value: string) => {
     const newHeaders = [...(config.headers || [])];
+    // headers 배열 크기 확인 및 확장
+    if (index >= newHeaders.length) {
+      for (let i = newHeaders.length; i <= index; i++) {
+        newHeaders.push({header_key: "", header_value: ""});
+      }
+    }
     newHeaders[index][field] = value;
     updateConfig({headers: newHeaders});
   };
@@ -193,7 +216,7 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
 
     return (
       <div className={styles.configContent}>
-        {/* 헤더 설정 */}
+        {/* 헤더 설정 - 모든 메서드에 표시 */}
         <div className={styles.configItem}>
           <span className={`${styles.configLabel} CaptionBold`}>헤더</span>
           <div className={styles.parameterRow}>
@@ -296,8 +319,8 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
           </>
         )}
 
-        {/* POST 메서드인 경우 */}
-        {method === "POST" && (
+        {/* POST, PUT, PATCH 메서드인 경우 */}
+        {["POST", "PUT", "PATCH"].includes(method) && (
           <div className={styles.configItem}>
             <span className={`${styles.configLabel} CaptionBold`}>
               요청 본문
@@ -534,7 +557,7 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
           type="button">
           <div className={styles.toggleLeft}>
             <Cog className={styles.toggleIcon} />
-            <span className="BodyBold">요청 설정</span>
+            <span className="TitleS">요청 설정</span>
           </div>
           {isRequestConfigOpen ? (
             <ChevronUp className={styles.chevronIcon} />
@@ -555,7 +578,7 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
           type="button">
           <div className={styles.toggleLeft}>
             <Play className={styles.toggleIcon} />
-            <span className="BodyBold">실행 파라미터</span>
+            <span className="TitleS">실행 파라미터</span>
           </div>
           {isExecutionConfigOpen ? (
             <ChevronUp className={styles.chevronIcon} />

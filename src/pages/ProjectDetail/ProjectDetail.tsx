@@ -13,6 +13,7 @@ import type {OpenApiSpec} from "../../assets/mockProjectData";
 import {deleteProject, getProjectDetail, generateLoadTestScript, deleteOpenAPI, deleteEndpoint} from "../../api";
 import ApiTree from "../../components/ApiTree/ApiTree";
 import WarningModal from "../../components/WarningModal/WarningModal";
+import { type HttpMethod } from "../../components/Tag/types";
 
 interface ProjectData {
   id: number;
@@ -30,7 +31,7 @@ interface ApiServer {
     endpoints: {
       id: string;
       path: string;
-      method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+      method: HttpMethod;
     }[];
   }[];
 }
@@ -244,7 +245,7 @@ const ProjectDetail: React.FC = () => {
         endpoints: tag.endpoints.map((endpoint) => ({
           id: endpoint.id.toString(),
           path: endpoint.path,
-          method: endpoint.method,
+          method: endpoint.method as HttpMethod,
         })),
       })),
     }));
@@ -309,7 +310,7 @@ const ProjectDetail: React.FC = () => {
       id: Date.now().toString(),
       endpoint_id: endpointId,
       endpoint_path: endpoint.path,
-      method: endpoint.method as "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
+      method: endpoint.method as HttpMethod,
       scenario_name: `${groupName}_${endpoint.method}_${endpoint.path.split('/').pop()}`,
       think_time: 1,
       executor: 'constant-vus',
@@ -388,18 +389,31 @@ const ProjectDetail: React.FC = () => {
       return;
     }
 
-    // openApiSpecs에서 해당 endpoint의 method를 찾는 로직 추가
-    let method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH" = "GET";
+    // openApiSpecs에서 해당 endpoint의 method를 찾는 로직 개선
+    let method: HttpMethod = "GET"; // 기본값
+    let found = false;
     
+    // 더 안전한 방식으로 메소드 찾기
     for (const spec of openApiSpecs) {
+      if (found) break;
       for (const tag of spec.tags) {
+        if (found) break;
         for (const ep of tag.endpoints) {
           if (ep.path === endpoint) {
-            method = ep.method;
+            method = ep.method as HttpMethod;
+            found = true;
+            console.log(`✅ 엔드포인트 ${endpoint}의 메소드: ${method}`);
             break;
           }
         }
       }
+    }
+
+    if (!found) {
+      console.error(`❌ 엔드포인트 ${endpoint}의 메소드를 찾을 수 없습니다. 데이터를 확인해주세요.`);
+      // 메소드를 찾을 수 없으면 함수를 종료하여 잘못된 설정이 생성되는 것을 방지
+      alert(`엔드포인트 ${endpoint}의 HTTP 메소드를 찾을 수 없습니다. 데이터를 확인해주세요.`);
+      return;
     }
 
     const newConfig: ApiTestConfig = {
@@ -414,6 +428,8 @@ const ProjectDetail: React.FC = () => {
       parameters: [],
       headers: [],
     };
+    
+    console.log("🔧 새로운 API 테스트 설정 생성:", newConfig);
     setApiTestConfigs((prev) => [...prev, newConfig]);
   };
 
