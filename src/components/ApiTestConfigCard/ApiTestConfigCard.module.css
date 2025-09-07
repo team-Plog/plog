@@ -150,6 +150,13 @@
   min-width: 0;
 }
 
+.parameterRow .headerButtons {
+  flex: 0 0 auto;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
 .stagesSection {
   display: flex;
   flex-direction: column;
