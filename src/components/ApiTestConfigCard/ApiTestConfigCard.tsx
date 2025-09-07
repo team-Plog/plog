@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, {useState, useEffect} from "react";
 import {
   X,
   Clock,
@@ -28,7 +28,7 @@ interface Stage {
 
 interface Parameter {
   name: string;
-  param_type: 'path' | 'query' | 'requestBody';
+  param_type: "path" | "query" | "requestBody";
   value: string;
 }
 
@@ -44,7 +44,7 @@ export interface ApiTestConfig {
   method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   scenario_name: string;
   think_time: number;
-  executor: 'constant-vus' | 'ramping-vus';
+  executor: "constant-vus" | "ramping-vus";
   response_time_target?: number;
   error_rate_target?: number;
   stages: Stage[];
@@ -73,101 +73,115 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
 
     // 헤더가 없으면 기본 헤더 하나 추가
     if (headers.length === 0) {
-      updateConfig({ 
-        headers: [{ header_key: '', header_value: '' }] 
+      updateConfig({
+        headers: [{header_key: "", header_value: ""}],
       });
     }
 
     // GET 메서드의 경우 기본 파라미터들 추가
-    if (config.method === 'GET') {
-      const hasPathParam = parameters.some(p => p.param_type === 'path');
-      const hasQueryParam = parameters.some(p => p.param_type === 'query');
-      
+    if (config.method === "GET") {
+      const hasPathParam = parameters.some((p) => p.param_type === "path");
+      const hasQueryParam = parameters.some((p) => p.param_type === "query");
+
       if (!hasPathParam || !hasQueryParam) {
         const newParameters = [...parameters];
         if (!hasPathParam) {
-          newParameters.push({ name: '', param_type: 'path', value: '' });
+          newParameters.push({name: "", param_type: "path", value: ""});
         }
         if (!hasQueryParam) {
-          newParameters.push({ name: '', param_type: 'query', value: '' });
+          newParameters.push({name: "", param_type: "query", value: ""});
         }
-        updateConfig({ parameters: newParameters });
+        updateConfig({parameters: newParameters});
       }
     }
 
     // POST 메서드의 경우 기본 requestBody 추가
-    if (config.method === 'POST') {
-      const hasRequestBody = parameters.some(p => p.param_type === 'requestBody');
+    if (config.method === "POST") {
+      const hasRequestBody = parameters.some(
+        (p) => p.param_type === "requestBody"
+      );
       if (!hasRequestBody) {
-        const newParameters = [...parameters, { name: 'requestBody', param_type: 'requestBody' as const, value: '' }];
-        updateConfig({ parameters: newParameters });
+        const newParameters = [
+          ...parameters,
+          {name: "requestBody", param_type: "requestBody" as const, value: ""},
+        ];
+        updateConfig({parameters: newParameters});
       }
     }
   }, [config.method]);
 
   const updateConfig = (updates: Partial<ApiTestConfig>) => {
-    onChange({ ...config, ...updates });
+    onChange({...config, ...updates});
   };
 
   // 숫자만 입력받는 헬퍼 함수
   const handleNumberInput = (value: string): number => {
-    if (value === '') return 0;
-    const numericValue = value.replace(/[^0-9.]/g, '');
+    if (value === "") return 0;
+    const numericValue = value.replace(/[^0-9.]/g, "");
     const parsedValue = parseFloat(numericValue);
     return isNaN(parsedValue) ? 0 : parsedValue;
   };
 
   // 정수만 입력받는 헬퍼 함수
   const handleIntegerInput = (value: string): number => {
-    if (value === '') return 0;
-    const numericValue = value.replace(/[^0-9]/g, '');
+    if (value === "") return 0;
+    const numericValue = value.replace(/[^0-9]/g, "");
     const parsedValue = parseInt(numericValue);
     return isNaN(parsedValue) ? 0 : parsedValue;
   };
 
   const addStage = () => {
-    const newStages = [...config.stages, { duration: "10s", target: 10 }];
-    updateConfig({ stages: newStages });
+    const newStages = [...config.stages, {duration: "10s", target: 10}];
+    updateConfig({stages: newStages});
   };
 
   const removeStage = (index: number) => {
     if (config.stages.length > 1) {
       const newStages = config.stages.filter((_, i) => i !== index);
-      updateConfig({ stages: newStages });
+      updateConfig({stages: newStages});
     }
   };
 
-  const updateStage = (index: number, field: keyof Stage, value: string | number) => {
+  const updateStage = (
+    index: number,
+    field: keyof Stage,
+    value: string | number
+  ) => {
     const newStages = [...config.stages];
-    if (field === 'target') {
-      newStages[index][field] = typeof value === 'string' ? handleIntegerInput(value) : value;
+    if (field === "target") {
+      newStages[index][field] =
+        typeof value === "string" ? handleIntegerInput(value) : value;
     } else {
       newStages[index][field] = value as string;
     }
-    updateConfig({ stages: newStages });
+    updateConfig({stages: newStages});
   };
 
   const handleDurationInput = (value: string): string => {
-    return value.replace(/[^0-9smh]/g, '');
+    return value.replace(/[^0-9smh]/g, "");
   };
 
   const handleDurationChange = (index: number, value: string) => {
     const filteredValue = handleDurationInput(value);
-    updateStage(index, 'duration', filteredValue);
+    updateStage(index, "duration", filteredValue);
   };
 
   // Header 관련 함수들
   const updateHeader = (index: number, field: keyof Header, value: string) => {
     const newHeaders = [...(config.headers || [])];
     newHeaders[index][field] = value;
-    updateConfig({ headers: newHeaders });
+    updateConfig({headers: newHeaders});
   };
 
   // Parameter 관련 함수들
-  const updateParameter = (index: number, field: keyof Parameter, value: string) => {
+  const updateParameter = <K extends keyof Parameter>(
+    index: number,
+    field: K,
+    value: Parameter[K]
+  ) => {
     const newParameters = [...(config.parameters || [])];
-    newParameters[index][field] = value;
-    updateConfig({ parameters: newParameters });
+    newParameters[index][field] = value as Parameter[K];
+    updateConfig({parameters: newParameters});
   };
 
   const renderRequestConfig = () => {
@@ -185,44 +199,54 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
           <div className={styles.parameterRow}>
             <InputWithIcon
               icon={<Key />}
-              value={headers[0]?.header_key || ''}
-              onChange={(value) => updateHeader(0, 'header_key', value)}
+              value={headers[0]?.header_key || ""}
+              onChange={(value) => updateHeader(0, "header_key", value)}
               placeholder="Key"
             />
             <InputWithIcon
               icon={<ChartColumn />}
-              value={headers[0]?.header_value || ''}
-              onChange={(value) => updateHeader(0, 'header_value', value)}
+              value={headers[0]?.header_value || ""}
+              onChange={(value) => updateHeader(0, "header_value", value)}
               placeholder="Value"
             />
           </div>
         </div>
 
         {/* GET 메서드인 경우 */}
-        {method === 'GET' && (
+        {method === "GET" && (
           <>
             {/* 경로 변수 */}
             <div className={styles.configItem}>
-              <span className={`${styles.configLabel} CaptionBold`}>경로 변수</span>
+              <span className={`${styles.configLabel} CaptionBold`}>
+                경로 변수
+              </span>
               <div className={styles.parameterRow}>
                 <InputWithIcon
                   icon={<Key />}
-                  value={parameters.find(p => p.param_type === 'path')?.name || ''}
+                  value={
+                    parameters.find((p) => p.param_type === "path")?.name || ""
+                  }
                   onChange={(value) => {
-                    const index = parameters.findIndex(p => p.param_type === 'path');
+                    const index = parameters.findIndex(
+                      (p) => p.param_type === "path"
+                    );
                     if (index >= 0) {
-                      updateParameter(index, 'name', value);
+                      updateParameter(index, "name", value);
                     }
                   }}
                   placeholder="Path"
                 />
                 <InputWithIcon
                   icon={<ChartColumn />}
-                  value={parameters.find(p => p.param_type === 'path')?.value || ''}
+                  value={
+                    parameters.find((p) => p.param_type === "path")?.value || ""
+                  }
                   onChange={(value) => {
-                    const index = parameters.findIndex(p => p.param_type === 'path');
+                    const index = parameters.findIndex(
+                      (p) => p.param_type === "path"
+                    );
                     if (index >= 0) {
-                      updateParameter(index, 'value', value);
+                      updateParameter(index, "value", value);
                     }
                   }}
                   placeholder="Value"
@@ -232,26 +256,37 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
 
             {/* 쿼리 파라미터 */}
             <div className={styles.configItem}>
-              <span className={`${styles.configLabel} CaptionBold`}>쿼리 파라미터</span>
+              <span className={`${styles.configLabel} CaptionBold`}>
+                쿼리 파라미터
+              </span>
               <div className={styles.parameterRow}>
                 <InputWithIcon
                   icon={<Key />}
-                  value={parameters.find(p => p.param_type === 'query')?.name || ''}
+                  value={
+                    parameters.find((p) => p.param_type === "query")?.name || ""
+                  }
                   onChange={(value) => {
-                    const index = parameters.findIndex(p => p.param_type === 'query');
+                    const index = parameters.findIndex(
+                      (p) => p.param_type === "query"
+                    );
                     if (index >= 0) {
-                      updateParameter(index, 'name', value);
+                      updateParameter(index, "name", value);
                     }
                   }}
                   placeholder="Param"
                 />
                 <InputWithIcon
                   icon={<ChartColumn />}
-                  value={parameters.find(p => p.param_type === 'query')?.value || ''}
+                  value={
+                    parameters.find((p) => p.param_type === "query")?.value ||
+                    ""
+                  }
                   onChange={(value) => {
-                    const index = parameters.findIndex(p => p.param_type === 'query');
+                    const index = parameters.findIndex(
+                      (p) => p.param_type === "query"
+                    );
                     if (index >= 0) {
-                      updateParameter(index, 'value', value);
+                      updateParameter(index, "value", value);
                     }
                   }}
                   placeholder="Value"
@@ -262,19 +297,33 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
         )}
 
         {/* POST 메서드인 경우 */}
-        {method === 'POST' && (
+        {method === "POST" && (
           <div className={styles.configItem}>
-            <span className={`${styles.configLabel} CaptionBold`}>요청 본문</span>
+            <span className={`${styles.configLabel} CaptionBold`}>
+              요청 본문
+            </span>
             <InputField
               placeholder="JSON 형식의 요청 본문을 입력하세요"
-              value={parameters.find(p => p.param_type === 'requestBody')?.value || ''}
+              value={
+                parameters.find((p) => p.param_type === "requestBody")?.value ||
+                ""
+              }
               onChange={(value) => {
-                const existingIndex = parameters.findIndex(p => p.param_type === 'requestBody');
+                const existingIndex = parameters.findIndex(
+                  (p) => p.param_type === "requestBody"
+                );
                 if (existingIndex >= 0) {
-                  updateParameter(existingIndex, 'value', value);
+                  updateParameter(existingIndex, "value", value);
                 } else {
-                  const newParameters = [...parameters, { name: 'requestBody', param_type: 'requestBody' as const, value }];
-                  updateConfig({ parameters: newParameters });
+                  const newParameters = [
+                    ...parameters,
+                    {
+                      name: "requestBody",
+                      param_type: "requestBody" as const,
+                      value,
+                    },
+                  ];
+                  updateConfig({parameters: newParameters});
                 }
               }}
               multiline
@@ -298,7 +347,7 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
           <InputWithIcon
             icon={<Target />}
             value={config.scenario_name}
-            onChange={(value) => updateConfig({ scenario_name: value })}
+            onChange={(value) => updateConfig({scenario_name: value})}
             placeholder="시나리오 이름을 입력하세요"
           />
         </div>
@@ -312,7 +361,9 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
             <InputWithIcon
               icon={<Clock />}
               value={config.think_time.toString()}
-              onChange={(value) => updateConfig({ think_time: handleNumberInput(value) })}
+              onChange={(value) =>
+                updateConfig({think_time: handleNumberInput(value)})
+              }
               placeholder="1"
             />
           </div>
@@ -322,12 +373,14 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
             </span>
             <InputWithIcon
               icon={<Clock />}
-              value={config.response_time_target?.toString() || ''}
+              value={config.response_time_target?.toString() || ""}
               onChange={(value) => {
-                if (value === '') {
-                  updateConfig({ response_time_target: undefined });
+                if (value === "") {
+                  updateConfig({response_time_target: undefined});
                 } else {
-                  updateConfig({ response_time_target: handleNumberInput(value) });
+                  updateConfig({
+                    response_time_target: handleNumberInput(value),
+                  });
                 }
               }}
               placeholder="예: 100"
@@ -342,12 +395,12 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
           </span>
           <InputWithIcon
             icon={<AlertTriangle />}
-            value={config.error_rate_target?.toString() || ''}
+            value={config.error_rate_target?.toString() || ""}
             onChange={(value) => {
-              if (value === '') {
-                updateConfig({ error_rate_target: undefined });
+              if (value === "") {
+                updateConfig({error_rate_target: undefined});
               } else {
-                updateConfig({ error_rate_target: handleNumberInput(value) });
+                updateConfig({error_rate_target: handleNumberInput(value)});
               }
             }}
             placeholder="예: 5"
@@ -366,14 +419,14 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
             ]}
             selectedValue={config.executor}
             onChange={(value) => {
-              const newExecutor = value as 'constant-vus' | 'ramping-vus';
-              if (newExecutor === 'constant-vus' && config.stages.length > 1) {
-                updateConfig({ 
+              const newExecutor = value as "constant-vus" | "ramping-vus";
+              if (newExecutor === "constant-vus" && config.stages.length > 1) {
+                updateConfig({
                   executor: newExecutor,
-                  stages: [config.stages[0]]
+                  stages: [config.stages[0]],
                 });
               } else {
-                updateConfig({ executor: newExecutor });
+                updateConfig({executor: newExecutor});
               }
             }}
           />
@@ -392,7 +445,7 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
                 테스트 시간
               </span>
             </div>
-            {config.executor === 'ramping-vus' && (
+            {config.executor === "ramping-vus" && (
               <div className={styles.stageButtonColumn}>
                 <button
                   className={styles.addButton}
@@ -404,9 +457,12 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
             )}
           </div>
 
-          {(config.executor === 'constant-vus' ? [config.stages[0]] : config.stages).map((stage, index) => {
-            const actualIndex = config.executor === 'constant-vus' ? 0 : index;
-            
+          {(config.executor === "constant-vus"
+            ? [config.stages[0]]
+            : config.stages
+          ).map((stage, index) => {
+            const actualIndex = config.executor === "constant-vus" ? 0 : index;
+
             return (
               <div key={actualIndex} className={styles.stageItem}>
                 <div className={styles.stageInputRow}>
@@ -414,7 +470,9 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
                     <InputWithIcon
                       icon={<UserRound />}
                       value={stage.target.toString()}
-                      onChange={(value) => updateStage(actualIndex, 'target', value)}
+                      onChange={(value) =>
+                        updateStage(actualIndex, "target", value)
+                      }
                       placeholder="10"
                     />
                   </div>
@@ -422,20 +480,23 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
                     <InputWithIcon
                       icon={<Clock />}
                       value={stage.duration}
-                      onChange={(value) => handleDurationChange(actualIndex, value)}
+                      onChange={(value) =>
+                        handleDurationChange(actualIndex, value)
+                      }
                       placeholder="10s (초: s, 분: m, 시: h)"
                     />
                   </div>
-                  {config.executor === 'ramping-vus' && config.stages.length > 1 && (
-                    <div className={styles.stageButtonColumn}>
-                      <button
-                        className={styles.removeStepButton}
-                        onClick={() => removeStage(actualIndex)}
-                        type="button">
-                        <Minus />
-                      </button>
-                    </div>
-                  )}
+                  {config.executor === "ramping-vus" &&
+                    config.stages.length > 1 && (
+                      <div className={styles.stageButtonColumn}>
+                        <button
+                          className={styles.removeStepButton}
+                          onClick={() => removeStage(actualIndex)}
+                          type="button">
+                          <Minus />
+                        </button>
+                      </div>
+                    )}
                 </div>
               </div>
             );
@@ -451,7 +512,9 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <HttpMethodTag method={config.method} />
-          <span className={`${styles.endpoint} TitleL`}>{config.endpoint_path}</span>
+          <span className={`${styles.endpoint} TitleL`}>
+            {config.endpoint_path}
+          </span>
         </div>
         <button
           className={styles.removeButton}
@@ -464,18 +527,20 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
       {/* 요청 설정 섹션 */}
       <div className={styles.configSection}>
         <button
-          className={`${styles.toggleButton} ${isRequestConfigOpen ? styles.toggleButtonOpen : ''}`}
+          className={`${styles.toggleButton} ${
+            isRequestConfigOpen ? styles.toggleButtonOpen : ""
+          }`}
           onClick={() => setIsRequestConfigOpen(!isRequestConfigOpen)}
-          type="button"
-        >
+          type="button">
           <div className={styles.toggleLeft}>
             <Cog className={styles.toggleIcon} />
             <span className="BodyBold">요청 설정</span>
           </div>
-          {isRequestConfigOpen ? 
-            <ChevronUp className={styles.chevronIcon} /> : 
+          {isRequestConfigOpen ? (
+            <ChevronUp className={styles.chevronIcon} />
+          ) : (
             <ChevronRight className={styles.chevronIcon} />
-          }
+          )}
         </button>
         {renderRequestConfig()}
       </div>
@@ -483,18 +548,20 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
       {/* 실행 파라미터 섹션 */}
       <div className={styles.configSection}>
         <button
-          className={`${styles.toggleButton} ${isExecutionConfigOpen ? styles.toggleButtonOpen : ''}`}
+          className={`${styles.toggleButton} ${
+            isExecutionConfigOpen ? styles.toggleButtonOpen : ""
+          }`}
           onClick={() => setIsExecutionConfigOpen(!isExecutionConfigOpen)}
-          type="button"
-        >
+          type="button">
           <div className={styles.toggleLeft}>
             <Play className={styles.toggleIcon} />
             <span className="BodyBold">실행 파라미터</span>
           </div>
-          {isExecutionConfigOpen ? 
-            <ChevronUp className={styles.chevronIcon} /> : 
+          {isExecutionConfigOpen ? (
+            <ChevronUp className={styles.chevronIcon} />
+          ) : (
             <ChevronRight className={styles.chevronIcon} />
-          }
+          )}
         </button>
         {renderExecutionConfig()}
       </div>
