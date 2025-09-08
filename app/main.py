@@ -11,6 +11,7 @@ from app.common.exceptionhandler import register_exception_handler
 from app.common.middleware.cors_middleware import register_cors_middleware
 from app.scheduler.k6_job_scheduler import start_scheduler, stop_scheduler
 from app.scheduler.server_pod_scheduler import start_scheduler as start_pod_scheduler, stop_scheduler as stop_pod_scheduler
+from app.scheduler.cache_cleanup_scheduler import start_cache_scheduler, stop_cache_scheduler
 from k8s.k8s_client import v1_core
 
 # 테스트 임시 import
@@ -61,6 +62,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to start Server Pod Scheduler: {e}")
     
+    # 캐시 정리 스케줄러 시작
+    try:
+        start_cache_scheduler()
+        logger.info("Cache cleanup scheduler started successfully")
+    except Exception as e:
+        logger.error(f"Failed to start cache cleanup scheduler: {e}")
+    
     yield
     
     # 종료 시 실행
@@ -78,6 +86,13 @@ async def lifespan(app: FastAPI):
         logger.info("Server Pod Scheduler stopped successfully")
     except Exception as e:
         logger.error(f"Failed to stop Server Pod Scheduler: {e}")
+    
+    # 캐시 정리 스케줄러 중지
+    try:
+        stop_cache_scheduler()
+        logger.info("Cache cleanup scheduler stopped successfully")
+    except Exception as e:
+        logger.error(f"Failed to stop cache cleanup scheduler: {e}")
 
 
 app = FastAPI(
