@@ -399,7 +399,7 @@ def get_pod_cpu_usage_millicores(pod_name: str) -> Optional[float]:
             FROM "cadvisor_metrics"
             WHERE "pod" = '{pod_name}' AND "container" = '' AND "image" = ''
             AND time > now() - 30s
-            GROUP BY "pod" fill(null)
+            GROUP BY "pod", time(5s) fill(null)
         '''
         result = client.query(query)
         points = list(result.get_points())
