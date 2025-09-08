@@ -23,6 +23,13 @@ spec:
           image: asia-northeast3-docker.pkg.dev/citric-replica-450012-a8/plog-image-repo/semi-medeasy:latest
           ports:
             - containerPort: 8080
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
           env:
             - name: DB_HOST
               valueFrom:
