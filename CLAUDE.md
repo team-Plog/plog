@@ -125,7 +125,7 @@ app/
 ├── api/                 # API 라우터 (API Layer)
 ├── services/            # 비즈니스 로직 (Service Layer)
 │   ├── openapi/        # OpenAPI 분석 서비스
-│   ├── monitoring/     # 모니터링 서비스
+│   ├── monitoring/     # 모니터링 서비스 (InfluxDB, MetricsAggregation)
 │   ├── testing/        # 테스트 실행 서비스
 │   └── infrastructure/ # 인프라 관리 서비스
 ├── db/                 # 데이터베이스 (DB Layer)
@@ -134,7 +134,14 @@ app/
 ├── dto/                # 데이터 전송 객체
 ├── scheduler/          # 백그라운드 작업 스케줄러
 ├── sse/               # Server-Sent Events
-└── common/            # 공통 컴포넌트
+├── common/            # 공통 컴포넌트
+└── k8s/               # Kubernetes 리소스 관리 서비스 (NEW)
+    ├── k8s_client.py  # Kubernetes API 클라이언트
+    ├── k8s_service.py # Job 생성 및 관리
+    ├── pod_service.py # Pod 상태 및 정보 조회
+    ├── job_service.py # Job 라이프사이클 관리
+    ├── service_service.py # Service 및 NodePort 관리
+    └── resource_service.py # Pod 리소스 spec 조회 (NEW)
 ```
 
 ## 주요 기능
@@ -166,3 +173,117 @@ app/
 - `INFLUXDB_*` - 메트릭 저장소 설정
 - `K6_*` - 부하 테스트 설정
 - `SCHEDULER_*` - 백그라운드 작업 설정
+
+---
+
+## 🚀 주요 업데이트 이력
+
+### 2025-09-08: Pod 리소스 메트릭 수집 기능 추가
+
+#### 📋 구현 목적
+- CPU/Memory 사용률 계산을 위한 Pod 리소스 request/limit 정보 수집
+- 테스트 완료 후 실제 사용량 대비 설정된 리소스 사양 비교 분석 제공
+
+#### 🔧 주요 변경사항
+
+**1. k8s 패키지 신설 및 서비스 이전**
+```
+기존: app/services/monitoring/
+새로운: k8s/
+- pod_service.py (이전)
+- job_service.py (이전)  
+- service_service.py (이전)
+- resource_service.py (신규)
+- k8s_client.py, k8s_service.py (기존)
+```
+
+**2. 데이터베이스 스키마 확장**
+`TestResourceTimeseriesModel`에 4개 컬럼 추가:
+```python
+# Resource Spec 정보 (Pod의 request/limit 값)
+cpu_request_millicores = Column(Float, nullable=True)    # CPU 요청량 (millicores)
+cpu_limit_millicores = Column(Float, nullable=True)      # CPU 제한량 (millicores)
+memory_request_mb = Column(Float, nullable=True)         # Memory 요청량 (MB)
+memory_limit_mb = Column(Float, nullable=True)           # Memory 제한량 (MB)
+```
+
+**3. Pod 리소스 Spec 수집 서비스 (`k8s/resource_service.py`)**
+```python
+class ResourceService:
+    def get_pod_aggregated_resources(self, pod_name: str) -> Optional[Dict[str, float]]:
+        """Pod의 모든 컨테이너 리소스를 합계하여 반환"""
+        
+    def _parse_cpu_to_millicores(self, cpu_value: str) -> float:
+        """CPU 값을 millicores 단위로 변환 (500m → 500, 1 → 1000)"""
+        
+    def _parse_memory_to_mb(self, memory_value: str) -> float:  
+        """Memory 값을 MB 단위로 변환 (512Mi → 512, 1Gi → 1024)"""
+```
+
+**4. k6 스케줄러 통합 (`app/scheduler/k6_job_scheduler.py`)**
+```python
+# Pod의 resource spec 조회
+resource_specs = self.resource_service.get_pod_aggregated_resources(pod_name)
+
+# CPU/Memory 메트릭에 resource spec 정보 추가
+if cpu_metrics and resource_specs:
+    for metric in cpu_metrics:
+        metric['cpu_request_millicores'] = resource_specs['cpu_request_millicores']
+        metric['cpu_limit_millicores'] = resource_specs['cpu_limit_millicores']
+```
+
+#### 🎯 핵심 기능
+- **직접 Pod Spec 조회**: InfluxDB 대신 Kubernetes API 직접 호출로 정확한 리소스 정보 획득
+- **단위 변환 자동화**: CPU(millicores), Memory(MB) 단위 자동 변환
+- **컨테이너 리소스 합계**: 멀티 컨테이너 Pod의 총 리소스 사양 계산
+- **백워드 호환성**: nullable 컬럼으로 기존 데이터와 호환성 유지
+
+---
+
+### 2025-09-08: k6 UTF-8 인코딩 오류 해결
+
+#### 📋 문제 상황
+k6 Job 실행 시 `Invalid UTF-8 character` 오류 발생:
+```
+time="2025-09-08T01:53:33Z" level=error msg="GoError: Invalid UTF-8 character"
+```
+
+#### 🔧 해결 방안
+
+**1. JSON.stringify() 방식 도입 (`app/services/testing/load_test_service.py`)**
+```python
+# 수정 전: 직접 JSON 삽입
+http.post('url', {raw_json_object}, {headers});
+
+# 수정 후: JSON.stringify() 사용
+script_lines.append(f"  const payload = JSON.stringify({url_parts['body']});")
+script_lines.append(f"  http.{method}('{url_parts['url']}', payload, {{ headers: {headers_str} }});")
+```
+
+**2. Content-Type 헤더 자동 추가**
+```python
+# Content-Type 헤더 자동 추가
+script_lines.append(f"  const requestHeaders = {{...headers, 'Content-Type': 'application/json'}};")
+```
+
+**3. UTF-8 파일 저장 보장 (`app/api/load_testing_router.py`)**
+```python
+# 수정 전
+with open(script_path, "w") as f:
+
+# 수정 후  
+with open(script_path, "w", encoding="utf-8") as f:
+```
+
+**4. JSON 파싱 개선**
+```python
+# ensure_ascii=False로 유니코드 문자 지원
+body = json.dumps(parsed_json, ensure_ascii=False)
+```
+
+#### 🎯 결과
+- UTF-8 인코딩 오류 해결
+- 한글 등 유니코드 문자 지원
+- k6 Job 정상 실행 가능
+
+---
