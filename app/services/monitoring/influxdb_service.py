@@ -3,6 +3,7 @@ from typing import Dict, Optional, List, Tuple
 from influxdb import InfluxDBClient
 from app.core.config import settings
 from datetime import datetime, timedelta
+import pytz
 
 logger = logging.getLogger(__name__)
 
@@ -482,100 +483,10 @@ class InfluxDBService:
             logger.error(f"Error getting scenario names for job {job_name}: {e}")
             return []
 
-    def get_interval_metrics(self, job_name: str, start_time: datetime, end_time: datetime, 
-                           scenario_name: Optional[str] = None) -> Optional[Dict]:
-        """
-        특정 시간 구간(10초)에 대한 메트릭 조회
-        
-        Args:
-            job_name: Kubernetes Job 이름
-            start_time: 구간 시작 시간
-            end_time: 구간 종료 시간  
-            scenario_name: 시나리오 이름 (None이면 전체 데이터)
-            
-        Returns:
-            구간 메트릭 딕셔너리 또는 None
-        """
-        try:
-            # 시간 조건 생성
-            start_str = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
-            end_str = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
-            
-            # 기본 WHERE 조건
-            base_where = f'"job_name" = \'{job_name}\' AND time >= \'{start_str}\' AND time < \'{end_str}\''
-            if scenario_name:
-                base_where += f' AND "scenario" = \'{scenario_name}\''
-            
-            # TPS 계산 (요청 수 / 10초)
-            tps_query = f'''
-                SELECT SUM("value") as total_requests
-                FROM "http_reqs"
-                WHERE {base_where}
-            '''
-            
-            # 에러율 계산
-            error_query = f'''
-                SELECT SUM("value") as error_requests
-                FROM "http_reqs"
-                WHERE {base_where} AND "status" !~ /^2../
-            '''
-            
-            # VUS 조회 (구간 내 마지막 값)
-            vus_query = f'''
-                SELECT LAST("value") as vus
-                FROM "vus"
-                WHERE {base_where}
-            '''
-            
-            # 응답시간 조회
-            response_time_query = f'''
-                SELECT 
-                    MEAN("value") as avg_response_time,
-                    PERCENTILE("value", 95) as p95_response_time,
-                    PERCENTILE("value", 99) as p99_response_time
-                FROM "http_req_duration"
-                WHERE {base_where}
-            '''
-            
-            # 쿼리 실행
-            tps_result = list(self.client.query(tps_query).get_points())
-            error_result = list(self.client.query(error_query).get_points())
-            vus_result = list(self.client.query(vus_query).get_points())
-            response_result = list(self.client.query(response_time_query).get_points())
-            
-            # 결과 처리
-            total_requests = int(tps_result[0]['total_requests'] or 0) if tps_result else 0
-            error_requests = int(error_result[0]['error_requests'] or 0) if error_result else 0
-            vus = int(vus_result[0]['vus'] or 0) if vus_result else 0
-            
-            # TPS 계산 (10초 구간이므로 /10)
-            tps = total_requests / 10.0
-            
-            # 에러율 계산
-            error_rate = (error_requests / total_requests * 100) if total_requests > 0 else 0.0
-            
-            # 응답시간 처리
-            response_data = response_result[0] if response_result else {}
-            avg_response_time = float(response_data.get('avg_response_time', 0))
-            p95_response_time = float(response_data.get('p95_response_time', 0))
-            p99_response_time = float(response_data.get('p99_response_time', 0))
-            
-            return {
-                'tps': round(tps, 1),
-                'error_rate': round(error_rate, 2),
-                'vus': vus,
-                'avg_response_time': round(avg_response_time, 2),
-                'p95_response_time': round(p95_response_time, 2),
-                'p99_response_time': round(p99_response_time, 2)
-            }
-            
-        except Exception as e:
-            logger.error(f"Error getting interval metrics: {e}")
-            return None
 
     def get_test_timeseries_data(self, job_name: str) -> Optional[List[Dict]]:
         """
-        테스트 전체 구간을 10초씩 나누어 시계열 데이터 조회
+        테스트 시계열 데이터 조회 (10초 단위 집계)
         
         Args:
             job_name: Kubernetes Job 이름
@@ -604,42 +515,428 @@ class InfluxDBService:
                 return None
                 
             start_time, end_time = time_range
+            start_str = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+            end_str = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
             
             # 시나리오 이름들 조회
             scenario_names = self.get_scenario_names_for_job(job_name)
             
-            # 10초 단위로 구간 생성
             timeseries_data = []
-            current_time = start_time
-            interval = timedelta(seconds=10)
             
-            while current_time < end_time:
-                interval_end = min(current_time + interval, end_time)
+            # 전체 데이터 집계 쿼리 (TPS만)
+            overall_query = f'''
+                SELECT 
+                    SUM("value") / 5 as tps
+                FROM "http_reqs" 
+                WHERE "job_name" = '{job_name}' AND time >= '{start_str}' AND time < '{end_str}'
+                GROUP BY time(5s) fill(null) TZ('Asia/Seoul')
+            '''
+            
+            # VUS 쿼리 (별도 테이블)
+            vus_query = f'''
+                SELECT 
+                    LAST("value") as vus
+                FROM "vus" 
+                WHERE "job_name" = '{job_name}' AND time >= '{start_str}' AND time < '{end_str}'
+                GROUP BY time(5s) fill(null) TZ('Asia/Seoul')
+            '''
+            
+            # 에러율 쿼리 (전체) - 에러 요청과 전체 요청을 별도 조회
+            error_requests_query = f'''
+                SELECT 
+                    SUM("value") as error_requests
+                FROM "http_reqs"
+                WHERE "job_name" = '{job_name}' AND "status" !~ /^2../ AND time >= '{start_str}' AND time < '{end_str}'
+                GROUP BY time(5s) fill(0) TZ('Asia/Seoul')
+            '''
+            
+            total_requests_query = f'''
+                SELECT 
+                    SUM("value") as total_requests
+                FROM "http_reqs"
+                WHERE "job_name" = '{job_name}' AND time >= '{start_str}' AND time < '{end_str}'
+                GROUP BY time(5s) fill(0) TZ('Asia/Seoul')
+            '''
+            
+            # 응답시간 쿼리 (전체)
+            response_query = f'''
+                SELECT 
+                    MEAN("value") as avg_response_time,
+                    PERCENTILE("value", 95) as p95_response_time,
+                    PERCENTILE("value", 99) as p99_response_time
+                FROM "http_req_duration"
+                WHERE "job_name" = '{job_name}' AND time >= '{start_str}' AND time < '{end_str}'
+                GROUP BY time(5s) fill(null) TZ('Asia/Seoul')
+            '''
+            
+            # 전체 메트릭 수집
+            overall_result = list(self.client.query(overall_query).get_points())
+            vus_result = list(self.client.query(vus_query).get_points())
+            error_requests_result = list(self.client.query(error_requests_query).get_points())
+            total_requests_result = list(self.client.query(total_requests_query).get_points())
+            response_result = list(self.client.query(response_query).get_points())
+            
+            # 결과를 타임스탬프별로 합치기
+            kst = pytz.timezone('Asia/Seoul')
+            time_metrics = {}
+            
+            for point in overall_result:
+                if point.get('tps') is not None:
+                    utc_time = datetime.fromisoformat(point['time'].replace('Z', '+00:00'))
+                    kst_time = utc_time.astimezone(kst)
+                    time_metrics[kst_time] = {
+                        'timestamp': kst_time,
+                        'scenario_name': None,
+                        'tps': round(float(point['tps']), 1),
+                        'vus': 0,  # VUS는 별도 처리
+                        'error_rate': 0.0,
+                        'avg_response_time': 0.0,
+                        'p95_response_time': 0.0,
+                        'p99_response_time': 0.0
+                    }
+            
+            # 에러율 데이터 합치기 - 별도 쿼리 결과 활용
+            error_requests_dict = {}
+            total_requests_dict = {}
+            
+            for point in error_requests_result:
+                utc_time = datetime.fromisoformat(point['time'].replace('Z', '+00:00'))
+                kst_time = utc_time.astimezone(kst)
+                error_requests_dict[kst_time] = int(point.get('error_requests', 0))
                 
-                # 전체 데이터 조회
-                overall_metrics = self.get_interval_metrics(job_name, current_time, interval_end)
-                if overall_metrics:
-                    timeseries_data.append({
-                        'timestamp': current_time,
-                        'scenario_name': None,  # 전체 데이터
-                        **overall_metrics
-                    })
-                
-                # 시나리오별 데이터 조회
-                for scenario_name in scenario_names:
-                    scenario_metrics = self.get_interval_metrics(job_name, current_time, interval_end, scenario_name)
-                    if scenario_metrics:
-                        timeseries_data.append({
-                            'timestamp': current_time,
-                            'scenario_name': scenario_name,
-                            **scenario_metrics
-                        })
-                
-                current_time = interval_end
+            for point in total_requests_result:
+                utc_time = datetime.fromisoformat(point['time'].replace('Z', '+00:00'))
+                kst_time = utc_time.astimezone(kst)
+                total_requests_dict[kst_time] = int(point.get('total_requests', 0))
+            
+            # VUS 데이터 합치기
+            for point in vus_result:
+                if point.get('vus') is not None:
+                    utc_time = datetime.fromisoformat(point['time'].replace('Z', '+00:00'))
+                    kst_time = utc_time.astimezone(kst)
+                    if kst_time in time_metrics:
+                        time_metrics[kst_time]['vus'] = int(point['vus'])
+
+            # 에러율 계산
+            for kst_time, metrics in time_metrics.items():
+                error_requests = error_requests_dict.get(kst_time, 0)
+                total_requests = total_requests_dict.get(kst_time, 0)
+                error_rate = (error_requests / total_requests * 100) if total_requests > 0 else 0.0
+                metrics['error_rate'] = round(error_rate, 2)
+            
+            # 응답시간 데이터 합치기
+            for point in response_result:
+                if point.get('avg_response_time') is not None:
+                    utc_time = datetime.fromisoformat(point['time'].replace('Z', '+00:00'))
+                    kst_time = utc_time.astimezone(kst)
+                    if kst_time in time_metrics:
+                        time_metrics[kst_time]['avg_response_time'] = round(float(point['avg_response_time']), 2)
+                        time_metrics[kst_time]['p95_response_time'] = round(float(point.get('p95_response_time', 0)), 2)
+                        time_metrics[kst_time]['p99_response_time'] = round(float(point.get('p99_response_time', 0)), 2)
+            
+            # 전체 데이터를 결과에 추가
+            timeseries_data.extend(sorted(time_metrics.values(), key=lambda x: x['timestamp']))
+            
+            # 시나리오별 데이터 수집
+            for scenario_name in scenario_names:
+                scenario_metrics = self._get_scenario_timeseries_data(job_name, scenario_name, start_str, end_str)
+                if scenario_metrics:
+                    timeseries_data.extend(scenario_metrics)
             
             logger.info(f"Generated {len(timeseries_data)} timeseries data points for job: {job_name}")
             return timeseries_data
             
         except Exception as e:
             logger.error(f"Error getting test timeseries data for job {job_name}: {e}")
+            return None
+
+    def _get_scenario_timeseries_data(self, job_name: str, scenario_name: str, start_str: str, end_str: str) -> Optional[List[Dict]]:
+        """
+        시나리오별 시계열 데이터 조회 (10초 단위 집계)
+        
+        Args:
+            job_name: Kubernetes Job 이름
+            scenario_name: 시나리오 이름
+            start_str: 시작 시간 문자열
+            end_str: 종료 시간 문자열
+            
+        Returns:
+            시나리오 시계열 데이터 리스트 또는 None
+        """
+        try:
+            # 시나리오별 TPS 및 VUS 쿼리
+            scenario_query = f'''
+                SELECT 
+                    SUM("value") / 10 as tps,
+                    LAST("value") as vus
+                FROM "http_reqs" 
+                WHERE "job_name" = '{job_name}' AND "scenario" = '{scenario_name}' AND time >= '{start_str}' AND time < '{end_str}'
+                GROUP BY time(10s) fill(null) TZ('Asia/Seoul')
+            '''
+            
+            # 시나리오별 에러율 쿼리 - 별도로 조회
+            scenario_error_requests_query = f'''
+                SELECT 
+                    SUM("value") as error_requests
+                FROM "http_reqs"
+                WHERE "job_name" = '{job_name}' AND "scenario" = '{scenario_name}' AND "status" !~ /^2../ AND time >= '{start_str}' AND time < '{end_str}'
+                GROUP BY time(10s) fill(0) TZ('Asia/Seoul')
+            '''
+            
+            scenario_total_requests_query = f'''
+                SELECT 
+                    SUM("value") as total_requests
+                FROM "http_reqs"
+                WHERE "job_name" = '{job_name}' AND "scenario" = '{scenario_name}' AND time >= '{start_str}' AND time < '{end_str}'
+                GROUP BY time(10s) fill(0) TZ('Asia/Seoul')
+            '''
+            
+            # 시나리오별 응답시간 쿼리
+            scenario_response_query = f'''
+                SELECT 
+                    MEAN("value") as avg_response_time,
+                    PERCENTILE("value", 95) as p95_response_time,
+                    PERCENTILE("value", 99) as p99_response_time
+                FROM "http_req_duration"
+                WHERE "job_name" = '{job_name}' AND "scenario" = '{scenario_name}' AND time >= '{start_str}' AND time < '{end_str}'
+                GROUP BY time(10s) fill(null) TZ('Asia/Seoul')
+            '''
+            
+            # 쿼리 실행
+            scenario_result = list(self.client.query(scenario_query).get_points())
+            scenario_error_requests_result = list(self.client.query(scenario_error_requests_query).get_points())
+            scenario_total_requests_result = list(self.client.query(scenario_total_requests_query).get_points())
+            scenario_response_result = list(self.client.query(scenario_response_query).get_points())
+            
+            if not scenario_result:
+                logger.warning(f"No timeseries data found for scenario: {scenario_name}")
+                return None
+            
+            # 시나리오 결과를 타임스탬프별로 합치기
+            kst = pytz.timezone('Asia/Seoul')
+            scenario_time_metrics = {}
+            
+            for point in scenario_result:
+                if point.get('tps') is not None:
+                    utc_time = datetime.fromisoformat(point['time'].replace('Z', '+00:00'))
+                    kst_time = utc_time.astimezone(kst)
+                    scenario_time_metrics[kst_time] = {
+                        'timestamp': kst_time,
+                        'scenario_name': scenario_name,
+                        'tps': round(float(point['tps']), 1),
+                        'vus': int(point['vus']) if point.get('vus') else 0,
+                        'error_rate': 0.0,
+                        'avg_response_time': 0.0,
+                        'p95_response_time': 0.0,
+                        'p99_response_time': 0.0
+                    }
+            
+            # 시나리오 에러율 데이터 합치기 - 별도 쿼리 결과 활용
+            scenario_error_requests_dict = {}
+            scenario_total_requests_dict = {}
+            
+            for point in scenario_error_requests_result:
+                utc_time = datetime.fromisoformat(point['time'].replace('Z', '+00:00'))
+                kst_time = utc_time.astimezone(kst)
+                scenario_error_requests_dict[kst_time] = int(point.get('error_requests', 0))
+                
+            for point in scenario_total_requests_result:
+                utc_time = datetime.fromisoformat(point['time'].replace('Z', '+00:00'))
+                kst_time = utc_time.astimezone(kst)
+                scenario_total_requests_dict[kst_time] = int(point.get('total_requests', 0))
+            
+            # 시나리오 에러율 계산
+            for kst_time, metrics in scenario_time_metrics.items():
+                error_requests = scenario_error_requests_dict.get(kst_time, 0)
+                total_requests = scenario_total_requests_dict.get(kst_time, 0)
+                error_rate = (error_requests / total_requests * 100) if total_requests > 0 else 0.0
+                metrics['error_rate'] = round(error_rate, 2)
+            
+            # 시나리오 응답시간 데이터 합치기
+            for point in scenario_response_result:
+                if point.get('avg_response_time') is not None:
+                    utc_time = datetime.fromisoformat(point['time'].replace('Z', '+00:00'))
+                    kst_time = utc_time.astimezone(kst)
+                    if kst_time in scenario_time_metrics:
+                        scenario_time_metrics[kst_time]['avg_response_time'] = round(float(point['avg_response_time']), 2)
+                        scenario_time_metrics[kst_time]['p95_response_time'] = round(float(point.get('p95_response_time', 0)), 2)
+                        scenario_time_metrics[kst_time]['p99_response_time'] = round(float(point.get('p99_response_time', 0)), 2)
+            
+            return sorted(scenario_time_metrics.values(), key=lambda x: x['timestamp'])
+            
+        except Exception as e:
+            logger.error(f"Error getting scenario timeseries data for scenario {scenario_name}: {e}")
+            return None
+
+    def get_cpu_metrics(self, pod_name: str, start_time: datetime, end_time: datetime) -> Optional[List[Dict]]:
+        """
+        특정 pod의 CPU 사용량 메트릭 조회 (10초 단위)
+        
+        Args:
+            pod_name: Pod 이름
+            start_time: 시작 시간
+            end_time: 종료 시간
+            
+        Returns:
+            CPU 메트릭 데이터 리스트 또는 None
+            [
+                {
+                    'timestamp': datetime,
+                    'metric_type': 'cpu',
+                    'unit': 'millicores',
+                    'value': float
+                },
+                ...
+            ]
+        """
+        try:
+            # 시간 조건 생성
+            start_str = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+            end_str = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+            
+            # CPU 사용량 쿼리 (millicores 단위)
+            cpu_query = f'''
+                SELECT non_negative_derivative(mean("container_cpu_usage_seconds_total"), 1s) * 1000 as cpu_millicores 
+                FROM "cadvisor_metrics" 
+                WHERE "pod" = '{pod_name}' AND "container" = '' AND "image" = '' 
+                AND time >= '{start_str}' AND time < '{end_str}'
+                GROUP BY time(10s) fill(linear) TZ('Asia/Seoul')
+            '''
+            
+            # 쿼리 실행
+            result = list(self.client.query(cpu_query).get_points())
+            
+            if not result:
+                logger.warning(f"No CPU metrics found for pod: {pod_name}")
+                return None
+            
+            # 결과 처리
+            kst = pytz.timezone('Asia/Seoul')
+            cpu_metrics = []
+            for point in result:
+                if point.get('cpu_millicores') is not None:
+                    utc_time = datetime.fromisoformat(point['time'].replace('Z', '+00:00'))
+                    kst_time = utc_time.astimezone(kst)
+                    cpu_metrics.append({
+                        'timestamp': kst_time,  # 한국시간으로 저장
+                        'metric_type': 'cpu',
+                        'unit': 'millicores',
+                        'value': float(point['cpu_millicores'])
+                    })
+            
+            logger.info(f"Retrieved {len(cpu_metrics)} CPU data points for pod: {pod_name}")
+            return cpu_metrics
+            
+        except Exception as e:
+            logger.error(f"Error getting CPU metrics for pod {pod_name}: {e}")
+            return None
+
+    def get_memory_metrics(self, pod_name: str, start_time: datetime, end_time: datetime) -> Optional[List[Dict]]:
+        """
+        특정 pod의 Memory 사용량 메트릭 조회 (10초 단위)
+        
+        Args:
+            pod_name: Pod 이름
+            start_time: 시작 시간
+            end_time: 종료 시간
+            
+        Returns:
+            Memory 메트릭 데이터 리스트 또는 None
+            [
+                {
+                    'timestamp': datetime,
+                    'metric_type': 'memory',
+                    'unit': 'mb',
+                    'value': float
+                },
+                ...
+            ]
+        """
+        try:
+            # 시간 조건 생성
+            start_str = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+            end_str = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+            
+            # Memory 사용량 쿼리 (MB 단위)
+            memory_query = f'''
+                SELECT mean("container_memory_working_set_bytes") / 1024 / 1024 as memory_mb 
+                FROM "cadvisor_metrics" 
+                WHERE "pod" = '{pod_name}' AND "container" = '' AND "image" = '' 
+                AND time >= '{start_str}' AND time < '{end_str}'
+                GROUP BY time(10s) fill(linear) TZ('Asia/Seoul')
+            '''
+            
+            # 쿼리 실행
+            result = list(self.client.query(memory_query).get_points())
+            
+            if not result:
+                logger.warning(f"No Memory metrics found for pod: {pod_name}")
+                return None
+            
+            # 결과 처리
+            kst = pytz.timezone('Asia/Seoul')
+            memory_metrics = []
+            for point in result:
+                if point.get('memory_mb') is not None:
+                    utc_time = datetime.fromisoformat(point['time'].replace('Z', '+00:00'))
+                    kst_time = utc_time.astimezone(kst)
+                    memory_metrics.append({
+                        'timestamp': kst_time,  # 한국시간으로 저장
+                        'metric_type': 'memory',
+                        'unit': 'mb',
+                        'value': float(point['memory_mb'])
+                    })
+            
+            logger.info(f"Retrieved {len(memory_metrics)} Memory data points for pod: {pod_name}")
+            return memory_metrics
+            
+        except Exception as e:
+            logger.error(f"Error getting Memory metrics for pod {pod_name}: {e}")
+            return None
+
+    def get_resource_metrics_for_test(self, job_name: str) -> Optional[Dict[str, List[Dict]]]:
+        """
+        테스트 기간 동안의 모든 관련 pod들의 CPU/Memory 메트릭 조회
+        
+        Args:
+            job_name: Kubernetes Job 이름
+            
+        Returns:
+            pod별 리소스 메트릭 딕셔너리 또는 None
+            {
+                'pod-name-1': [
+                    {
+                        'timestamp': datetime,
+                        'metric_type': 'cpu' or 'memory',
+                        'unit': 'millicores' or 'mb',
+                        'value': float
+                    },
+                    ...
+                ],
+                ...
+            }
+        """
+        try:
+            # 테스트 시간 범위 조회
+            time_range = self.get_test_time_range(job_name)
+            if not time_range:
+                logger.error(f"Could not get time range for job: {job_name}")
+                return None
+                
+            start_time, end_time = time_range
+            
+            # 5분 여유를 두고 메트릭 수집
+            extended_start = start_time - timedelta(minutes=5)
+            extended_end = end_time + timedelta(minutes=5)
+            
+            logger.info(f"Collecting resource metrics for job {job_name} from {extended_start} to {extended_end}")
+            
+            # 현재는 특정 pod 이름들이 필요하므로, 이 함수는 k6_job_scheduler에서 호출될 때
+            # pod 이름들을 매개변수로 받아서 처리하도록 수정이 필요합니다.
+            # 지금은 기본 구조만 만들어두겠습니다.
+            
+            return {}
+            
+        except Exception as e:
+            logger.error(f"Error getting resource metrics for job {job_name}: {e}")
             return None

@@ -17,7 +17,9 @@ from app.services.testing.test_history_service import (
     update_test_history_with_metrics,
     update_scenario_history_with_metrics,
     mark_test_as_completed,
-    save_test_timeseries_metrics
+    save_test_timeseries_metrics,
+    save_test_resource_metrics,
+    get_scenario_by_server_infra_id, get_group_pods_names_by_server_infra_id
 )
 
 logger = logging.getLogger(__name__)
@@ -137,14 +139,10 @@ class K6JobScheduler:
 
                 # 5. 시계열 메트릭 데이터 수집 및 저장
                 timeseries_data = self.influxdb_service.get_test_timeseries_data(job_name)
-                if timeseries_data:
-                    save_success = save_test_timeseries_metrics(db, test_history.id, timeseries_data)
-                    if save_success:
-                        logger.info(f"Saved {len(timeseries_data)} timeseries data points for job: {job_name}")
-                    else:
-                        logger.error(f"Failed to save timeseries data for job: {job_name}")
-                else:
-                    logger.warning(f"No timeseries data found for job: {job_name} - skipping timeseries save")
+                save_success = save_test_timeseries_metrics(db, scenario_histories, timeseries_data)
+
+                # 6. 서버 리소스 메트릭 수집 및 저장 (CPU, Memory)
+                self._collect_and_save_resource_metrics(db, test_history)
 
                 # 6. test history를 완료 상태로 마킹
                 mark_test_as_completed(db, test_history)
@@ -159,6 +157,60 @@ class K6JobScheduler:
             logger.error(f"Error processing completed jobs: {e}")
         finally:
             db.close()
+
+    def _collect_and_save_resource_metrics(self, db: Session, test_history: TestHistoryModel):
+        """
+        서버 리소스 메트릭(CPU, Memory) 수집 및 저장
+        
+        Args:
+            db: 데이터베이스 세션
+            test_history: 테스트 히스토리 모델
+        """
+        try:
+            # 수집 대상 server_infra 추적
+            scenario_histories = test_history.scenarios
+            scenario_history_ids = [sh.id for sh in scenario_histories]
+            job_name = test_history.job_name
+
+            if not scenario_histories:
+                logger.warning(f"Empty scenario histories")
+                return
+
+            for scenario_history in scenario_histories:
+                endpoint = scenario_history.endpoint
+                openapi_spec_version = endpoint.openapi_spec_version
+                openapi_spec = openapi_spec_version.openapi_spec
+                server_infras = openapi_spec.server_infras
+
+                if not server_infras:
+                    logger.warning(f"No server infra found for scenario: {scenario_history.id}")
+
+                time_range = self.influxdb_service.get_test_time_range(job_name)
+                if not time_range:
+                    logger.warning(f"No time range found for job: {job_name} - skipping resource metrics collection")
+                    return
+
+                # 시나리오별 resource metrics 조회
+                start_time, end_time = time_range
+                extended_start = start_time - timedelta(minutes=1)
+                extended_end = end_time + timedelta(minutes=1)
+
+                logger.info(f"Test time range: {start_time} ~ {end_time}")
+                logger.info(f"Extended collection range: {extended_start} ~ {extended_end}")
+
+                # server infra 정보 알고, 시나리오 루프 돌고 있으니 차례대로 저장
+                for server_infra in server_infras:
+                    pod_name = server_infra.name
+                    cpu_metrics = self.influxdb_service.get_cpu_metrics(pod_name, extended_start, extended_end)
+                    save_success = save_test_resource_metrics(db, scenario_history, server_infra.id, cpu_metrics)
+
+                    memory_metrics = self.influxdb_service.get_memory_metrics(pod_name, extended_start, extended_end)
+                    save_success = save_test_resource_metrics(db, scenario_history, server_infra.id, memory_metrics)
+
+        except Exception as e:
+            logger.error(f"Error collecting and saving resource metrics for test_history {test_history.id}: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
 
 
 # 전역 스케줄러 인스턴스

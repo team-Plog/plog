@@ -56,6 +56,7 @@ class TestHistoryModel(Base):
     test_duration = Column(Float, nullable=True)  # seconds
 
     scenarios = relationship("ScenarioHistoryModel", back_populates="test_history", cascade="all, delete-orphan")
+    test_metrics = relationship("TestMetricsTimeseriesModel", back_populates="test_history", cascade="all, delete-orphan")
 
 
 class ScenarioHistoryModel(Base):
@@ -101,6 +102,7 @@ class ScenarioHistoryModel(Base):
     stages = relationship("StageHistoryModel", back_populates="scenario", cascade="all, delete-orphan")
     test_parameters = relationship("TestParameterHistoryModel", back_populates="scenario", cascade="all, delete-orphan")
     test_headers = relationship("TestHeaderHistoryModel", back_populates="scenario", cascade="all, delete-orphan")
+    test_metrics = relationship("TestMetricsTimeseriesModel", back_populates="scenario", cascade="all, delete-orphan")
 
 class TestParameterHistoryModel(Base):
     __tablename__ = "test_parameter_history"
@@ -129,13 +131,12 @@ class TestMetricsTimeseriesModel(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     
-    # 테스트와 연관관계
-    test_history_id = Column(Integer, ForeignKey("test_history.id"), nullable=False)
-    test_history = relationship("TestHistoryModel")
-    
     # 시나리오와 연관관계 (null이면 전체 데이터, 값이 있으면 해당 시나리오 데이터)
-    scenario_id = Column(Integer, ForeignKey("scenario_history.id"), nullable=True)
-    scenario = relationship("ScenarioHistoryModel")
+    scenario_history_id = Column(Integer, ForeignKey("scenario_history.id"), nullable=True)
+    scenario = relationship("ScenarioHistoryModel", back_populates="test_metrics")
+
+    test_history_id = Column(Integer, ForeignKey("test_history.id"), nullable=True)
+    test_history = relationship("TestHistoryModel", back_populates="test_metrics")
     
     # 시간 구간 (10초 단위 구간의 시작 시간)
     timestamp = Column(DateTime, nullable=False)
@@ -147,6 +148,31 @@ class TestMetricsTimeseriesModel(Base):
     avg_response_time = Column(Float, nullable=True)  # Average response time (ms)
     p95_response_time = Column(Float, nullable=True)  # P95 response time (ms)
     p99_response_time = Column(Float, nullable=True)  # P99 response time (ms)
+
+class TestResourceTimeseriesModel(Base):
+    """서버 리소스 시계열 데이터 (CPU, Memory)"""
+    __tablename__ = "test_resource_timeseries"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    
+    # 테스트와 연관관계
+    scenario_history_id = Column(Integer, ForeignKey("scenario_history.id"), nullable=True)
+    scenario = relationship("ScenarioHistoryModel")
+    
+    # 서버 인프라와 연관관계
+    server_infra_id = Column(Integer, ForeignKey("server_infra.id"), nullable=False)
+    
+    # 수집 데이터 종류
+    metric_type = Column(String(20), nullable=False)  # 'cpu' or 'memory'
+    
+    # 단위
+    unit = Column(String(20), nullable=False)  # 'millicores' for cpu, 'mb' for memory
+    
+    # 시간
+    timestamp = Column(DateTime, nullable=False)
+    
+    # 측정 값
+    value = Column(Float, nullable=False)
 
 class StageHistoryModel(Base):
     __tablename__ = "stage_history"

@@ -1,7 +1,9 @@
 from typing import List
 
 from sqlalchemy.orm import Session
-from app.db.sqlite.models.project_models import EndpointModel, OpenAPISpecModel, TagModel
+
+from app.db.sqlite.models import OpenAPISpecVersionModel
+from app.db.sqlite.models.project_models import EndpointModel, OpenAPISpecModel
 from app.dto.load_test.load_test_request import LoadTestRequest, ScenarioConfig
 from fastapi import HTTPException
 
@@ -20,8 +22,10 @@ def generate_k6_script(payload: LoadTestRequest, job_name: str, db: Session) -> 
     # base_url 조회 (첫 시나리오 기준으로 openapi_spec_id 역추적)
     first_scenario = payload.scenarios[0]
     endpoint = get_endpoint_by_id(db, first_scenario.endpoint_id)
-    openapi_spec = db.query(OpenAPISpecModel).join(OpenAPISpecModel.tags).join(TagModel.endpoints).filter(
-        EndpointModel.id == endpoint.id).first()
+    openapi_spec = (db.query(OpenAPISpecModel)
+                    .join(OpenAPISpecModel.openapi_spec_versions)
+                    .join(OpenAPISpecVersionModel.endpoints)
+                    .filter(EndpointModel.id == endpoint.id, OpenAPISpecVersionModel.is_activate == True).first())
 
     if not openapi_spec or not openapi_spec.base_url:
         raise Exception("Base URL을 찾을 수 없습니다. OpenAPI 스펙에 base_url이 등록되어야 합니다.")
@@ -72,8 +76,9 @@ def generate_k6_script(payload: LoadTestRequest, job_name: str, db: Session) -> 
                 script_lines.append(f"  http.{method}('{url_parts['url']}', {url_parts['body']});")
         else:
             # Body가 없는 요청 (GET, DELETE 등)
+            # Query parameter는 이미 URL에 포함되어 있음
             if scenario.headers:
-                script_lines.append(f"  http.{method}('{url_parts['url']}', null, {{ headers }});")
+                script_lines.append(f"  http.{method}('{url_parts['url']}', {{ headers }});")
             else:
                 script_lines.append(f"  http.{method}('{url_parts['url']}');")
         

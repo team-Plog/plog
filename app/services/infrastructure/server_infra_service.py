@@ -1,5 +1,7 @@
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
+
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.sqlite.models.project_models import ServerInfraModel
@@ -31,6 +33,30 @@ class ServerInfraService:
             
         except Exception as e:
             logger.error(f"Error getting existing pod names: {e}")
+            return []
+
+    def get_existing_pod_names_by_group(self, db: Session, group_name: str, namespace: str = "test") -> List[str]:
+        """
+        특정 그룹(서비스)의 이미 저장된 Pod 이름 목록을 반환합니다.
+        
+        Args:
+            db: 데이터베이스 세션
+            group_name: 그룹 이름 (서비스 이름)
+            namespace: 네임스페이스
+            
+        Returns:
+            해당 그룹의 저장된 Pod 이름 리스트
+        """
+        try:
+            existing_pods = db.query(ServerInfraModel).filter(
+                ServerInfraModel.group_name == group_name,
+                ServerInfraModel.namespace == namespace
+            ).all()
+            
+            return [pod.name for pod in existing_pods]
+            
+        except Exception as e:
+            logger.error(f"Error getting existing pod names for group {group_name}: {e}")
             return []
 
     def create_server_infra(self, db: Session, pod_info: Dict[str, Any], 
@@ -92,7 +118,19 @@ class ServerInfraService:
             logger.error(f"Error getting server_infra by name {name}: {e}")
             return None
 
-    def update_server_infra_openapi_spec(self, db: Session, server_infra_id: int, 
+    def get_server_infra_exists_group_names(self, db: Session) -> List[str]:
+        stmt = select(ServerInfraModel.group_name).distinct()
+        result = db.execute(stmt).scalars().all()
+
+        return result
+
+    def get_server_infra_group_names_with_openapi_spec_id(self, db: Session)-> List[Tuple[int, str]]:
+        stmt = select(ServerInfraModel.openapi_spec_id, ServerInfraModel.group_name).distinct()
+        result = db.execute(stmt).all()
+
+        return result
+
+    def update_server_infra_openapi_spec(self, db: Session, server_infra_id: int,
                                         open_api_spec_id: int) -> bool:
         """
         ServerInfra의 open_api_spec_id를 업데이트합니다.
