@@ -14,7 +14,7 @@ from app.scheduler.server_pod_scheduler import start_scheduler as start_pod_sche
 from k8s.k8s_client import v1_core
 
 # 테스트 임시 import
-from app.services.monitoring.pod_monitor_service import PodMonitorService
+from k8s.pod_service import PodService
 
 # 로깅 설정
 logging.basicConfig(
@@ -43,8 +43,8 @@ async def lifespan(app: FastAPI):
         logger.error(f"Kubernetes connection test failed: {e}")
 
 
-    pod_monitor_service = PodMonitorService("test")
-    test_data = pod_monitor_service.get_running_pods()
+    pod_service = PodService("test")
+    test_data = pod_service.get_running_pods()
     print("test_data = ", test_data)
     
     # k6 Job 스케줄러 시작

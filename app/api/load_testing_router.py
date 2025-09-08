@@ -150,7 +150,7 @@ async def create_load_testing_script_by_gui(
     file_name = generate_unique_filename()
     # script_path = f"/k6-scripts/{file_name}"
     script_path = f"{os.getenv('K6_SCRIPT_FILE_FOLDER', '/mnt/k6-scripts')}/{file_name}"
-    with open(script_path, "w") as f:
+    with open(script_path, "w", encoding="utf-8") as f:
         f.write(script_content)
 
     # 3. test history 생성 및 연관관계

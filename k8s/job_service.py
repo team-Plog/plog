@@ -15,7 +15,7 @@ class JobStatus:
     UNKNOWN = "Unknown"
 
 
-class JobMonitorService:
+class JobService:
     """Kubernetes Job 상태 모니터링 서비스"""
 
     def __init__(self, namespace: str = "default"):

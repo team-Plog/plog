@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
-class PodMonitorService:
+class PodService:
     """Kubernetes Pod 상태 모니터링 서비스"""
 
     def __init__(self, namespace: str = "test"):
