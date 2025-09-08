@@ -104,13 +104,13 @@ def get_overall_error_rate(job_name: str) -> float:
     """전체 오류율 조회"""
     try:
         total_query = f'''
-            SELECT COUNT("value") as total
+            SELECT SUM("value") as total
             FROM "http_reqs"
             WHERE time > now() - 10s
               AND "job_name" = '{job_name}'
         '''
         error_query = f'''
-            SELECT COUNT("value") as errors
+            SELECT SUM("value") as errors
             FROM "http_req_failed"
             WHERE time > now() - 10s
               AND "job_name" = '{job_name}'
@@ -205,14 +205,14 @@ def get_scenario_error_rate(job_name: str, scenario_name: str) -> float:
     """시나리오별 오류율 조회"""
     try:
         total_query = f'''
-            SELECT COUNT("value") as total
+            SELECT SUM("value") as total
             FROM "http_reqs"
             WHERE time > now() - 10s
               AND "job_name" = '{job_name}'
               AND "scenario" = '{scenario_name}'
         '''
         error_query = f'''
-            SELECT COUNT("value") as errors
+            SELECT SUM("value") as errors
             FROM "http_req_failed"
             WHERE time > now() - 10s
               AND "job_name" = '{job_name}'
