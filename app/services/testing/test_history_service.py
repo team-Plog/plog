@@ -831,7 +831,12 @@ def save_test_resource_metrics(db: Session, scenario_history: ScenarioHistoryMod
                 metric_type=data_point['metric_type'],
                 unit=data_point['unit'],
                 timestamp=data_point['timestamp'],
-                value=data_point['value']
+                value=data_point['value'],
+                # Resource spec 정보 (있는 경우에만 저장)
+                cpu_request_millicores=data_point.get('cpu_request_millicores'),
+                cpu_limit_millicores=data_point.get('cpu_limit_millicores'),
+                memory_request_mb=data_point.get('memory_request_mb'),
+                memory_limit_mb=data_point.get('memory_limit_mb')
             )
             resource_models.append(resource_model)
         

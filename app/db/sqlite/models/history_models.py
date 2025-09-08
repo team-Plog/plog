@@ -173,6 +173,12 @@ class TestResourceTimeseriesModel(Base):
     
     # 측정 값
     value = Column(Float, nullable=False)
+    
+    # Resource Spec 정보 (Pod의 request/limit 값)
+    cpu_request_millicores = Column(Float, nullable=True)    # CPU 요청량 (millicores)
+    cpu_limit_millicores = Column(Float, nullable=True)      # CPU 제한량 (millicores)
+    memory_request_mb = Column(Float, nullable=True)         # Memory 요청량 (MB)
+    memory_limit_mb = Column(Float, nullable=True)           # Memory 제한량 (MB)
 
 class StageHistoryModel(Base):
     __tablename__ = "stage_history"

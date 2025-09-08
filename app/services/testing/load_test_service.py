@@ -1,3 +1,4 @@
+import json
 from typing import List
 
 from sqlalchemy.orm import Session
@@ -69,11 +70,19 @@ def generate_k6_script(payload: LoadTestRequest, job_name: str, db: Session) -> 
         
         # HTTP 요청 생성
         if method in ['post', 'put', 'patch'] and url_parts['body']:
-            # Body가 있는 요청
-            if scenario.headers:
-                script_lines.append(f"  http.{method}('{url_parts['url']}', {url_parts['body']}, {{ headers }});")
+            # Body가 있는 요청 - JSON.stringify() 사용
+            headers_str = "headers" if scenario.headers else "{}"
+            if not scenario.headers:
+                # Content-Type 헤더만 추가
+                script_lines.append(f"  const requestHeaders = {{'Content-Type': 'application/json'}};")
+                headers_str = "requestHeaders"
             else:
-                script_lines.append(f"  http.{method}('{url_parts['url']}', {url_parts['body']});")
+                # 기존 헤더에 Content-Type 추가
+                script_lines.append(f"  const requestHeaders = {{...headers, 'Content-Type': 'application/json'}};")
+                headers_str = "requestHeaders"
+            
+            script_lines.append(f"  const payload = JSON.stringify({url_parts['body']});")
+            script_lines.append(f"  http.{method}('{url_parts['url']}', payload, {{ headers: {headers_str} }});")
         else:
             # Body가 없는 요청 (GET, DELETE 등)
             # Query parameter는 이미 URL에 포함되어 있음
@@ -138,8 +147,17 @@ def generate_url_and_params(base_url: str, endpoint_path: str, scenario: Scenari
             query_params.append(f"{param.name}={param.value}")
             
         elif param.param_type == 'requestBody':
-            # Request Body: JSON 문자열로 설정
-            body = param.value
+            # Request Body: JavaScript 객체 형태로 설정 (JSON.stringify에서 사용할 수 있도록)
+            try:
+                # param.value가 JSON 문자열인 경우 파싱 후 다시 JavaScript 객체 문법으로 변환
+                if isinstance(param.value, str):
+                    parsed_json = json.loads(param.value)
+                    body = json.dumps(parsed_json, ensure_ascii=False)
+                else:
+                    body = json.dumps(param.value, ensure_ascii=False)
+            except (json.JSONDecodeError, TypeError):
+                # JSON이 아닌 경우 문자열 그대로 사용
+                body = f'"{param.value}"'
     
     # Query 파라미터가 있으면 URL에 추가
     if query_params:
