@@ -106,7 +106,7 @@ def get_overall_error_rate(job_name: str) -> float:
         '''
         error_query = f'''
             SELECT COUNT("value") as errors
-            FROM "http_reqs_failed"
+            FROM "http_req_failed"
             WHERE time > now() - 10s
               AND "job_name" = '{job_name}'
         '''
@@ -208,11 +208,10 @@ def get_scenario_error_rate(job_name: str, scenario_name: str) -> float:
         '''
         error_query = f'''
             SELECT COUNT("value") as errors
-            FROM "http_reqs"
+            FROM "http_req_failed"
             WHERE time > now() - 10s
               AND "job_name" = '{job_name}'
               AND "scenario" = '{scenario_name}'
-              AND "status" >= '400'
         '''
         
         total_result = client.query(total_query)
