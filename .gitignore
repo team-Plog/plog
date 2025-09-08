@@ -1,7 +1,6 @@
 service_pod_management_design.md
 PARAMETER_API_GUIDE.md
 PROMPT.md
-CLAUDE.md
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
