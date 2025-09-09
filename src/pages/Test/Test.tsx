@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useRef} from "react";
+import React, {useEffect, useState, useRef, useMemo} from "react";
 import Header from "../../components/Header/Header";
 import styles from "./Test.module.css";
 import "../../assets/styles/typography.css";
@@ -10,19 +10,35 @@ import {
   RotateCw,
   Timer,
   Users,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import MetricCard from "../../components/MetricCard/MetricCard";
 import MetricChart from "../../components/MetricChart/MetricChart";
 import {useLocation} from "react-router-dom";
-import {getProjectDetail, getTestHistoryDetail, getSseK6DataUrl} from "../../api";
+import {
+  getProjectDetail,
+  getTestHistoryDetail,
+  getSseK6DataUrl,
+} from "../../api";
 import {stopJob} from "../../api/jobScheduler";
+
+type Point = {
+  time: string;
+  tps: number;
+  responseTime: number;
+  errorRate: number;
+  users: number;
+};
+
+const OVERALL = "__OVERALL__";
 
 const Test: React.FC = () => {
   const location = useLocation();
   const {
     projectId,
     testTitle,
-    jobName, // location.state에서 올 수도, 없을 수도 있음
+    jobName,
     projectTitle: passedProjectTitle,
     testHistoryId: initialTestHistoryId,
   } = location.state || {};
@@ -34,13 +50,13 @@ const Test: React.FC = () => {
     initialTestHistoryId || null
   );
 
-  // 📌 jobName 폴백을 위한 내부 상태 (location.state → 없으면 API job_name)
+  // jobName 폴백
   const [jobNameState, setJobNameState] = useState<string | null>(
     jobName ?? null
   );
-  const effectiveJobName = jobNameState; // 항상 이 값을 사용
+  const effectiveJobName = jobNameState;
 
-  const [chartData, setChartData] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<Point[]>([]);
   const [metrics, setMetrics] = useState({
     tps: 0,
     latency: 0,
@@ -48,39 +64,53 @@ const Test: React.FC = () => {
     vus: 0,
   });
 
-  // 중단 로딩 상태 & SSE 핸들 ref
+  // 시나리오별 상태
+  const [scenarioChartData, setScenarioChartData] = useState<
+    Record<string, Point[]>
+  >({});
+  const [scenarioMetrics, setScenarioMetrics] = useState<
+    Record<
+      string,
+      {tps: number; latency: number; error_rate: number; vus: number}
+    >
+  >({});
+
+  // 캐러셀 상태
+  const scenarioNames = Object.keys(scenarioChartData);
+  const slides = useMemo(() => [OVERALL, ...scenarioNames], [scenarioNames]);
+  const [slideIndex, setSlideIndex] = useState(0);
+  const currentSlide = slides[slideIndex] || null;
+
+  const goPrev = () => {
+    if (slides.length === 0) return;
+    setSlideIndex((i) => (i - 1 + slides.length) % slides.length);
+  };
+  const goNext = () => {
+    if (slides.length === 0) return;
+    setSlideIndex((i) => (i + 1) % slides.length);
+  };
+  const slideLabel = (name: string) => (name === OVERALL ? "전체" : `${name}`);
+
+  // 중단 로딩 & SSE
   const [stopping, setStopping] = useState(false);
   const sseRef = useRef<EventSource | null>(null);
-  const [lastJobName, setLastJobName] = useState<string | null>(null);
-  const [lastRequestUrl, setLastRequestUrl] = useState<string | null>(null);
-  const [scenarioName, setScenarioName] = useState<string | null>(null);
 
-  useEffect(() => {
-    console.log("✅ 선택된 testHistoryId:", testHistoryId);
-  }, [testHistoryId]);
-
-  // 👉 testHistoryId로 상세 조회해서 job_name 폴백 채우기
+  // testHistoryId로 job_name만 폴백
   useEffect(() => {
     if (!testHistoryId) return;
-
     getTestHistoryDetail(testHistoryId)
       .then((res) => {
-        console.log("🧪 테스트 상세 정보:", res.data);
         const apiJobName = res?.data?.data?.job_name;
         if (apiJobName && !jobNameState) {
           setJobNameState(apiJobName);
-        }
-        const apiScenarioName = res?.data?.data?.scenarios?.[0]?.name;
-        if (apiScenarioName) {
-          setScenarioName(apiScenarioName);
         }
       })
       .catch((err) => {
         console.error("❌ 테스트 상세 정보 조회 실패:", err);
       });
-  }, [testHistoryId]); // jobNameState는 의도적으로 의존성 제외(초기 폴백 세팅 목적)
+  }, [testHistoryId]);
 
-  // 프로젝트 타이틀 불러오기 (필요 시)
+  // 프로젝트 타이틀
   useEffect(() => {
     if (projectId && !passedProjectTitle) {
       getProjectDetail(projectId)
@@ -92,20 +122,17 @@ const Test: React.FC = () => {
     }
   }, [projectId, passedProjectTitle]);
 
-  // 👉 SSE 연결 (effectiveJobName이 준비되었을 때만)
+  // SSE 연결
   useEffect(() => {
     if (!effectiveJobName) return;
 
-    // API 유틸 함수를 사용해서 SSE URL 생성
     const sseUrl = getSseK6DataUrl(effectiveJobName);
-    
     const eventSource = new EventSource(sseUrl);
     sseRef.current = eventSource;
 
     eventSource.onmessage = (event) => {
       try {
         const parsedData = JSON.parse(event.data);
-        // console.log("📡 실시간 k6 데이터:", parsedData);
 
         const timestamp = new Date(parsedData.timestamp).toLocaleTimeString(
           "ko-KR",
@@ -124,6 +151,7 @@ const Test: React.FC = () => {
           error_rate: 0,
         };
 
+        // 전체 메트릭/차트
         setMetrics({
           tps: overall.tps,
           latency: overall.response_time,
@@ -143,6 +171,43 @@ const Test: React.FC = () => {
             },
           ].slice(-20)
         );
+
+        // 시나리오별
+        const scenarios = Array.isArray(parsedData.scenarios)
+          ? parsedData.scenarios
+          : [];
+        if (scenarios.length > 0) {
+          setScenarioChartData((prev) => {
+            const next: Record<string, Point[]> = {...prev};
+            scenarios.forEach((sc: any) => {
+              const name = sc?.name ?? "unknown";
+              const point: Point = {
+                time: timestamp,
+                tps: sc?.tps ?? 0,
+                responseTime: sc?.response_time ?? 0,
+                errorRate: sc?.error_rate ?? 0,
+                users: sc?.vus ?? 0,
+              };
+              const arr = next[name] ? [...next[name], point] : [point];
+              next[name] = arr.slice(-20);
+            });
+            return next;
+          });
+
+          setScenarioMetrics((prev) => {
+            const next = {...prev};
+            scenarios.forEach((sc: any) => {
+              const name = sc?.name ?? "unknown";
+              next[name] = {
+                tps: sc?.tps ?? 0,
+                latency: sc?.response_time ?? 0,
+                error_rate: sc?.error_rate ?? 0,
+                vus: sc?.vus ?? 0,
+              };
+            });
+            return next;
+          });
+        }
       } catch (e) {
         console.error("⚠️ JSON 파싱 실패:", e);
       }
@@ -160,6 +225,17 @@ const Test: React.FC = () => {
     };
   }, [effectiveJobName]);
 
+  // 슬라이드 안전화
+  useEffect(() => {
+    if (slides.length === 0) {
+      setSlideIndex(0);
+      return;
+    }
+    if (slideIndex >= slides.length) {
+      setSlideIndex(slides.length - 1);
+    }
+  }, [slides.length]);
+
   const handleStopTest = async () => {
     if (!effectiveJobName) {
       alert("jobName이 없어 중단 요청을 보낼 수 없습니다.");
@@ -167,12 +243,10 @@ const Test: React.FC = () => {
     }
     try {
       setStopping(true);
-
       if (sseRef.current) {
         sseRef.current.close();
         sseRef.current = null;
       }
-
       await stopJob(effectiveJobName);
       alert(`테스트 중단 요청 완료\njob_name: ${effectiveJobName}`);
     } catch (err: any) {
@@ -232,12 +306,7 @@ const Test: React.FC = () => {
 
         <main className={styles.main}>
           <div className={styles.title}>
-            <div className="HeadingS">
-              {projectTitle || "프로젝트명 없음"}
-              {scenarioName && (
-                <span className={styles.scenarioName}>({scenarioName})</span>
-              )}
-            </div>
+            <div className="HeadingS">{projectTitle || "프로젝트명 없음"}</div>
             <div className={styles.progress}>
               <div className={styles.status}>
                 <div className={styles.statusItem}>
@@ -260,46 +329,136 @@ const Test: React.FC = () => {
             </div>
           </div>
 
-          <div className={styles.card}>
-            <MetricCard
-              label="현재 TPS"
-              value={metrics.tps?.toLocaleString() || "0"}
-              icon={<Activity />}
-            />
-            <MetricCard
-              label="평균 응답시간"
-              value={`${metrics.latency?.toFixed(0) || "0"}ms`}
-              icon={<Clock />}
-            />
-            <MetricCard
-              label="에러율"
-              value={`${metrics.error_rate?.toFixed(1) || "0.0"}%`}
-              icon={<CircleAlert />}
-            />
-            <MetricCard
-              label="활성 사용자"
-              value={metrics.vus?.toLocaleString() || "0"}
-              icon={<Users />}
-            />
-          </div>
+          {/* 전체 + 시나리오 캐러셀 */}
+          {slides.length > 0 && (
+            <section className={styles.scenarioSection}>
+              <div className={styles.scenarioHeader}>
+                <div className={styles.carouselControls}>
+                  <button
+                    type="button"
+                    onClick={goPrev}
+                    disabled={slides.length <= 1}
+                    className={styles.arrowButton}>
+                    <ChevronLeft />
+                  </button>
+                  <div
+                    className="HeadingS"
+                    style={{minWidth: 160, textAlign: "center"}}>
+                    {currentSlide ? slideLabel(currentSlide) : "데이터 없음"}
+                    {slides.length > 1 && (
+                      <span className="CaptionLight" style={{marginLeft: 8}}>
+                        {slideIndex + 1} / {slides.length}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={goNext}
+                    disabled={slides.length <= 1}
+                    className={styles.arrowButton}>
+                    <ChevronRight />
+                  </button>
+                </div>
+              </div>
 
-          <div className={styles.chartWrap}>
-            <MetricChart
-              title="TPS/평균 응답시간/에러율/활성 사용자"
-              data={chartData}
-              combinedSeries={combinedSeries}
-              height={320}
-            />
-            {chartConfigs.map((config, index) => (
-              <MetricChart
-                key={index}
-                title={config.title}
-                data={chartData}
-                dataKey={config.dataKey}
-                color={config.color}
-              />
-            ))}
-          </div>
+              {currentSlide && (
+                <div className={styles.scenarioBlock}>
+                  <div className={styles.card}>
+                    {currentSlide === OVERALL ? (
+                      <>
+                        <MetricCard
+                          label="현재 TPS"
+                          value={metrics.tps?.toLocaleString() || "0"}
+                          icon={<Activity />}
+                        />
+                        <MetricCard
+                          label="평균 응답시간"
+                          value={`${metrics.latency?.toFixed(0) || "0"}ms`}
+                          icon={<Clock />}
+                        />
+                        <MetricCard
+                          label="에러율"
+                          value={`${metrics.error_rate?.toFixed(1) || "0.0"}%`}
+                          icon={<CircleAlert />}
+                        />
+                        <MetricCard
+                          label="활성 사용자"
+                          value={metrics.vus?.toLocaleString() || "0"}
+                          icon={<Users />}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <MetricCard
+                          label="현재 TPS"
+                          value={
+                            scenarioMetrics[
+                              currentSlide
+                            ]?.tps?.toLocaleString() || "0"
+                          }
+                          icon={<Activity />}
+                        />
+                        <MetricCard
+                          label="평균 응답시간"
+                          value={`${
+                            scenarioMetrics[currentSlide]?.latency?.toFixed(
+                              0
+                            ) || "0"
+                          }ms`}
+                          icon={<Clock />}
+                        />
+                        <MetricCard
+                          label="에러율"
+                          value={`${
+                            scenarioMetrics[currentSlide]?.error_rate?.toFixed(
+                              1
+                            ) || "0.0"
+                          }%`}
+                          icon={<CircleAlert />}
+                        />
+                        <MetricCard
+                          label="활성 사용자"
+                          value={
+                            scenarioMetrics[
+                              currentSlide
+                            ]?.vus?.toLocaleString() || "0"
+                          }
+                          icon={<Users />}
+                        />
+                      </>
+                    )}
+                  </div>
+
+                  {/* 그래프 */}
+                  <div className={styles.chartWrap}>
+                    <MetricChart
+                      title={`${slideLabel(currentSlide)} `}
+                      data={
+                        currentSlide === OVERALL
+                          ? chartData
+                          : scenarioChartData[currentSlide] || []
+                      }
+                      combinedSeries={combinedSeries}
+                      height={300}
+                    />
+                    {chartConfigs.map((config, idx) => (
+                      <MetricChart
+                        key={`${currentSlide}-${idx}`}
+                        title={`${slideLabel(currentSlide)} ${config.title}`}
+                        data={
+                          currentSlide === OVERALL
+                            ? chartData
+                            : scenarioChartData[currentSlide] || []
+                        }
+                        dataKey={config.dataKey}
+                        color={config.color}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
         </main>
       </div>
     </div>
