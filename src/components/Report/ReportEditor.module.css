@@ -1,5 +1,5 @@
 .container {
-  display: grid;
+  display: flex;
   grid-template-columns: 350px 1fr;
   gap: var(--spacing-xl);
   min-height: 70vh;
