@@ -5,5 +5,5 @@ from app.schemas.test_history.test_history import TestHistoryCreate, TestHistory
 
 class TestHistoryRepository(BaseRepository[TestHistoryModel, TestHistoryCreate, TestHistoryUpdate]):
     def __init__(self):
-        super().__init__()
+        super().__init__(TestHistoryModel)
 

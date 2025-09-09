@@ -1,5 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from app.common.response.code import SuccessCode
@@ -412,10 +413,14 @@ def get_test_history_timeseries(
 )
 async def get_test_history_resources(
         test_history_id: int,
-        db: Session = Depends(get_async_db)
+        db: AsyncSession = Depends(get_async_db)
 ):
-    test_history = get_test_history_by_id(db, test_history_id)
-    if not test_history:
-        raise HTTPException(status_code=404, detail="Test history not found")
+    if not test_history_id:
+        raise HTTPException(status_code=400, detail="Test history id is required")
 
     response_data = await build_test_history_resources_response(db, test_history_id)
+
+    if response_data is None:
+        raise HTTPException(status_code=404, detail="Timeseries data not found")
+
+    return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response_data)

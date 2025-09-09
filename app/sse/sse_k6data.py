@@ -9,10 +9,10 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
 
+from app.services.infrastructure.server_infra_service import get_job_pods_with_service_types
 from app.sse.pod_spec_cache import get_pod_spec_cache
 from app.sse.metrics_buffer import SmartMetricsBuffer
 from app.models.sqlite.database import SessionLocal
-from app.services.testing.test_history_service import get_test_history_by_job_name
 
 # 로그 설정
 logging.basicConfig(level=logging.INFO)
@@ -578,7 +578,7 @@ def get_pod_cpu_usage_millicores(pod_name: str) -> Optional[float]:
             FROM "cadvisor_metrics"
             WHERE "pod" = '{pod_name}' AND "container" = '' AND "image" = ''
             AND time > now() - 30s
-            GROUP BY "pod", time(5s) fill(null)
+            GROUP BY time(5s) fill(null)
         '''
         result = client.query(query)
         points = list(result.get_points())
@@ -612,7 +612,6 @@ def get_pod_memory_usage_mb(pod_name: str) -> Optional[float]:
             FROM "cadvisor_metrics"
             WHERE "pod" = '{pod_name}' AND "container" = '' AND "image" = ''
             AND time > now() - 30s
-            GROUP BY "pod"
         '''
         result = client.query(query)
         points = list(result.get_points())
@@ -759,69 +758,6 @@ def get_pod_resource_usage_percentage(job_name: str, pod_name: str, service_type
         return None
 
 
-def get_job_pods_with_service_types(job_name: str) -> List[Dict[str, str]]:
-    """
-    Job 이름으로 관련 Pod 목록과 service_type 조회
-    
-    간단한 경로: job_name → TestHistory → ScenarioHistory → ServerInfra
-    
-    Args:
-        job_name: Job 이름
-        
-    Returns:
-        List[Dict]: [{"pod_name": "api-server-123", "service_type": "SERVER"}, ...]
-    """
-    db = SessionLocal()
-    try:
-        # 1. job_name으로 TestHistory 조회
-        test_history = get_test_history_by_job_name(db, job_name)
-        if not test_history:
-            logger.warning(f"No test history found for job: {job_name}")
-            return []
-        
-        pod_info_list = []
-        processed_pods = set()  # 중복 제거용
-        
-        # 2. TestHistory의 scenario들에서 각각의 server_infra 정보 추출
-        for scenario in test_history.scenarios:
-            try:
-                endpoint = scenario.endpoint
-                if not endpoint or not endpoint.openapi_spec_version:
-                    logger.debug(f"Skipping scenario {scenario.id} - missing endpoint or spec version")
-                    continue
-                
-                openapi_spec = endpoint.openapi_spec_version.openapi_spec
-                if not openapi_spec or not openapi_spec.server_infras:
-                    logger.debug(f"Skipping scenario {scenario.id} - missing openapi spec or server infras")
-                    continue
-                
-                # 3. 각 server_infra에서 Pod 정보 추출
-                for server_infra in openapi_spec.server_infras:
-                    if server_infra.name and server_infra.name not in processed_pods:
-                        pod_info = {
-                            "pod_name": server_infra.name,
-                            "service_type": server_infra.service_type or "SERVER"  # 기본값 SERVER
-                        }
-                        pod_info_list.append(pod_info)
-                        processed_pods.add(server_infra.name)
-                        
-                        logger.debug(f"Found pod: {server_infra.name} (type: {server_infra.service_type})")
-                
-            except Exception as e:
-                logger.error(f"Error processing scenario {scenario.id}: {e}")
-                continue
-        
-        logger.info(f"Found {len(pod_info_list)} pods for job {job_name}: "
-                   f"{[p['pod_name'] for p in pod_info_list]}")
-        
-        return pod_info_list
-        
-    except Exception as e:
-        logger.error(f"Error getting pods for job {job_name}: {e}")
-        return []
-    finally:
-        db.close()
-
 
 def get_job_pods_from_scenarios(job_name: str) -> List[str]:
     """
@@ -833,6 +769,8 @@ def get_job_pods_from_scenarios(job_name: str) -> List[str]:
     Returns:
         List[str]: Pod 이름 목록
     """
+    from app.services.infrastructure.server_infra_service import get_job_pods_with_service_types
+    
     pod_info_list = get_job_pods_with_service_types(job_name)
     pod_names = [pod_info["pod_name"] for pod_info in pod_info_list]
     

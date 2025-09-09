@@ -52,6 +52,8 @@ class ServerInfraModel(Base):
     label = Column(JSON, nullable=True)
     namespace = Column(String, nullable=True)
 
+    tests_resources = relationship("TestResourceTimeseriesModel", back_populates="server_infra")
+
 
 # 엔드포인트
 class EndpointModel(Base):

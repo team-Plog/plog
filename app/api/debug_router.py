@@ -223,7 +223,8 @@ async def get_resources_structure_preview(job_name: str) -> Dict[str, Any]:
         Dict containing new resources structure preview
     """
     try:
-        from app.sse.sse_k6data import collect_resource_metrics, get_job_pods_with_service_types
+        from app.sse.sse_k6data import collect_resource_metrics
+        from app.services.infrastructure.server_infra_service import get_job_pods_with_service_types
         
         # 1. DB에서 Pod 정보 조회
         pod_info_list = get_job_pods_with_service_types(job_name)

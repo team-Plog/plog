@@ -161,6 +161,7 @@ class TestResourceTimeseriesModel(Base):
     
     # 서버 인프라와 연관관계
     server_infra_id = Column(Integer, ForeignKey("server_infra.id"), nullable=False)
+    server_infra = relationship("ServerInfraModel", back_populates="tests_resources")
     
     # 수집 데이터 종류
     metric_type = Column(String(20), nullable=False)  # 'cpu' or 'memory'
