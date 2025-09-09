@@ -32,6 +32,25 @@ interface MetricChartProps {
   showLegend?: boolean; // 범례 표시 옵션
 }
 
+// Y축 값 포맷팅 함수
+const formatYAxisValue = (value: number): string => {
+  // 값이 0이면 그대로 반환
+  if (value === 0) return "0";
+  
+  // 절대값이 1000 이상이면 정수로 표시
+  if (Math.abs(value) >= 1000) {
+    return Math.round(value).toLocaleString();
+  }
+  
+  // 절대값이 1 이상이면 소수점 1자리까지
+  if (Math.abs(value) >= 1) {
+    return Number(value.toFixed(1)).toString();
+  }
+  
+  // 1 미만이면 소수점 3자리까지
+  return Number(value.toFixed(3)).toString();
+};
+
 const MetricChart: React.FC<MetricChartProps> = ({
   title,
   data,
@@ -141,6 +160,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
               stroke={yAxisColors.left}
               tick={{fill: yAxisColors.left, fontSize: 12}}
               domain={[0, (dataMax: number) => dataMax * 1.2]}
+              tickFormatter={formatYAxisValue}
             />
             {hasRightAxis && (
               <YAxis
@@ -149,6 +169,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
                 stroke={yAxisColors.right}
                 tick={{fill: yAxisColors.right, fontSize: 12}}
                 domain={[0, (dataMax: number) => dataMax * 1.2]}
+                tickFormatter={formatYAxisValue}
               />
             )}
 
@@ -219,7 +240,10 @@ const MetricChart: React.FC<MetricChartProps> = ({
   //         </defs>
   //         <CartesianGrid strokeDasharray="3 3" />
   //         <XAxis dataKey="time" />
-  //         <YAxis />
+  //         <YAxis 
+  //           domain={[0, (dataMax: number) => dataMax * 1.2]}
+  //           tickFormatter={formatYAxisValue}
+  //         />
   //         <Tooltip />
   //         <Area
   //           type="monotone"
