@@ -125,7 +125,7 @@ const Test: React.FC = () => {
         setIsLoading(false);
       })
       .catch((err) => {
-        console.error("⌥ 테스트 상세 정보 조회 실패:", err);
+        console.error("테스트 상세 정보 조회 실패:", err);
         setIsLoading(false);
       });
   }, [testHistoryId]);
@@ -330,12 +330,12 @@ const Test: React.FC = () => {
           });
         }
       } catch (e) {
-        console.error("⚠️ JSON 파싱 실패:", e);
+        console.error("JSON 파싱 실패:", e);
       }
     };
 
     eventSource.onerror = (error) => {
-      console.error("⌥ SSE 연결 오류:", error);
+      console.error("SSE 연결 오류:", error);
       eventSource.close();
       sseRef.current = null;
     };
@@ -379,6 +379,9 @@ const Test: React.FC = () => {
     }
   };
 
+  // P95, P99 데이터가 있는지 확인 (완료된 테스트에서만 사용 가능)
+  const hasPercentileData = isCompleted;
+
   const combinedSeries = [
     {
       key: "tps",
@@ -394,20 +397,22 @@ const Test: React.FC = () => {
       unit: "ms",
       yAxis: "right" as const,
     },
-    {
-      key: "p95ResponseTime",
-      name: "P95 응답시간",
-      color: "#fbbf24",
-      unit: "ms",
-      yAxis: "right" as const,
-    },
-    {
-      key: "p99ResponseTime",
-      name: "P99 응답시간",
-      color: "#f97316",
-      unit: "ms",
-      yAxis: "right" as const,
-    },
+    ...(hasPercentileData ? [
+      {
+        key: "p95ResponseTime",
+        name: "P95 응답시간",
+        color: "#fbbf24",
+        unit: "ms",
+        yAxis: "right" as const,
+      },
+      {
+        key: "p99ResponseTime",
+        name: "P99 응답시간",
+        color: "#f97316",
+        unit: "ms",
+        yAxis: "right" as const,
+      },
+    ] : []),
     {
       key: "errorRate",
       name: "에러율",
@@ -427,8 +432,10 @@ const Test: React.FC = () => {
   const chartConfigs = [
     {title: "TPS 변화 추이", dataKey: "tps", color: "#60a5fa"},
     {title: "평균 응답시간(ms)", dataKey: "responseTime", color: "#82ca9d"},
-    {title: "P95 응답시간(ms)", dataKey: "p95ResponseTime", color: "#fbbf24"},
-    {title: "P99 응답시간(ms)", dataKey: "p99ResponseTime", color: "#f97316"},
+    ...(hasPercentileData ? [
+      {title: "P95 응답시간(ms)", dataKey: "p95ResponseTime", color: "#fbbf24"},
+      {title: "P99 응답시간(ms)", dataKey: "p99ResponseTime", color: "#f97316"},
+    ] : []),
     {title: "에러율(%)", dataKey: "errorRate", color: "#f87171"},
     {title: "활성 사용자 수", dataKey: "users", color: "#8884d8"},
   ];
