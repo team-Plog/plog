@@ -99,6 +99,17 @@
   padding-bottom: 32px;
 }
 
+.carouselControls {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-md);
+}
+
+.arrowButton {
+  border: none;
+  padding: 0 var(--spacing-lg);
+}
+
 /* 반응형 디자인 */
 @media (max-width: 768px) {
   .content {
