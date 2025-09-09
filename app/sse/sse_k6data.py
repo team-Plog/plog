@@ -7,6 +7,7 @@ import logging
 import pytz
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from pydantic import BaseModel, Field
 
 from app.sse.pod_spec_cache import get_pod_spec_cache
 from app.sse.metrics_buffer import SmartMetricsBuffer
@@ -19,6 +20,75 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 kst = pytz.timezone('Asia/Seoul')
+
+
+# ========== Pydantic 응답 스키마 모델 ==========
+
+class K6OverallMetrics(BaseModel):
+    """k6 전체 메트릭"""
+    tps: float = Field(..., description="Transactions Per Second (초당 트랜잭션 수)")
+    vus: int = Field(..., description="Virtual Users (가상 사용자 수)")
+    response_time: float = Field(..., description="평균 응답시간 (ms)")
+    error_rate: float = Field(..., description="오류율 (%)")
+
+
+class K6ScenarioMetrics(BaseModel):
+    """k6 시나리오별 메트릭"""
+    name: str = Field(..., description="시나리오 이름")
+    scenario_tag: str = Field(..., description="시나리오 태그")
+    tps: float = Field(..., description="Transactions Per Second")
+    vus: int = Field(..., description="Virtual Users")
+    response_time: float = Field(..., description="평균 응답시간 (ms)")
+    error_rate: float = Field(..., description="오류율 (%)")
+
+
+class ResourceUsage(BaseModel):
+    """리소스 사용률 정보"""
+    cpu_percent: float = Field(..., description="CPU 사용률 (limit 기준 %)")
+    memory_percent: float = Field(..., description="Memory 사용률 (limit 기준 %)")
+    cpu_is_predicted: bool = Field(..., description="CPU 사용률이 예측값인지 여부")
+    memory_is_predicted: bool = Field(..., description="Memory 사용률이 예측값인지 여부")
+
+
+class ActualUsage(BaseModel):
+    """실제 리소스 사용량"""
+    cpu_millicores: Optional[float] = Field(None, description="실제 CPU 사용량 (millicores)")
+    memory_mb: Optional[float] = Field(None, description="실제 Memory 사용량 (MB)")
+
+
+class ResourceSpecs(BaseModel):
+    """Pod 리소스 스펙"""
+    cpu_request_millicores: Optional[float] = Field(None, description="CPU 요청량 (millicores)")
+    cpu_limit_millicores: Optional[float] = Field(None, description="CPU 제한량 (millicores)")
+    memory_request_mb: Optional[float] = Field(None, description="Memory 요청량 (MB)")
+    memory_limit_mb: Optional[float] = Field(None, description="Memory 제한량 (MB)")
+
+
+class PredictionInfo(BaseModel):
+    """예측 모델 정보"""
+    cpu_streak: int = Field(..., description="CPU 예측 연속 횟수")
+    memory_streak: int = Field(..., description="Memory 예측 연속 횟수")
+    cpu_confidence: float = Field(..., description="CPU 예측 신뢰도 (0.0-1.0)")
+    memory_confidence: float = Field(..., description="Memory 예측 신뢰도 (0.0-1.0)")
+
+
+class ResourceMetrics(BaseModel):
+    """개별 Pod 리소스 메트릭"""
+    pod_name: str = Field(..., description="Pod 이름")
+    service_type: str = Field(..., description="서비스 유형 (SERVER, DATABASE)")
+    usage: ResourceUsage = Field(..., description="리소스 사용률 정보")
+    actual_usage: ActualUsage = Field(..., description="실제 리소스 사용량")
+    specs: ResourceSpecs = Field(..., description="Pod 리소스 스펙")
+    prediction_info: PredictionInfo = Field(..., description="예측 모델 정보")
+
+
+class SSEMetricsResponse(BaseModel):
+    """SSE 메트릭 스트리밍 응답"""
+    timestamp: str = Field(..., description="메트릭 수집 시간 (ISO 8601 형식)")
+    overall: K6OverallMetrics = Field(..., description="k6 전체 메트릭")
+    scenarios: List[K6ScenarioMetrics] = Field(..., description="k6 시나리오별 메트릭")
+    resources: Optional[List[ResourceMetrics]] = Field(None, description="서버 리소스 메트릭 (include=all일 때만)")
+    error: Optional[str] = Field(None, description="오류 메시지 (오류 발생시만)")
 
 
 def get_scenario_names(job_name: str) -> List[str]:
@@ -317,37 +387,149 @@ async def event_stream(job_name: str, include_resources: bool = True):
         await asyncio.sleep(5)
 
 
-@router.get('/sse/k6data/{job_name}')
+@router.get('/sse/k6data/{job_name}', 
+           summary="🔄 SSE 실시간 메트릭 스트리밍",
+           description="""k6 부하테스트와 서버 리소스 메트릭을 Server-Sent Events로 실시간 스트리밍
+
+**응답 JSON 예시:**
+```json
+{
+  "timestamp": "2025-09-08T12:34:56.789+09:00",  // 메트릭 수집 시간
+  "overall": {
+    "tps": 125.6,           // 전체 초당 트랜잭션 수
+    "vus": 50,              // 전체 가상 사용자 수
+    "response_time": 145.2, // 전체 평균 응답시간(ms)
+    "error_rate": 0.5       // 전체 오류율(%)
+  },
+  "scenarios": [
+    {
+      "name": "get_users",     // 시나리오 이름
+      "tps": 62.3,            // 시나리오별 TPS
+      "vus": 25,              // 시나리오별 VUS
+      "response_time": 140.1, // 시나리오별 응답시간(ms)
+      "error_rate": 0.2       // 시나리오별 오류율(%)
+    }
+  ],
+  "resources": [
+    {
+      "pod_name": "api-server-123",    // Pod 이름
+      "service_type": "SERVER",        // 서비스 유형
+      "usage": {
+        "cpu_percent": 45.2,           // CPU 사용률(limit 기준 %)
+        "memory_percent": 67.8,        // Memory 사용률(limit 기준 %)
+        "cpu_is_predicted": false,     // CPU 예측값 여부
+        "memory_is_predicted": false   // Memory 예측값 여부
+      },
+      "actual_usage": {
+        "cpu_millicores": 452.5,       // 실제 CPU 사용량(millicores)
+        "memory_mb": 678.3             // 실제 Memory 사용량(MB)
+      },
+      "specs": {
+        "cpu_request_millicores": 500, // CPU 요청량(millicores)
+        "cpu_limit_millicores": 1000,  // CPU 제한량(millicores)
+        "memory_request_mb": 512,      // Memory 요청량(MB)
+        "memory_limit_mb": 1024        // Memory 제한량(MB)
+      }
+    }
+  ]
+}
+```
+
+- **업데이트 주기**: 5초마다 실시간 스트리밍
+- **include 옵션**: all(전체) | k6_only(k6만) | resources_only(리소스만)""",
+           )
 async def sse_k6data(
         job_name: str = Path(..., description="테스트 실시간 데이터 추적 용도로 사용할 job 이름"),
         include: str = Query("all", description="포함할 메트릭 타입: all(기본)|k6_only|resources_only")
 ):
     """
-    k6 + Resource 메트릭 데이터를 실시간으로 스트리밍
+    **Server-Sent Events (SSE) 스트리밍**: k6 부하테스트와 서버 리소스 메트릭을 실시간으로 스트리밍
     
-    Parameters:
-    - job_name: 테스트 Job 이름
-    - include: 포함할 메트릭 타입
-        - "all" (기본): k6 + resource 메트릭 모두 포함
-        - "k6_only": k6 메트릭만 포함
-        - "resources_only": resource 메트릭만 포함 (향후 구현)
+    ## 🔗 SSE 연결 방법
+    ```javascript
+    const eventSource = new EventSource('/sse/k6data/my-test-job?include=all');
+    eventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        console.log('실시간 메트릭:', data);
+    };
+    ```
     
-    Response format:
+    ## 📊 응답 스키마
+    ```json
     {
-        "timestamp": "2025-09-08T...",
-        "overall": {...},           // k6 메트릭
-        "scenarios": [...],         // k6 시나리오별 메트릭
-        "resources": {              // resource 메트릭 (include=all일 때)
-            "overall": {
-                "cpu_usage_percent": 45.2,
-                "memory_usage_percent": 67.8,
-                "cpu_is_predicted": false,
-                "memory_is_predicted": false
-            },
-            "servers": [...],
-            "prediction_info": {...}
-        }
+        "timestamp": "2025-09-08T12:34:56.789+09:00",
+        "overall": {
+            "tps": 125.6,
+            "vus": 50,
+            "response_time": 145.2,
+            "error_rate": 0.5
+        },
+        "scenarios": [
+            {
+                "name": "get_users",
+                "tps": 62.3,
+                "vus": 25,
+                "response_time": 140.1,
+                "error_rate": 0.2
+            }
+        ],
+        "resources": [
+            {
+                "pod_name": "api-server-123",
+                "service_type": "SERVER",
+                "usage": {
+                    "cpu_percent": 45.2,
+                    "memory_percent": 67.8,
+                    "cpu_is_predicted": false,
+                    "memory_is_predicted": false
+                },
+                "actual_usage": {
+                    "cpu_millicores": 452.5,
+                    "memory_mb": 678.3
+                },
+                "specs": {
+                    "cpu_request_millicores": 500,
+                    "cpu_limit_millicores": 1000,
+                    "memory_request_mb": 512,
+                    "memory_limit_mb": 1024
+                },
+                "prediction_info": {
+                    "cpu_streak": 0,
+                    "memory_streak": 0,
+                    "cpu_confidence": 1.0,
+                    "memory_confidence": 1.0
+                }
+            }
+        ]
     }
+    ```
+    
+    ## 📝 필드 설명
+    
+    ### K6 메트릭
+    - **tps**: Transactions Per Second (초당 트랜잭션 수)
+    - **vus**: Virtual Users (가상 사용자 수)
+    - **response_time**: 평균 응답시간 (ms)
+    - **error_rate**: 오류율 (%)
+    
+    ### 리소스 메트릭
+    - **usage.cpu_percent**: CPU 사용률 (limit 기준 %)
+    - **usage.memory_percent**: Memory 사용률 (limit 기준 %)
+    - **actual_usage.cpu_millicores**: 실제 CPU 사용량 (millicores)
+    - **actual_usage.memory_mb**: 실제 Memory 사용량 (MB)
+    - **specs**: Pod의 리소스 request/limit 설정값
+    - **prediction_info**: 예측 모델 신뢰도 정보
+    
+    ## ⚙️ Parameters
+    - **job_name**: k6 테스트 Job 이름 (예: "load-test-20250908-123456")
+    - **include**: 포함할 메트릭 타입
+        - `"all"` (기본): k6 + resource 메트릭 모두 포함
+        - `"k6_only"`: k6 메트릭만 포함  
+        - `"resources_only"`: resource 메트릭만 포함 (향후 구현)
+        
+    ## 🔄 업데이트 주기
+    - **5초마다** 최신 메트릭 데이터 스트리밍
+    - 연결이 끊어지면 자동으로 재연결 시도
     """
     # 파라미터 검증 및 변환
     include = include.lower()
@@ -551,12 +733,20 @@ def get_pod_resource_usage_percentage(job_name: str, pod_name: str, service_type
         return {
             'pod_name': pod_name,
             'service_type': service_type,
-            'cpu_usage_percent': round(cpu_percent, 2) if cpu_percent is not None else 0.0,
-            'memory_usage_percent': round(memory_percent, 2) if memory_percent is not None else 0.0,
-            'cpu_is_predicted': cpu_is_predicted,
-            'memory_is_predicted': memory_is_predicted,
+            'usage': {
+                'cpu_percent': round(cpu_percent, 2) if cpu_percent is not None else 0.0,
+                'memory_percent': round(memory_percent, 2) if memory_percent is not None else 0.0,
+                'cpu_is_predicted': cpu_is_predicted,
+                'memory_is_predicted': memory_is_predicted
+            },
+            'actual_usage': {
+                'cpu_millicores': round(actual_cpu, 2) if actual_cpu is not None else None,
+                'memory_mb': round(actual_memory, 2) if actual_memory is not None else None
+            },
             'specs': {
+                'cpu_request_millicores': resource_specs.get('cpu_request_millicores'),
                 'cpu_limit_millicores': resource_specs.get('cpu_limit_millicores'),
+                'memory_request_mb': resource_specs.get('memory_request_mb'),
                 'memory_limit_mb': resource_specs.get('memory_limit_mb')
             },
             'prediction_info': {
