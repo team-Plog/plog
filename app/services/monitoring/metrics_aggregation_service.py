@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
-from app.db.influxdb.database import client
+from app.models.influxdb.database import client
 
 logger = logging.getLogger(__name__)
 

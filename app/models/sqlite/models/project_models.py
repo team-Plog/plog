@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, Table, DateTime, Boolean, JSON
 from sqlalchemy.orm import relationship
-from app.db.sqlite.database import Base
+from app.models.sqlite.database import Base
 
 # 프로젝트
 class ProjectModel(Base):
@@ -51,6 +51,8 @@ class ServerInfraModel(Base):
     group_name = Column(String, nullable=True)
     label = Column(JSON, nullable=True)
     namespace = Column(String, nullable=True)
+
+    tests_resources = relationship("TestResourceTimeseriesModel", back_populates="server_infra")
 
 
 # 엔드포인트

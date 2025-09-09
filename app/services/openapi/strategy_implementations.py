@@ -6,8 +6,8 @@ from datetime import datetime
 import httpx
 from collections import defaultdict
 from sqlalchemy.orm import Session
-from app.db.sqlite.models.project_models import OpenAPISpecModel, OpenAPISpecVersionModel, EndpointModel, ParameterModel
-from app.dto.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
+from app.models.sqlite.models.project_models import OpenAPISpecModel, OpenAPISpecVersionModel, EndpointModel, ParameterModel
+from app.schemas.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 from app.services.openapi.analysis_strategy import OpenAPIAnalysisStrategy
 
 

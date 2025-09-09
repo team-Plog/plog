@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.common.response.code import SuccessCode
 from app.common.response.response_template import ResponseTemplate
-from app.db import get_db
-from app.dto.load_test.load_test_request import LoadTestRequest
+from app.models import get_db
+from app.schemas.load_test.load_test_request import LoadTestRequest
 from app.services.testing.load_test_service import generate_k6_script
 from app.services.testing.test_history_service import save_test_history
 
@@ -150,7 +150,7 @@ async def create_load_testing_script_by_gui(
     file_name = generate_unique_filename()
     # script_path = f"/k6-scripts/{file_name}"
     script_path = f"{os.getenv('K6_SCRIPT_FILE_FOLDER', '/mnt/k6-scripts')}/{file_name}"
-    with open(script_path, "w") as f:
+    with open(script_path, "w", encoding="utf-8") as f:
         f.write(script_content)
 
     # 3. test history 생성 및 연관관계

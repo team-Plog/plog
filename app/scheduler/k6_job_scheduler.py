@@ -6,11 +6,12 @@ import threading
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.db.sqlite.database import SessionLocal
-from app.db.sqlite.models import TestHistoryModel, ScenarioHistoryModel
-from app.services.monitoring.job_monitor_service import JobMonitorService
+from app.models.sqlite.database import SessionLocal
+from app.models.sqlite.models import TestHistoryModel, ScenarioHistoryModel
+from k8s.job_service import JobService
 from app.services.monitoring.metrics_aggregation_service import MetricsAggregationService
 from app.services.monitoring.influxdb_service import InfluxDBService
+from k8s.resource_service import ResourceService
 from app.services.testing.test_history_service import (
     get_test_history_by_job_name,
     get_scenario_histories_by_test_id,
@@ -45,9 +46,10 @@ class K6JobScheduler:
         self.job_warning_hours = settings.SCHEDULER_JOB_WARNING_HOURS
         self.auto_delete_jobs = settings.AUTO_DELETE_COMPLETED_JOBS
         
-        self.job_monitor = JobMonitorService(namespace=settings.KUBERNETES_PLOG_NAMESPACE)
+        self.job_service = JobService(namespace=settings.KUBERNETES_PLOG_NAMESPACE)
         self.metrics_service = MetricsAggregationService()
         self.influxdb_service = InfluxDBService()  # 새로운 InfluxDB 서비스
+        self.resource_service = ResourceService(namespace=settings.KUBERNETES_TEST_NAMESPACE)
         self.is_running = False
         self._scheduler_thread = None
         self._stop_event = threading.Event()
@@ -104,7 +106,7 @@ class K6JobScheduler:
         db = SessionLocal()
         try:
             # 1. 완료된(성공, 실패) 작업 조회
-            completed_jobs = self.job_monitor.list_completed_jobs()
+            completed_jobs = self.job_service.list_completed_jobs()
             
             for job in completed_jobs:
                 job_name = job['name']                    # 실제 Kubernetes Job 이름
@@ -149,7 +151,7 @@ class K6JobScheduler:
                 
                 # 6. 완료된 job 정리 (설정에 따라)
                 if self.auto_delete_jobs:
-                    self.job_monitor.delete_completed_job(job_name)
+                    self.job_service.delete_completed_job(job_name)
                     
                 logger.info(f"Successfully processed completed job: {job_name}")
 
@@ -201,10 +203,26 @@ class K6JobScheduler:
                 # server infra 정보 알고, 시나리오 루프 돌고 있으니 차례대로 저장
                 for server_infra in server_infras:
                     pod_name = server_infra.name
+                    
+                    # Pod의 resource spec 조회
+                    resource_specs = self.resource_service.get_pod_aggregated_resources(pod_name)
+                    
+                    # CPU 메트릭 수집 및 저장
                     cpu_metrics = self.influxdb_service.get_cpu_metrics(pod_name, extended_start, extended_end)
+                    if cpu_metrics and resource_specs:
+                        # CPU 메트릭에 resource spec 정보 추가
+                        for metric in cpu_metrics:
+                            metric['cpu_request_millicores'] = resource_specs['cpu_request_millicores']
+                            metric['cpu_limit_millicores'] = resource_specs['cpu_limit_millicores']
                     save_success = save_test_resource_metrics(db, scenario_history, server_infra.id, cpu_metrics)
 
+                    # Memory 메트릭 수집 및 저장
                     memory_metrics = self.influxdb_service.get_memory_metrics(pod_name, extended_start, extended_end)
+                    if memory_metrics and resource_specs:
+                        # Memory 메트릭에 resource spec 정보 추가
+                        for metric in memory_metrics:
+                            metric['memory_request_mb'] = resource_specs['memory_request_mb']
+                            metric['memory_limit_mb'] = resource_specs['memory_limit_mb']
                     save_success = save_test_resource_metrics(db, scenario_history, server_infra.id, memory_metrics)
 
         except Exception as e:

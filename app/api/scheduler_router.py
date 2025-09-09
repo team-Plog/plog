@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.common.response.code import SuccessCode, FailureCode
 from app.common.response.response_template import ResponseTemplate
-from app.db import get_db
+from app.models import get_db
 from app.scheduler.k6_job_scheduler import get_scheduler
 from app.services.testing.test_history_service import get_incomplete_test_histories, get_test_history_by_job_name
 

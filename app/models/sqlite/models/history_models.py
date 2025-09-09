@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, Table, DateTime, Float, Boolean, JSON
 from sqlalchemy.orm import relationship
-from app.db.sqlite.database import Base
+from app.models.sqlite.database import Base
 
 def now_kst():
     """KST 타임존으로 현재 시간 반환"""
@@ -161,6 +161,7 @@ class TestResourceTimeseriesModel(Base):
     
     # 서버 인프라와 연관관계
     server_infra_id = Column(Integer, ForeignKey("server_infra.id"), nullable=False)
+    server_infra = relationship("ServerInfraModel", back_populates="tests_resources")
     
     # 수집 데이터 종류
     metric_type = Column(String(20), nullable=False)  # 'cpu' or 'memory'
@@ -173,6 +174,12 @@ class TestResourceTimeseriesModel(Base):
     
     # 측정 값
     value = Column(Float, nullable=False)
+    
+    # Resource Spec 정보 (Pod의 request/limit 값)
+    cpu_request_millicores = Column(Float, nullable=True)    # CPU 요청량 (millicores)
+    cpu_limit_millicores = Column(Float, nullable=True)      # CPU 제한량 (millicores)
+    memory_request_mb = Column(Float, nullable=True)         # Memory 요청량 (MB)
+    memory_limit_mb = Column(Float, nullable=True)           # Memory 제한량 (MB)
 
 class StageHistoryModel(Base):
     __tablename__ = "stage_history"

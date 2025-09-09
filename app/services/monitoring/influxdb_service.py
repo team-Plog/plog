@@ -671,7 +671,7 @@ class InfluxDBService:
                     LAST("value") as vus
                 FROM "http_reqs" 
                 WHERE "job_name" = '{job_name}' AND "scenario" = '{scenario_name}' AND time >= '{start_str}' AND time < '{end_str}'
-                GROUP BY time(10s) fill(null) TZ('Asia/Seoul')
+                GROUP BY time(5s) fill(null) TZ('Asia/Seoul')
             '''
             
             # 시나리오별 에러율 쿼리 - 별도로 조회
@@ -680,7 +680,7 @@ class InfluxDBService:
                     SUM("value") as error_requests
                 FROM "http_reqs"
                 WHERE "job_name" = '{job_name}' AND "scenario" = '{scenario_name}' AND "status" !~ /^2../ AND time >= '{start_str}' AND time < '{end_str}'
-                GROUP BY time(10s) fill(0) TZ('Asia/Seoul')
+                GROUP BY time(5s) fill(0) TZ('Asia/Seoul')
             '''
             
             scenario_total_requests_query = f'''
@@ -688,7 +688,7 @@ class InfluxDBService:
                     SUM("value") as total_requests
                 FROM "http_reqs"
                 WHERE "job_name" = '{job_name}' AND "scenario" = '{scenario_name}' AND time >= '{start_str}' AND time < '{end_str}'
-                GROUP BY time(10s) fill(0) TZ('Asia/Seoul')
+                GROUP BY time(5s) fill(0) TZ('Asia/Seoul')
             '''
             
             # 시나리오별 응답시간 쿼리
@@ -699,7 +699,7 @@ class InfluxDBService:
                     PERCENTILE("value", 99) as p99_response_time
                 FROM "http_req_duration"
                 WHERE "job_name" = '{job_name}' AND "scenario" = '{scenario_name}' AND time >= '{start_str}' AND time < '{end_str}'
-                GROUP BY time(10s) fill(null) TZ('Asia/Seoul')
+                GROUP BY time(5s) fill(null) TZ('Asia/Seoul')
             '''
             
             # 쿼리 실행

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
-from app.db.sqlite.models.project_models import OpenAPISpecModel
-from app.dto.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
+from app.models.sqlite.models.project_models import OpenAPISpecModel
+from app.schemas.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 
 
 class OpenAPIAnalysisStrategy(ABC):

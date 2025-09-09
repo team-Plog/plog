@@ -7,14 +7,14 @@ from sqlalchemy.orm import Session
 import httpx
 
 from app.core.config import settings
-from app.db.sqlite.database import SessionLocal
-from app.db.sqlite.models import ServerInfraModel, OpenAPISpecModel
-from app.services.monitoring.pod_monitor_service import PodMonitorService
+from app.models.sqlite.database import SessionLocal
+from app.models.sqlite.models import ServerInfraModel, OpenAPISpecModel
+from k8s.pod_service import PodService
 from app.services.infrastructure.server_infra_service import ServerInfraService
-from app.services.monitoring.svc_monitor_service import SvcMonitorService
+from k8s.service_service import ServiceService
 from app.services.openapi.strategy_factory import analyze_openapi_with_strategy
 from app.services.openapi.service import save_openapi_spec
-from app.dto.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
+from app.schemas.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +39,8 @@ class ServerPodScheduler:
         self.pod_timeout_hours = getattr(settings, 'POD_SCHEDULER_TIMEOUT_HOURS', 24)
         self.pod_warning_hours = getattr(settings, 'POD_SCHEDULER_WARNING_HOURS', 6)
         
-        self.pod_monitor = PodMonitorService(namespace=settings.KUBERNETES_TEST_NAMESPACE)
-        self.svc_monitor = SvcMonitorService(namespace=settings.KUBERNETES_TEST_NAMESPACE)
+        self.pod_service = PodService(namespace=settings.KUBERNETES_TEST_NAMESPACE)
+        self.service_service = ServiceService(namespace=settings.KUBERNETES_TEST_NAMESPACE)
         self.server_infra_service = ServerInfraService()
         self.is_running = False
         self._scheduler_thread = None
@@ -109,7 +109,7 @@ class ServerPodScheduler:
             existing_group_names = self.server_infra_service.get_server_infra_exists_group_names(db)
             existing_services_set = set(existing_group_names)
 
-            scan_service_map = self.svc_monitor.get_pods_for_all_services()
+            scan_service_map = self.service_service.get_pods_for_all_services()
 
             new_server_infras = []
             delete_server_infra_names = []
@@ -125,7 +125,7 @@ class ServerPodScheduler:
                     # Add new pods
                     for pod_name in pod_names:
                         if pod_name not in service_saved_pod_names:
-                            detailed_pod_info = self.pod_monitor.get_pod_details_with_owner_info(pod_name)
+                            detailed_pod_info = self.pod_service.get_pod_details_with_owner_info(pod_name)
                             
                             server_infra = ServerInfraModel(
                                 openapi_spec_id=spec_id,  # OpenAPI spec이 있으면 ID, 없으면 None
@@ -151,10 +151,10 @@ class ServerPodScheduler:
                     
                     # Find SERVER pod for OpenAPI registration
                     for pod_name in pod_names:
-                        detailed_pod_info = self.pod_monitor.get_pod_details_with_owner_info(pod_name)
+                        detailed_pod_info = self.pod_service.get_pod_details_with_owner_info(pod_name)
                         
                         if detailed_pod_info.get("service_type") == "SERVER":
-                            services = self.pod_monitor.find_services_for_pod(detailed_pod_info["labels"])
+                            services = self.pod_service.find_services_for_pod(detailed_pod_info["labels"])
                             swagger_urls = await self._discover_swagger_urls_with_fallback(services)
 
                             if not swagger_urls:
@@ -177,7 +177,7 @@ class ServerPodScheduler:
 
                     # Save all pods to ServerInfra
                     for pod_name in pod_names:
-                        detailed_pod_info = self.pod_monitor.get_pod_details_with_owner_info(pod_name)
+                        detailed_pod_info = self.pod_service.get_pod_details_with_owner_info(pod_name)
                         
                         server_infra = ServerInfraModel(
                             openapi_spec_id=saved_openapi_spec.id if saved_openapi_spec else None,

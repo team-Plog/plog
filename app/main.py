@@ -4,17 +4,18 @@ from fastapi import FastAPI
 
 from app.api import api_router
 from app.core.config import settings
-from app.db.sqlite import models
+from app.models.sqlite import models
 from app.sse import sse_router
-from app.db.sqlite.database import engine
+from app.models.sqlite.database import engine
 from app.common.exceptionhandler import register_exception_handler
 from app.common.middleware.cors_middleware import register_cors_middleware
 from app.scheduler.k6_job_scheduler import start_scheduler, stop_scheduler
 from app.scheduler.server_pod_scheduler import start_scheduler as start_pod_scheduler, stop_scheduler as stop_pod_scheduler
+from app.scheduler.cache_cleanup_scheduler import start_cache_scheduler, stop_cache_scheduler
 from k8s.k8s_client import v1_core
 
 # 테스트 임시 import
-from app.services.monitoring.pod_monitor_service import PodMonitorService
+from k8s.pod_service import PodService
 
 # 로깅 설정
 logging.basicConfig(
@@ -43,8 +44,8 @@ async def lifespan(app: FastAPI):
         logger.error(f"Kubernetes connection test failed: {e}")
 
 
-    pod_monitor_service = PodMonitorService("test")
-    test_data = pod_monitor_service.get_running_pods()
+    pod_service = PodService("test")
+    test_data = pod_service.get_running_pods()
     print("test_data = ", test_data)
     
     # k6 Job 스케줄러 시작
@@ -60,6 +61,13 @@ async def lifespan(app: FastAPI):
         logger.info("Server Pod Scheduler started successfully")
     except Exception as e:
         logger.error(f"Failed to start Server Pod Scheduler: {e}")
+    
+    # 캐시 정리 스케줄러 시작
+    try:
+        start_cache_scheduler()
+        logger.info("Cache cleanup scheduler started successfully")
+    except Exception as e:
+        logger.error(f"Failed to start cache cleanup scheduler: {e}")
     
     yield
     
@@ -78,6 +86,13 @@ async def lifespan(app: FastAPI):
         logger.info("Server Pod Scheduler stopped successfully")
     except Exception as e:
         logger.error(f"Failed to stop Server Pod Scheduler: {e}")
+    
+    # 캐시 정리 스케줄러 중지
+    try:
+        stop_cache_scheduler()
+        logger.info("Cache cleanup scheduler stopped successfully")
+    except Exception as e:
+        logger.error(f"Failed to stop cache cleanup scheduler: {e}")
 
 
 app = FastAPI(

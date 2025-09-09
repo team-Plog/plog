@@ -2,13 +2,13 @@ from fastapi import Path
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session, selectinload
-from app.db import get_db
-from app.db.sqlite.models import OpenAPISpecVersionModel
-from app.dto.project.openapi import ProjectResponse
-from app.dto.project.project_detail_response import ProjectDetailResponse
-from app.dto.project.project_detail_converter import ProjectDetailConverter
-from app.dto.project.register_project_request import RegisterProjectRequest
-from app.db.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, EndpointModel
+from app.models import get_db
+from app.models.sqlite.models import OpenAPISpecVersionModel
+from app.schemas.project.openapi import ProjectResponse
+from app.schemas.project.project_detail_response import ProjectDetailResponse
+from app.schemas.project.project_detail_converter import ProjectDetailConverter
+from app.schemas.project.register_project_request import RegisterProjectRequest
+from app.models.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, EndpointModel
 from app.common.response.code import SuccessCode, FailureCode
 from app.common.response.response_template import ResponseTemplate
 
