@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from app.db.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, EndpointModel
+from app.models.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, EndpointModel
 
 
 class ProjectDetailConverter:
