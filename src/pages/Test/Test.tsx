@@ -40,7 +40,6 @@ const Test: React.FC = () => {
   const location = useLocation();
   const {
     projectId,
-    testTitle,
     jobName,
     projectTitle: passedProjectTitle,
     testHistoryId: initialTestHistoryId,

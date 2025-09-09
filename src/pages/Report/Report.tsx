@@ -106,6 +106,8 @@ export interface ReportConfig {
   customTitle: string;
   customDescription: string;
   editableTexts?: Record<string, string>;
+  companyName?: string;
+  reporterName?: string;
 }
 
 const Report: React.FC = () => {
