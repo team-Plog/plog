@@ -80,7 +80,14 @@ const Test: React.FC = () => {
   const [scenarioMetrics, setScenarioMetrics] = useState<
     Record<
       string,
-      {tps: number; latency: number; error_rate: number; vus: number; p95: number; p99: number}
+      {
+        tps: number;
+        latency: number;
+        error_rate: number;
+        vus: number;
+        p95: number;
+        p99: number;
+      }
     >
   >({});
 
@@ -137,7 +144,7 @@ const Test: React.FC = () => {
     getTestHistoryTimeseries(testHistoryId)
       .then((res) => {
         const data = res?.data?.data;
-        
+
         if (data?.overall?.data) {
           // 전체 데이터 변환
           const overallPoints: Point[] = data.overall.data.map((item: any) => ({
@@ -178,7 +185,7 @@ const Test: React.FC = () => {
 
           data.scenarios.forEach((scenario: any) => {
             const scenarioName = scenario.scenario_name || "unknown";
-            
+
             if (scenario.data && Array.isArray(scenario.data)) {
               const points: Point[] = scenario.data.map((item: any) => ({
                 time: new Date(item.timestamp).toLocaleTimeString("ko-KR", {
@@ -397,22 +404,24 @@ const Test: React.FC = () => {
       unit: "ms",
       yAxis: "right" as const,
     },
-    ...(hasPercentileData ? [
-      {
-        key: "p95ResponseTime",
-        name: "P95 응답시간",
-        color: "#fbbf24",
-        unit: "ms",
-        yAxis: "right" as const,
-      },
-      {
-        key: "p99ResponseTime",
-        name: "P99 응답시간",
-        color: "#f97316",
-        unit: "ms",
-        yAxis: "right" as const,
-      },
-    ] : []),
+    ...(hasPercentileData
+      ? [
+          {
+            key: "p95ResponseTime",
+            name: "P95 응답시간",
+            color: "#fb8e8e",
+            unit: "ms",
+            yAxis: "right" as const,
+          },
+          {
+            key: "p99ResponseTime",
+            name: "P99 응답시간",
+            color: "#000000",
+            unit: "ms",
+            yAxis: "right" as const,
+          },
+        ]
+      : []),
     {
       key: "errorRate",
       name: "에러율",
@@ -432,10 +441,20 @@ const Test: React.FC = () => {
   const chartConfigs = [
     {title: "TPS 변화 추이", dataKey: "tps", color: "#60a5fa"},
     {title: "평균 응답시간(ms)", dataKey: "responseTime", color: "#82ca9d"},
-    ...(hasPercentileData ? [
-      {title: "P95 응답시간(ms)", dataKey: "p95ResponseTime", color: "#fbbf24"},
-      {title: "P99 응답시간(ms)", dataKey: "p99ResponseTime", color: "#f97316"},
-    ] : []),
+    ...(hasPercentileData
+      ? [
+          {
+            title: "P95 응답시간(ms)",
+            dataKey: "p95ResponseTime",
+            color: "#fbbf24",
+          },
+          {
+            title: "P99 응답시간(ms)",
+            dataKey: "p99ResponseTime",
+            color: "#f97316",
+          },
+        ]
+      : []),
     {title: "에러율(%)", dataKey: "errorRate", color: "#f87171"},
     {title: "활성 사용자 수", dataKey: "users", color: "#8884d8"},
   ];
@@ -474,9 +493,7 @@ const Test: React.FC = () => {
                 </div>
                 <div className={styles.statusItem}>
                   <RotateCw className={styles.icon} />
-                  <div className="Body">
-                    {isCompleted ? "100%" : "30%"}
-                  </div>
+                  <div className="Body">{isCompleted ? "100%" : "30%"}</div>
                 </div>
               </div>
               {!isCompleted && (
