@@ -4,9 +4,9 @@ from fastapi import FastAPI
 
 from app.api import api_router
 from app.core.config import settings
-from app.db.sqlite import models
+from app.models.sqlite import models
 from app.sse import sse_router
-from app.db.sqlite.database import engine
+from app.models.sqlite.database import engine
 from app.common.exceptionhandler import register_exception_handler
 from app.common.middleware.cors_middleware import register_cors_middleware
 from app.scheduler.k6_job_scheduler import start_scheduler, stop_scheduler

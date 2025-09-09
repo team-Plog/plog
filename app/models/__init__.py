@@ -1,4 +1,4 @@
-from app.db.sqlite.database import SessionLocal
+from app.models.sqlite.database import SessionLocal, AsyncSessionLocal
 
 def get_db():
     db = SessionLocal()
@@ -7,4 +7,11 @@ def get_db():
     finally:
         db.close()
 
-__all__ = ['get_db']
+async def get_async_db():
+    async with AsyncSessionLocal() as db:
+        try:
+            yield db
+        finally:
+            await db.close()
+
+__all__ = ['get_db', 'get_async_db']

@@ -7,14 +7,14 @@ from sqlalchemy.orm import Session
 import httpx
 
 from app.core.config import settings
-from app.db.sqlite.database import SessionLocal
-from app.db.sqlite.models import ServerInfraModel, OpenAPISpecModel
+from app.models.sqlite.database import SessionLocal
+from app.models.sqlite.models import ServerInfraModel, OpenAPISpecModel
 from k8s.pod_service import PodService
 from app.services.infrastructure.server_infra_service import ServerInfraService
 from k8s.service_service import ServiceService
 from app.services.openapi.strategy_factory import analyze_openapi_with_strategy
 from app.services.openapi.service import save_openapi_spec
-from app.dto.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
+from app.schemas.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 
 logger = logging.getLogger(__name__)
 

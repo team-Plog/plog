@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.common.response.code import SuccessCode
 from app.common.response.response_template import ResponseTemplate
-from app.db import get_db
-from app.dto.load_test.load_test_request import LoadTestRequest
+from app.models import get_db
+from app.schemas.load_test.load_test_request import LoadTestRequest
 from app.services.testing.load_test_service import generate_k6_script
 from app.services.testing.test_history_service import save_test_history
 

@@ -88,6 +88,6 @@ Thumbs.db
 docker-compose.override.yml
 *.pid
 
-# db
+# models
 sqlite-data/*
 !sqlite-data/.gitkeep

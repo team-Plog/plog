@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Path
 from sqlalchemy.orm import Session
-from app.db import get_db
-from app.db.sqlite.models.project_models import EndpointModel
+from app.models import get_db
+from app.models.sqlite.models.project_models import EndpointModel
 from app.common.response.code import SuccessCode, FailureCode
 from app.common.response.response_template import ResponseTemplate
 

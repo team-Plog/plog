@@ -3,9 +3,9 @@ from typing import List
 
 from sqlalchemy.orm import Session
 
-from app.db.sqlite.models import OpenAPISpecVersionModel
-from app.db.sqlite.models.project_models import EndpointModel, OpenAPISpecModel
-from app.dto.load_test.load_test_request import LoadTestRequest, ScenarioConfig
+from app.models.sqlite.models import OpenAPISpecVersionModel
+from app.models.sqlite.models.project_models import EndpointModel, OpenAPISpecModel
+from app.schemas.load_test.load_test_request import LoadTestRequest, ScenarioConfig
 from fastapi import HTTPException
 
 def get_endpoint_by_id(db: Session, endpoint_id: int):

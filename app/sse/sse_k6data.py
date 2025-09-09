@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Path, Query
 from fastapi.responses import StreamingResponse
-from app.db.influxdb.database import client
+from app.models.influxdb.database import client
 import asyncio
 import json
 import logging
@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from app.sse.pod_spec_cache import get_pod_spec_cache
 from app.sse.metrics_buffer import SmartMetricsBuffer
-from app.db.sqlite.database import SessionLocal
+from app.models.sqlite.database import SessionLocal
 from app.services.testing.test_history_service import get_test_history_by_job_name
 
 # 로그 설정
@@ -354,10 +354,7 @@ def collect_metrics_data(job_name: str, include_resources: bool = True) -> Dict[
             logger.error(f"Error collecting resource metrics for job {job_name}: {e}")
             # 에러 발생 시 빈 배열
             result["resources"] = []
-    
-    logger.debug(f"Final result for {job_name}: k6_scenarios={len(scenario_list)}, "
-                f"resources_included={'yes' if include_resources and result.get('resources') else 'no'}")
-    
+
     return result
 
 

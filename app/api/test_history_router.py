@@ -4,19 +4,19 @@ from sqlalchemy.orm import Session
 
 from app.common.response.code import SuccessCode
 from app.common.response.response_template import ResponseTemplate
-from app.db import get_db
+from app.models import get_db, get_async_db
 from app.services.testing.test_history_service import (
-    get_test_histories, 
-    get_test_history_by_id, 
-    get_test_histories_with_project_info, 
+    get_test_histories,
+    get_test_history_by_id,
+    get_test_histories_with_project_info,
     get_test_histories_by_project_id,
     build_test_history_detail_response,
-    build_test_history_timeseries_response
+    build_test_history_timeseries_response, build_test_history_resources_response
 )
-from app.dto.test_history.test_history_response import TestHistoryResponse
-from app.dto.test_history.test_history_simple_response import TestHistorySimpleResponse
-from app.dto.test_history.test_history_detail_response import TestHistoryDetailResponse
-from app.dto.test_history.test_history_timeseries_response import TestHistoryTimeseriesResponse
+from app.schemas.test_history.test_history_response import TestHistoryResponse
+from app.schemas.test_history.test_history_simple_response import TestHistorySimpleResponse
+from app.schemas.test_history.test_history_detail_response import TestHistoryDetailResponse
+from app.schemas.test_history.test_history_timeseries_response import TestHistoryTimeseriesResponse
 
 router = APIRouter()
 
@@ -405,3 +405,17 @@ def get_test_history_timeseries(
     
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response_data)
 
+@router.get(
+    path= "/{test_history_id}/resources",
+    summary = "테스트 리소스 시계열 데이터 조회",
+    description = "그래프를 그리기 위한 테스트 대상 서버 리소스 정보를 반환한다."
+)
+async def get_test_history_resources(
+        test_history_id: int,
+        db: Session = Depends(get_async_db)
+):
+    test_history = get_test_history_by_id(db, test_history_id)
+    if not test_history:
+        raise HTTPException(status_code=404, detail="Test history not found")
+
+    response_data = await build_test_history_resources_response(db, test_history_id)

@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, Table, DateTime, Float, Boolean, JSON
 from sqlalchemy.orm import relationship
-from app.db.sqlite.database import Base
+from app.models.sqlite.database import Base
 
 def now_kst():
     """KST 타임존으로 현재 시간 반환"""

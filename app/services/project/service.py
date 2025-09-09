@@ -2,7 +2,7 @@ import logging
 from sqlalchemy.orm import Session
 from app.common.exception.api_exception import ApiException
 from app.common.response.code import FailureCode
-from app.db.sqlite.models import ProjectModel, EndpointModel
+from app.models.sqlite.models import ProjectModel, EndpointModel
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, Table, DateTime, Boolean, JSON
 from sqlalchemy.orm import relationship
-from app.db.sqlite.database import Base
+from app.models.sqlite.database import Base
 
 # 프로젝트
 class ProjectModel(Base):

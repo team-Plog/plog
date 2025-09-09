@@ -2,13 +2,19 @@ import pytz
 import logging
 from datetime import datetime
 from typing import List, Optional, Dict, Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, joinedload
 
-from app.db.sqlite.models.history_models import TestHistoryModel, ScenarioHistoryModel, StageHistoryModel, TestParameterHistoryModel, TestHeaderHistoryModel, TestMetricsTimeseriesModel, TestResourceTimeseriesModel
-from app.db.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, EndpointModel
-from app.dto.load_test.load_test_request import LoadTestRequest
+from app.dependencies import get_scenario_history_repository
+from app.dependencies.repositories import get_test_history_repository
+from app.models.sqlite.models.history_models import TestHistoryModel, ScenarioHistoryModel, StageHistoryModel, TestParameterHistoryModel, TestHeaderHistoryModel, TestMetricsTimeseriesModel, TestResourceTimeseriesModel
+from app.models.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, EndpointModel
+from app.repositories.scenario_history_repository import ScenarioHistoryRepository
+from app.repositories.test_history_repository import TestHistoryRepository
+from app.schemas.load_test.load_test_request import LoadTestRequest
 from app.services.project.service import get_project_by_endpoint_id_simple
-from app.dto.test_history.test_history_detail_response import (
+from app.schemas.test_history.test_history_detail_response import (
     TestHistoryDetailResponse,
     ScenarioHistoryDetailResponse,
     StageHistoryDetailResponse,
@@ -20,12 +26,13 @@ from app.dto.test_history.test_history_detail_response import (
     TestParameterHistoryResponse,
     TestHeaderHistoryResponse
 )
-from app.dto.test_history.test_history_timeseries_response import (
+from app.schemas.test_history.test_history_timeseries_response import (
     TestHistoryTimeseriesResponse,
     OverallTimeseriesResponse,
     ScenarioTimeseriesResponse,
     TimeseriesDataPoint
 )
+from app.sse.sse_k6data import collect_resource_metrics
 
 logger = logging.getLogger(__name__)
 kst = pytz.timezone('Asia/Seoul')
@@ -870,7 +877,7 @@ def get_group_pods_names_by_server_infra_id(db: Session, server_infra_id: int) -
         pod 이름 리스트
     """
     try:
-        from app.db.sqlite.models.project_models import ServerInfraModel
+        from app.models.sqlite.models.project_models import ServerInfraModel
         
         # server_infra 조회
         server_infra = db.query(ServerInfraModel).filter(ServerInfraModel.id == server_infra_id).first()
@@ -923,7 +930,7 @@ def get_scenario_by_server_infra_id(db: Session, scenario_histories: List[Scenar
         연결된 시나리오 히스토리 또는 None
     """
     try:
-        from app.db.sqlite.models.project_models import ServerInfraModel
+        from app.models.sqlite.models.project_models import ServerInfraModel
         
         # server_infra 조회
         server_infra = db.query(ServerInfraModel).filter(ServerInfraModel.id == server_infra_id).first()
@@ -945,3 +952,24 @@ def get_scenario_by_server_infra_id(db: Session, scenario_histories: List[Scenar
     except Exception as e:
         logger.error(f"Error finding scenario for server_infra_id {server_infra_id}: {e}")
         return scenario_histories[0] if scenario_histories else None
+
+async def build_test_history_resources_response(
+        db: AsyncSession,
+        test_history_id: int,
+):
+    test_history_repository: TestHistoryRepository = get_test_history_repository()
+    test_history = await test_history_repository.get(db, test_history_id)
+    job_name = test_history.job_name
+
+    scenario_history_repository:ScenarioHistoryRepository = get_scenario_history_repository()
+    scenario_histories = scenario_history_repository.get_scenario_histories_by_test_history_id(db, test_history_id)
+
+    collect_resource_metrics(job_name)
+
+    return {
+        'pod_name': pod_name,
+        'service_type': service_type,
+        'data': [
+
+        ]
+    }

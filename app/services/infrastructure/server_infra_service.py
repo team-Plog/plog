@@ -4,8 +4,8 @@ from typing import List, Optional, Dict, Any, Tuple
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.sqlite.models.project_models import ServerInfraModel
-from app.db.sqlite.database import SessionLocal
+from app.models.sqlite.models.project_models import ServerInfraModel
+from app.models.sqlite.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 

@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, Path
 from sqlalchemy.orm import Session
-from app.db import get_db
-from app.db.sqlite.models.project_models import OpenAPISpecModel
-from app.dto.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
+from app.models import get_db
+from app.models.sqlite.models.project_models import OpenAPISpecModel
+from app.schemas.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 
-from app.dto.project.openapi import OpenAPISpec
+from app.schemas.project.openapi import OpenAPISpec
 from app.common.response.code import SuccessCode, FailureCode
 from app.common.response.response_template import ResponseTemplate
 from app.services import *

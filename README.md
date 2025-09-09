@@ -128,7 +128,7 @@ graph TB
 
 ```bash
 # 저장소 클론
-git clone <repository-url>
+git clone <repositories-url>
 cd metric-vault
 
 # 가상 환경 생성 및 활성화

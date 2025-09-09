@@ -6,8 +6,8 @@ import threading
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.db.sqlite.database import SessionLocal
-from app.db.sqlite.models import TestHistoryModel, ScenarioHistoryModel
+from app.models.sqlite.database import SessionLocal
+from app.models.sqlite.models import TestHistoryModel, ScenarioHistoryModel
 from k8s.job_service import JobService
 from app.services.monitoring.metrics_aggregation_service import MetricsAggregationService
 from app.services.monitoring.influxdb_service import InfluxDBService
