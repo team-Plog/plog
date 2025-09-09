@@ -19,6 +19,7 @@ import {useLocation} from "react-router-dom";
 import {
   getProjectDetail,
   getTestHistoryDetail,
+  getTestHistoryTimeseries,
   getSseK6DataUrl,
 } from "../../api";
 import {stopJob} from "../../api/jobScheduler";
@@ -29,6 +30,8 @@ type Point = {
   responseTime: number;
   errorRate: number;
   users: number;
+  p95ResponseTime?: number;
+  p99ResponseTime?: number;
 };
 
 const OVERALL = "__OVERALL__";
@@ -50,7 +53,11 @@ const Test: React.FC = () => {
     initialTestHistoryId || null
   );
 
-  // jobName 폴백
+  // 테스트 완료 상태
+  const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // jobName 콜백
   const [jobNameState, setJobNameState] = useState<string | null>(
     jobName ?? null
   );
@@ -62,6 +69,8 @@ const Test: React.FC = () => {
     latency: 0,
     error_rate: 0,
     vus: 0,
+    p95: 0,
+    p99: 0,
   });
 
   // 시나리오별 상태
@@ -71,7 +80,7 @@ const Test: React.FC = () => {
   const [scenarioMetrics, setScenarioMetrics] = useState<
     Record<
       string,
-      {tps: number; latency: number; error_rate: number; vus: number}
+      {tps: number; latency: number; error_rate: number; vus: number; p95: number; p99: number}
     >
   >({});
 
@@ -95,20 +104,122 @@ const Test: React.FC = () => {
   const [stopping, setStopping] = useState(false);
   const sseRef = useRef<EventSource | null>(null);
 
-  // testHistoryId로 job_name만 폴백
+  // testHistoryId로 상세 정보 및 완료 상태 확인
   useEffect(() => {
-    if (!testHistoryId) return;
+    if (!testHistoryId) {
+      setIsLoading(false);
+      return;
+    }
+
     getTestHistoryDetail(testHistoryId)
       .then((res) => {
-        const apiJobName = res?.data?.data?.job_name;
+        const data = res?.data?.data;
+        const apiJobName = data?.job_name;
+        const completed = data?.is_completed;
+
         if (apiJobName && !jobNameState) {
           setJobNameState(apiJobName);
         }
+
+        setIsCompleted(completed || false);
+        setIsLoading(false);
       })
       .catch((err) => {
-        console.error("❌ 테스트 상세 정보 조회 실패:", err);
+        console.error("⌥ 테스트 상세 정보 조회 실패:", err);
+        setIsLoading(false);
       });
   }, [testHistoryId]);
+
+  // 완료된 테스트의 시계열 데이터 로드
+  useEffect(() => {
+    if (!testHistoryId || !isCompleted || isLoading) return;
+
+    getTestHistoryTimeseries(testHistoryId)
+      .then((res) => {
+        const data = res?.data?.data;
+        
+        if (data?.overall?.data) {
+          // 전체 데이터 변환
+          const overallPoints: Point[] = data.overall.data.map((item: any) => ({
+            time: new Date(item.timestamp).toLocaleTimeString("ko-KR", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+              hourCycle: "h23",
+            }),
+            tps: item.tps || 0,
+            responseTime: item.avg_response_time || 0,
+            errorRate: item.error_rate || 0,
+            users: item.vus || 0,
+            p95ResponseTime: item.p95_response_time || 0,
+            p99ResponseTime: item.p99_response_time || 0,
+          }));
+
+          setChartData(overallPoints);
+
+          // 최신 메트릭 설정
+          const latestOverall = data.overall.data[data.overall.data.length - 1];
+          if (latestOverall) {
+            setMetrics({
+              tps: latestOverall.tps || 0,
+              latency: latestOverall.avg_response_time || 0,
+              error_rate: latestOverall.error_rate || 0,
+              vus: latestOverall.vus || 0,
+              p95: latestOverall.p95_response_time || 0,
+              p99: latestOverall.p99_response_time || 0,
+            });
+          }
+        }
+
+        if (data?.scenarios && Array.isArray(data.scenarios)) {
+          // 시나리오별 데이터 변환
+          const newScenarioChartData: Record<string, Point[]> = {};
+          const newScenarioMetrics: Record<string, any> = {};
+
+          data.scenarios.forEach((scenario: any) => {
+            const scenarioName = scenario.scenario_name || "unknown";
+            
+            if (scenario.data && Array.isArray(scenario.data)) {
+              const points: Point[] = scenario.data.map((item: any) => ({
+                time: new Date(item.timestamp).toLocaleTimeString("ko-KR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                  hourCycle: "h23",
+                }),
+                tps: item.tps || 0,
+                responseTime: item.avg_response_time || 0,
+                errorRate: item.error_rate || 0,
+                users: item.vus || 0,
+                p95ResponseTime: item.p95_response_time || 0,
+                p99ResponseTime: item.p99_response_time || 0,
+              }));
+
+              newScenarioChartData[scenarioName] = points;
+
+              // 최신 메트릭
+              const latestScenario = scenario.data[scenario.data.length - 1];
+              if (latestScenario) {
+                newScenarioMetrics[scenarioName] = {
+                  tps: latestScenario.tps || 0,
+                  latency: latestScenario.avg_response_time || 0,
+                  error_rate: latestScenario.error_rate || 0,
+                  vus: latestScenario.vus || 0,
+                  p95: latestScenario.p95_response_time || 0,
+                  p99: latestScenario.p99_response_time || 0,
+                };
+              }
+            }
+          });
+
+          setScenarioChartData(newScenarioChartData);
+          setScenarioMetrics(newScenarioMetrics);
+        }
+      })
+      .catch((err) => {
+        console.error("시계열 데이터 로드 실패:", err);
+      });
+  }, [testHistoryId, isCompleted, isLoading]);
 
   // 프로젝트 타이틀
   useEffect(() => {
@@ -122,9 +233,9 @@ const Test: React.FC = () => {
     }
   }, [projectId, passedProjectTitle]);
 
-  // SSE 연결
+  // 실시간 SSE 연결 (완료되지 않은 테스트만)
   useEffect(() => {
-    if (!effectiveJobName) return;
+    if (!effectiveJobName || isCompleted || isLoading) return;
 
     const sseUrl = getSseK6DataUrl(effectiveJobName);
     const eventSource = new EventSource(sseUrl);
@@ -149,6 +260,8 @@ const Test: React.FC = () => {
           vus: 0,
           response_time: 0,
           error_rate: 0,
+          p95_response_time: 0,
+          p99_response_time: 0,
         };
 
         // 전체 메트릭/차트
@@ -157,6 +270,8 @@ const Test: React.FC = () => {
           latency: overall.response_time,
           error_rate: overall.error_rate,
           vus: overall.vus,
+          p95: overall.p95_response_time || 0,
+          p99: overall.p99_response_time || 0,
         });
 
         setChartData((prev) =>
@@ -168,6 +283,8 @@ const Test: React.FC = () => {
               responseTime: overall.response_time,
               errorRate: overall.error_rate,
               users: overall.vus,
+              p95ResponseTime: overall.p95_response_time || 0,
+              p99ResponseTime: overall.p99_response_time || 0,
             },
           ].slice(-20)
         );
@@ -187,6 +304,8 @@ const Test: React.FC = () => {
                 responseTime: sc?.response_time ?? 0,
                 errorRate: sc?.error_rate ?? 0,
                 users: sc?.vus ?? 0,
+                p95ResponseTime: sc?.p95_response_time ?? 0,
+                p99ResponseTime: sc?.p99_response_time ?? 0,
               };
               const arr = next[name] ? [...next[name], point] : [point];
               next[name] = arr.slice(-20);
@@ -203,6 +322,8 @@ const Test: React.FC = () => {
                 latency: sc?.response_time ?? 0,
                 error_rate: sc?.error_rate ?? 0,
                 vus: sc?.vus ?? 0,
+                p95: sc?.p95_response_time ?? 0,
+                p99: sc?.p99_response_time ?? 0,
               };
             });
             return next;
@@ -214,7 +335,7 @@ const Test: React.FC = () => {
     };
 
     eventSource.onerror = (error) => {
-      console.error("❌ SSE 연결 오류:", error);
+      console.error("⌥ SSE 연결 오류:", error);
       eventSource.close();
       sseRef.current = null;
     };
@@ -223,7 +344,7 @@ const Test: React.FC = () => {
       eventSource.close();
       sseRef.current = null;
     };
-  }, [effectiveJobName]);
+  }, [effectiveJobName, isCompleted, isLoading]);
 
   // 슬라이드 안전화
   useEffect(() => {
@@ -274,6 +395,20 @@ const Test: React.FC = () => {
       yAxis: "right" as const,
     },
     {
+      key: "p95ResponseTime",
+      name: "P95 응답시간",
+      color: "#fbbf24",
+      unit: "ms",
+      yAxis: "right" as const,
+    },
+    {
+      key: "p99ResponseTime",
+      name: "P99 응답시간",
+      color: "#f97316",
+      unit: "ms",
+      yAxis: "right" as const,
+    },
+    {
       key: "errorRate",
       name: "에러율",
       color: "#f87171",
@@ -292,9 +427,24 @@ const Test: React.FC = () => {
   const chartConfigs = [
     {title: "TPS 변화 추이", dataKey: "tps", color: "#60a5fa"},
     {title: "평균 응답시간(ms)", dataKey: "responseTime", color: "#82ca9d"},
+    {title: "P95 응답시간(ms)", dataKey: "p95ResponseTime", color: "#fbbf24"},
+    {title: "P99 응답시간(ms)", dataKey: "p99ResponseTime", color: "#f97316"},
     {title: "에러율(%)", dataKey: "errorRate", color: "#f87171"},
     {title: "활성 사용자 수", dataKey: "users", color: "#8884d8"},
   ];
+
+  if (isLoading) {
+    return (
+      <div className={styles.container}>
+        <Header testHistoryId={testHistoryId} />
+        <div className={styles.content}>
+          <main className={styles.main}>
+            <div className="HeadingS">데이터 로딩 중...</div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -311,21 +461,27 @@ const Test: React.FC = () => {
               <div className={styles.status}>
                 <div className={styles.statusItem}>
                   <Timer className={styles.icon} />
-                  <div className="Body">1분 23초</div>
+                  <div className="Body">
+                    {isCompleted ? "완료됨" : "1분 23초"}
+                  </div>
                 </div>
                 <div className={styles.statusItem}>
                   <RotateCw className={styles.icon} />
-                  <div className="Body">30%</div>
+                  <div className="Body">
+                    {isCompleted ? "100%" : "30%"}
+                  </div>
                 </div>
               </div>
-              <div className={styles.progressButton}>
-                <Button
-                  variant="primaryGradient"
-                  onClick={handleStopTest}
-                  disabled={stopping || !effectiveJobName}>
-                  {stopping ? "중단 요청 중..." : "테스트 중단하기"}
-                </Button>
-              </div>
+              {!isCompleted && (
+                <div className={styles.progressButton}>
+                  <Button
+                    variant="primaryGradient"
+                    onClick={handleStopTest}
+                    disabled={stopping || !effectiveJobName}>
+                    {stopping ? "중단 요청 중..." : "테스트 중단하기"}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -432,7 +588,7 @@ const Test: React.FC = () => {
                   {/* 그래프 */}
                   <div className={styles.chartWrap}>
                     <MetricChart
-                      title={`${slideLabel(currentSlide)} `}
+                      title={`${slideLabel(currentSlide)} 종합 지표`}
                       data={
                         currentSlide === OVERALL
                           ? chartData

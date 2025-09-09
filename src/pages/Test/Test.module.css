@@ -108,6 +108,7 @@
 .arrowButton {
   border: none;
   padding: 0 var(--spacing-lg);
+  cursor: pointer;
 }
 
 /* 반응형 디자인 */
