@@ -40,6 +40,7 @@ from app.schemas.test_history.test_history_timeseries_response import (
 )
 from app.sse.sse_k6data import collect_resource_metrics
 from app.services.infrastructure.server_infra_service import get_job_pods_with_service_types_async
+from app.utils.metrics_calculator import MetricsCalculator, MetricStats
 
 logger = logging.getLogger(__name__)
 kst = pytz.timezone('Asia/Seoul')
@@ -1092,6 +1093,118 @@ async def build_test_history_resources_response(
             "pod_name": pod_name,
             "service_type": service_type,
             "resource_data": resource_data
+        })
+    
+    return result
+
+async def build_test_history_resources_summary_response(
+        db: AsyncSession,
+        test_history_id: str,
+):
+    test_history_repository: TestHistoryRepository = get_test_history_repository()
+    test_resource_timeseries_repository: TestResourceTimeseriesRepository = get_test_resource_timeseries_repository()
+    resource_service = get_resource_service()
+
+    # test history, job 이름 정보 조회
+    logger.info(f"Looking for test_history with id: {test_history_id}")
+
+    test_history = await test_history_repository.get(db, test_history_id)
+
+    if test_history is None:
+        logger.error(f"Test history not found for id: {test_history_id}")
+        raise HTTPException(status_code=404, detail=f"Test history not found for id: {test_history_id}")
+
+    logger.info(f"Found test_history: {test_history.id}, job_name: {test_history.job_name}")
+    job_name = test_history.job_name
+
+    # 시나리오 정보 조회
+    scenario_history_repository: ScenarioHistoryRepository = get_scenario_history_repository()
+    scenario_histories = await scenario_history_repository.get_scenario_histories_by_test_history_id(db,
+                                                                                                     test_history_id)
+    scenario_history_ids = [scenario_history.id for scenario_history in scenario_histories]
+
+    pod_info_list = await get_job_pods_with_service_types_async(db, job_name)
+    resource_timeseries = await test_resource_timeseries_repository.findAllByScenarioHistoryIdsWithServerInfra(db,
+                                                                                                               scenario_history_ids)
+
+    # Pod별로 리소스 데이터 그룹화
+    pod_resource_map = {}
+
+    # resource_timeseries를 pod_name별로 그룹화
+    for resource in resource_timeseries:
+        if resource.server_infra and resource.server_infra.name:
+            pod_name = resource.server_infra.name
+            if pod_name not in pod_resource_map:
+                pod_resource_map[pod_name] = []
+            pod_resource_map[pod_name].append(resource)
+
+    # pod_info_list와 매칭하여 최종 응답 구성
+    result = []
+
+    for pod_info in pod_info_list:
+        pod_name = pod_info["pod_name"]
+        service_type = pod_info["service_type"]
+
+        # 해당 Pod의 리소스 데이터 조회
+        pod_resources = pod_resource_map.get(pod_name, [])
+
+        if not pod_resources:
+            continue
+
+        # MetricsCalculator를 사용하여 통계 계산
+        stats = MetricsCalculator.calculate_resource_summary(pod_resources)
+        
+        cpu_stats = stats['cpu']
+        memory_stats = stats['memory']
+        
+        # 리소스 limit 값 추출 (첫 번째 레코드에서)
+        cpu_limit = pod_resources[0].cpu_limit_millicores if pod_resources and pod_resources[0].cpu_limit_millicores else 1000
+        memory_limit = pod_resources[0].memory_limit_mb if pod_resources and pod_resources[0].memory_limit_mb else 1024
+        
+        # 백분율 계산을 위한 값들 추출
+        cpu_values = MetricsCalculator.extract_metric_values(pod_resources, 'cpu')
+        memory_values = MetricsCalculator.extract_metric_values(pod_resources, 'memory')
+        
+        # 백분율 계산
+        cpu_percent_stats = MetricsCalculator.calculate_percentage_stats(
+            cpu_values, [cpu_limit] * len(cpu_values)
+        ) if cpu_values else MetricStats(0.0, 0.0, 0.0, 0)
+        
+        memory_percent_stats = MetricsCalculator.calculate_percentage_stats(
+            memory_values, [memory_limit] * len(memory_values)  
+        ) if memory_values else MetricStats(0.0, 0.0, 0.0, 0)
+        
+        result.append({
+            "pod_name": pod_name,
+            "service_type": service_type,
+            "cpu_summary": {
+                "usage": {
+                    "max": cpu_stats.max_value,
+                    "min": cpu_stats.min_value,
+                    "avg": cpu_stats.avg_value,
+                },
+                "percent": {
+                    "max": cpu_percent_stats.max_value,
+                    "min": cpu_percent_stats.min_value,
+                    "avg": cpu_percent_stats.avg_value,
+                },
+                "limit": cpu_limit,
+                "count": cpu_stats.count
+            },
+            "memory_summary": {
+                "usage": {
+                    "max": memory_stats.max_value,
+                    "min": memory_stats.min_value,
+                    "avg": memory_stats.avg_value,
+                },
+                "percent": {
+                    "max": memory_percent_stats.max_value,
+                    "min": memory_percent_stats.min_value,
+                    "avg": memory_percent_stats.avg_value,
+                },
+                "limit": memory_limit,
+                "count": memory_stats.count
+            }
         })
     
     return result

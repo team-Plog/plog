@@ -12,7 +12,8 @@ from app.services.testing.test_history_service import (
     get_test_histories_with_project_info,
     get_test_histories_by_project_id,
     build_test_history_detail_response,
-    build_test_history_timeseries_response, build_test_history_resources_response
+    build_test_history_timeseries_response, build_test_history_resources_response,
+    build_test_history_resources_summary_response
 )
 from app.schemas.test_history.test_history_response import TestHistoryResponse
 from app.schemas.test_history.test_history_simple_response import TestHistorySimpleResponse
@@ -424,3 +425,107 @@ async def get_test_history_resources(
         raise HTTPException(status_code=404, detail="Timeseries data not found")
 
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response_data)
+
+@router.get(
+    path="/{test_history_id}/resource/summary",
+    summary="테스트 보고서용 자원 사용량 요약 조회 API",
+    description="""
+        # 응답 형식 
+        {
+            "success": true,
+            "message": "요청 처리에 성공하였습니다.",
+            "status_code": 200,
+            "data": [
+                {
+                    "pod_name": "podname123",
+                    "service_type": "SERVER" # SERVER OR DATABASE,
+                    "cpu_usage_summary": {
+                        "percent": {
+                            "max": 50.3
+                            "avg": 20
+                            "min": 5
+                        },
+                        "usage": {
+                            "max": 200
+                            "avg": 100
+                            "min": 5
+                        },
+                        "cpu_limit": 100
+                    },
+                    "memory_usage_summary": {
+                        "percent": {
+                            "max": 200
+                            "avg": 100
+                            "min": 5
+                        },
+                        "usage": {
+                            "max": 200
+                            "avg": 100
+                            "min": 5
+                        },
+                        "memory_limit": 100
+                    } 
+                }                
+            ]
+        }
+    """
+)
+async def get_test_history_resource_summary(
+        test_history_id: int,
+        db: AsyncSession = Depends(get_async_db)
+):
+    """테스트 보고서용 자원 사용량 요약을 조회합니다."""
+    
+    if not test_history_id:
+        raise HTTPException(status_code=400, detail="Test history id is required")
+
+    try:
+        # 서비스에서 기본 요약 데이터 조회
+        summary_data = await build_test_history_resources_summary_response(db, test_history_id)
+        
+        # 응답 형식에 맞게 변환
+        formatted_data = []
+        
+        for pod_data in summary_data:
+            pod_name = pod_data["pod_name"]
+            service_type = pod_data["service_type"] 
+            cpu_summary = pod_data["cpu_summary"]
+            memory_summary = pod_data["memory_summary"]
+            
+            # 변환된 형식으로 응답 데이터 구성
+            formatted_pod = {
+                "pod_name": pod_name,
+                "service_type": service_type,
+                "cpu_usage_summary": {
+                    "percent": {
+                        "max": round(cpu_summary["percent"]["max"], 2),
+                        "avg": round(cpu_summary["percent"]["avg"], 2),
+                        "min": round(cpu_summary["percent"]["min"], 2)
+                    },
+                    "usage": {
+                        "max": round(cpu_summary["usage"]["max"], 2),
+                        "avg": round(cpu_summary["usage"]["avg"], 2), 
+                        "min": round(cpu_summary["usage"]["min"], 2)
+                    },
+                    "cpu_limit": cpu_summary["limit"]
+                },
+                "memory_usage_summary": {
+                    "percent": {
+                        "max": round(memory_summary["percent"]["max"], 2),
+                        "avg": round(memory_summary["percent"]["avg"], 2),
+                        "min": round(memory_summary["percent"]["min"], 2)
+                    },
+                    "usage": {
+                        "max": round(memory_summary["usage"]["max"], 2),
+                        "avg": round(memory_summary["usage"]["avg"], 2),
+                        "min": round(memory_summary["usage"]["min"], 2)
+                    },
+                    "memory_limit": memory_summary["limit"]
+                }
+            }
+            formatted_data.append(formatted_pod)
+        
+        return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, formatted_data)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get resource summary: {str(e)}")
