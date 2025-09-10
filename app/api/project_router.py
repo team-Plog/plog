@@ -87,7 +87,7 @@ async def get_project_info(
     )
 
     if not project:
-        ResponseTemplate.fail(FailureCode.NOT_FOUND_DATA)
+        return ResponseTemplate.fail(FailureCode.NOT_FOUND_DATA)
 
     # 반정규화된 구조를 기존 응답 형식으로 변환
     response = ProjectDetailConverter.convert_to_response(project)
