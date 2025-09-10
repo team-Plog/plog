@@ -991,15 +991,10 @@ async def build_test_history_resources_response(
     # test history, job 이름 정보 조회
     logger.info(f"Looking for test_history with id: {test_history_id}")
     
-    # 디버깅을 위해 현재 데이터베이스에 있는 test_history 목록 확인
-    all_test_histories = await test_history_repository.get_multi(db, skip=0, limit=10)
-    logger.info(f"Available test_history IDs in database: {[th.id for th in all_test_histories]}")
-    
     test_history = await test_history_repository.get(db, test_history_id)
     
     if test_history is None:
         logger.error(f"Test history not found for id: {test_history_id}")
-        logger.error(f"Available test_history IDs: {[th.id for th in all_test_histories]}")
         raise HTTPException(status_code=404, detail=f"Test history not found for id: {test_history_id}")
     
     logger.info(f"Found test_history: {test_history.id}, job_name: {test_history.job_name}")
@@ -1042,7 +1037,8 @@ async def build_test_history_resources_response(
         
         for resource in pod_resources:
             timestamp_str = resource.timestamp.isoformat()
-            
+
+            # 타임스탬프별 데이터 그룹화 - 첫 번째 레코드의 리소스 스펙 사용
             if timestamp_str not in timestamp_data_map:
                 timestamp_data_map[timestamp_str] = {
                     'timestamp': timestamp_str,
@@ -1054,7 +1050,7 @@ async def build_test_history_resources_response(
                     'memory_limit': resource.memory_limit_mb
                 }
             
-            # CPU 또는 Memory 데이터 설정
+            # CPU/Memory 값 설정
             if resource.metric_type == 'cpu':
                 timestamp_data_map[timestamp_str]['cpu_value'] = resource.value
             elif resource.metric_type == 'memory':
@@ -1066,8 +1062,8 @@ async def build_test_history_resources_response(
         for timestamp_str, data in timestamp_data_map.items():
             if data['cpu_value'] is not None and data['memory_value'] is not None:
                 # 사용률 계산 (limit 기준)
-                cpu_percent = (data['cpu_value'] / data['cpu_limit'] * 100) if data['cpu_limit'] else 0
-                memory_percent = (data['memory_value'] / data['memory_limit'] * 100) if data['memory_limit'] else 0
+                cpu_percent = (data['cpu_value'] / data['cpu_limit'] * 100) if data['cpu_limit'] and data['cpu_limit'] > 0 else 0
+                memory_percent = (data['memory_value'] / data['memory_limit'] * 100) if data['memory_limit'] and data['memory_limit'] > 0 else 0
                 
                 resource_data.append({
                     "timestamp": timestamp_str,
