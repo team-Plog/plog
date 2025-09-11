@@ -450,7 +450,8 @@ async def get_test_history_resources(
                             "avg": 100
                             "min": 5
                         },
-                        "cpu_limit": 100
+                        "cpu_limit": 100,
+                        "count": 11
                     },
                     "memory_usage_summary": {
                         "percent": {
@@ -463,7 +464,8 @@ async def get_test_history_resources(
                             "avg": 100
                             "min": 5
                         },
-                        "memory_limit": 100
+                        "memory_limit": 100,
+                        "count": 11
                     } 
                 }                
             ]
