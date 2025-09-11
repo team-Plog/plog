@@ -11,7 +11,7 @@ import EmptyState from "../../components/EmptyState/EmptyState";
 import {Download, Printer, Eye, Pen} from "lucide-react";
 import ModeToggleDropdown, {
   type DropdownOption,
-} from "../../components/ModeToggleDropdown/ModeToggleDropdown";
+} from "../../components/Dropdown/ModeToggleDropdown";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
