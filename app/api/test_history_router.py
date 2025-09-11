@@ -12,7 +12,8 @@ from app.services.testing.test_history_service import (
     get_test_histories_with_project_info,
     get_test_histories_by_project_id,
     build_test_history_detail_response,
-    build_test_history_timeseries_response, build_test_history_resources_response
+    build_test_history_timeseries_response,
+    build_test_history_resources_summary_response, build_test_history_timeseries_resources_response
 )
 from app.schemas.test_history.test_history_response import TestHistoryResponse
 from app.schemas.test_history.test_history_simple_response import TestHistorySimpleResponse
@@ -418,9 +419,72 @@ async def get_test_history_resources(
     if not test_history_id:
         raise HTTPException(status_code=400, detail="Test history id is required")
 
-    response_data = await build_test_history_resources_response(db, test_history_id)
+    response_data = await build_test_history_timeseries_resources_response(db, test_history_id)
 
     if response_data is None:
         raise HTTPException(status_code=404, detail="Timeseries data not found")
 
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response_data)
+
+@router.get(
+    path="/{test_history_id}/resource/summary",
+    summary="테스트 보고서용 자원 사용량 요약 조회 API",
+    description="""
+        # 응답 형식 
+        {
+            "success": true,
+            "message": "요청 처리에 성공하였습니다.",
+            "status_code": 200,
+            "data": [
+                {
+                    "pod_name": "podname123",
+                    "service_type": "SERVER" # SERVER OR DATABASE,
+                    "cpu_usage_summary": {
+                        "percent": {
+                            "max": 50.3
+                            "avg": 20
+                            "min": 5
+                        },
+                        "usage": {
+                            "max": 200
+                            "avg": 100
+                            "min": 5
+                        },
+                        "cpu_limit": 100,
+                        "count": 11
+                    },
+                    "memory_usage_summary": {
+                        "percent": {
+                            "max": 200
+                            "avg": 100
+                            "min": 5
+                        },
+                        "usage": {
+                            "max": 200
+                            "avg": 100
+                            "min": 5
+                        },
+                        "memory_limit": 100,
+                        "count": 11
+                    } 
+                }                
+            ]
+        }
+    """
+)
+async def get_test_history_resource_summary(
+        test_history_id: int,
+        db: AsyncSession = Depends(get_async_db)
+):
+    """테스트 보고서용 자원 사용량 요약을 조회합니다."""
+    
+    if not test_history_id:
+        raise HTTPException(status_code=400, detail="Test history id is required")
+
+    try:
+        # 서비스에서 기본 요약 데이터 조회
+        summary_data = await build_test_history_resources_summary_response(db, test_history_id)
+        return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, summary_data)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get resource summary: {str(e)}")

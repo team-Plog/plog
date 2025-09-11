@@ -36,6 +36,7 @@ app/
 ├── scheduler/          # 백그라운드 작업 스케줄러
 ├── sse/               # Server-Sent Events
 ├── common/            # 공통 컴포넌트
+├── utils/             # 유틸리티 함수 (NEW)
 └── k8s/               # Kubernetes 리소스 관리
 ```
 
@@ -63,6 +64,10 @@ app/
 2. **스케줄러 공통 로직 통합** (Template Method Pattern)
 3. **Service Layer 책임 분리**
 4. **Repository Pattern 도입** - 비동기 DB 계층 분리
+
+## 응답 형식 
+- app.common.response.response_template.py 를 통하여 응답 
+- 에러 발생시 적절한 api_exception을 선택 없다면 생성하여 활용 
 
 ---
 
@@ -195,3 +200,87 @@ SSE 응답 JSON 구조의 일관성 개선 및 Swagger API 문서 개발자 친�
 - **데이터 접근**: `data.usage.cpu_percent`, `data.actual_usage.cpu_millicores`
 - **업데이트 주기**: 5초마다 실시간 스트리밍
 - **포함 옵션**: all(전체) | k6_only(k6만) | resources_only(리소스만)
+
+---
+
+### 2025-09-10: 메트릭 계산 유틸리티 구현 및 Resource Summary API 완성
+
+#### 📋 구현 목적
+리소스 메트릭 계산 로직의 재사용성 향상 및 테스트 히스토리 리소스 요약 API 완성
+
+#### 🔧 주요 변경사항
+1. **MetricsCalculator 유틸리티 신설** (`app/utils/metrics_calculator.py`)
+   - 메트릭 통계 계산을 위한 정적 메서드 집합
+   - `MetricStats` 데이터클래스로 통계 결과 표준화
+   - CPU/Memory 메트릭 분리 처리 및 백분율 계산 지원
+
+2. **Resource Summary API 완성** (`app/api/test_history_router.py`)
+   - `GET /{test_history_id}/resource/summary` 엔드포인트 구현
+   - MetricsCalculator를 활용한 통계 계산
+   - ResponseTemplate 기반 일관된 API 응답
+
+3. **Service Layer 로직 완성** (`app/services/testing/test_history_service.py`)
+   - `build_test_history_resources_summary_response()` 함수 완성
+   - MetricsCalculator 통합으로 계산 로직 분리
+
+#### 🎯 핵심 아키텍처
+```python
+# MetricStats 데이터클래스
+@dataclass
+class MetricStats:
+    max_value: float
+    min_value: float 
+    avg_value: float
+    count: int
+
+# MetricsCalculator 정적 메서드
+class MetricsCalculator:
+    @staticmethod
+    def calculate_basic_stats(values: List[float]) -> MetricStats
+    
+    @staticmethod
+    def calculate_resource_summary(resources: List) -> Dict[str, MetricStats]
+    
+    @staticmethod
+    def calculate_percentage_stats(actual_values: List[float], limit_values: List[float]) -> MetricStats
+```
+
+#### 💡 핵심 기능
+- **분리된 메트릭 처리**: CPU/Memory 메트릭을 별도 레코드에서 추출하여 통합 통계 계산
+- **백분율 계산**: 실제 사용량 대비 제한값 백분율 자동 계산
+- **재사용성**: Service Layer에서 중복 계산 로직 제거, 유틸리티 함수로 통합
+- **데이터 검증**: 빈 값 처리 및 안전한 계산 로직
+
+#### 🔧 API 응답 형식
+```json
+{
+  "success": true,
+  "message": "테스트 리소스 요약 정보 조회 성공",
+  "data": {
+    "cpu": {
+      "max_value": 85.5,
+      "min_value": 12.3,
+      "avg_value": 45.2,
+      "count": 150
+    },
+    "memory": {
+      "max_value": 78.9,
+      "min_value": 25.1,
+      "avg_value": 52.3,
+      "count": 150
+    }
+  }
+}
+```
+
+#### 📖 개발 가이드
+- **계산 로직 재사용**: MetricsCalculator 정적 메서드 활용으로 코드 중복 제거
+- **메트릭 타입별 처리**: `extract_metric_values()` 메서드로 CPU/Memory 분리 처리
+- **Service Layer 단순화**: 복잡한 계산 로직을 유틸리티로 분리하여 비즈니스 로직에 집중
+- **확장성**: 새로운 메트릭 타입 추가시 MetricsCalculator에 메서드 추가로 확장 가능
+
+#### 🎯 아키텍처 개선점
+- **관심사 분리**: 계산 로직과 비즈니스 로직의 명확한 분리
+- **테스트 용이성**: 정적 메서드로 단위 테스트 작성 용이
+- **코드 재사용성**: 다른 Service에서도 MetricsCalculator 재사용 가능
+- **유지보수성**: 계산 로직 변경시 한 곳에서만 수정하면 되는 구조

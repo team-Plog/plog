@@ -206,24 +206,45 @@ class K6JobScheduler:
                     
                     # Pod의 resource spec 조회
                     resource_specs = self.resource_service.get_pod_aggregated_resources(pod_name)
+                    logger.info(f"debug k6 job scheduler resource_sepcs: {resource_specs}")
                     
-                    # CPU 메트릭 수집 및 저장
+                    # CPU 메트릭 수집 및 스마트 보정
                     cpu_metrics = self.influxdb_service.get_cpu_metrics(pod_name, extended_start, extended_end)
+                    logger.info(f"debug k6 job scheduler cpu_metrics: {cpu_metrics}")
+                    
+                    # SmartMetricsBuffer를 사용한 빈 값 보정 적용
+                    if cpu_metrics:
+                        cpu_metrics = self.influxdb_service.apply_smart_interpolation(cpu_metrics, 'cpu', pod_name)
+                        logger.info(f"Applied smart interpolation to CPU metrics for {pod_name}")
+                    
                     if cpu_metrics and resource_specs:
                         # CPU 메트릭에 resource spec 정보 추가
                         for metric in cpu_metrics:
                             metric['cpu_request_millicores'] = resource_specs['cpu_request_millicores']
                             metric['cpu_limit_millicores'] = resource_specs['cpu_limit_millicores']
+                            metric['memory_request_mb'] = resource_specs['memory_request_mb']
+                            metric['memory_limit_mb'] = resource_specs['memory_limit_mb']
                     save_success = save_test_resource_metrics(db, scenario_history, server_infra.id, cpu_metrics)
+                    logger.info(f"debug k6 job scheduler save_success: {save_success}")
 
-                    # Memory 메트릭 수집 및 저장
+                    # Memory 메트릭 수집 및 스마트 보정
                     memory_metrics = self.influxdb_service.get_memory_metrics(pod_name, extended_start, extended_end)
+                    logger.info(f"debug k6 job scheduler memory_metrics: {memory_metrics}")
+                    
+                    # SmartMetricsBuffer를 사용한 빈 값 보정 적용
+                    if memory_metrics:
+                        memory_metrics = self.influxdb_service.apply_smart_interpolation(memory_metrics, 'memory', pod_name)
+                        logger.info(f"Applied smart interpolation to Memory metrics for {pod_name}")
+                    
                     if memory_metrics and resource_specs:
                         # Memory 메트릭에 resource spec 정보 추가
                         for metric in memory_metrics:
+                            metric['cpu_request_millicores'] = resource_specs['cpu_request_millicores']
+                            metric['cpu_limit_millicores'] = resource_specs['cpu_limit_millicores']
                             metric['memory_request_mb'] = resource_specs['memory_request_mb']
                             metric['memory_limit_mb'] = resource_specs['memory_limit_mb']
                     save_success = save_test_resource_metrics(db, scenario_history, server_infra.id, memory_metrics)
+                    logger.info(f"debug k6 job scheduler save_success: {save_success}")
 
         except Exception as e:
             logger.error(f"Error collecting and saving resource metrics for test_history {test_history.id}: {e}")

@@ -9,9 +9,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.dependencies import (get_scenario_history_repository,
                               get_test_resource_timeseries_repository,
-                              get_test_history_repository)
+                              get_test_history_repository, get_resource_response_builder)
 
-from app.dependencies.services import get_resource_service
 from app.models.sqlite.models import OpenAPISpecVersionModel
 from app.models.sqlite.models.history_models import TestHistoryModel, ScenarioHistoryModel, StageHistoryModel, TestParameterHistoryModel, TestHeaderHistoryModel, TestMetricsTimeseriesModel, TestResourceTimeseriesModel
 from app.models.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, EndpointModel
@@ -40,6 +39,7 @@ from app.schemas.test_history.test_history_timeseries_response import (
 )
 from app.sse.sse_k6data import collect_resource_metrics
 from app.services.infrastructure.server_infra_service import get_job_pods_with_service_types_async
+from app.utils.metrics_calculator import MetricsCalculator, MetricStats
 
 logger = logging.getLogger(__name__)
 kst = pytz.timezone('Asia/Seoul')
@@ -980,122 +980,19 @@ def get_scenario_by_server_infra_id(db: Session, scenario_histories: List[Scenar
         logger.error(f"Error finding scenario for server_infra_id {server_infra_id}: {e}")
         return scenario_histories[0] if scenario_histories else None
 
-async def build_test_history_resources_response(
+async def build_test_history_timeseries_resources_response(
         db: AsyncSession,
         test_history_id: int,
 ):
-    test_history_repository: TestHistoryRepository = get_test_history_repository()
-    test_resource_timeseries_repository: TestResourceTimeseriesRepository = get_test_resource_timeseries_repository()
-    resource_service = get_resource_service()
+    response_builder = get_resource_response_builder("timeseries")
+    response = await response_builder.build_response(db, test_history_id)
+    return response
 
-    # test history, job 이름 정보 조회
-    logger.info(f"Looking for test_history with id: {test_history_id}")
-    
-    # 디버깅을 위해 현재 데이터베이스에 있는 test_history 목록 확인
-    all_test_histories = await test_history_repository.get_multi(db, skip=0, limit=10)
-    logger.info(f"Available test_history IDs in database: {[th.id for th in all_test_histories]}")
-    
-    test_history = await test_history_repository.get(db, test_history_id)
-    
-    if test_history is None:
-        logger.error(f"Test history not found for id: {test_history_id}")
-        logger.error(f"Available test_history IDs: {[th.id for th in all_test_histories]}")
-        raise HTTPException(status_code=404, detail=f"Test history not found for id: {test_history_id}")
-    
-    logger.info(f"Found test_history: {test_history.id}, job_name: {test_history.job_name}")
-    job_name = test_history.job_name
 
-    # 시나리오 정보 조회
-    scenario_history_repository:ScenarioHistoryRepository = get_scenario_history_repository()
-    scenario_histories = await scenario_history_repository.get_scenario_histories_by_test_history_id(db, test_history_id)
-    scenario_history_ids = [scenario_history.id for scenario_history in scenario_histories]
-
-    pod_info_list = await get_job_pods_with_service_types_async(db, job_name)
-    resource_timeseries = await test_resource_timeseries_repository.findAllByScenarioHistoryIdsWithServerInfra(db, scenario_history_ids)
-
-    # Pod별로 리소스 데이터 그룹화
-    pod_resource_map = {}
-    
-    # resource_timeseries를 pod_name별로 그룹화
-    for resource in resource_timeseries:
-        if resource.server_infra and resource.server_infra.name:
-            pod_name = resource.server_infra.name
-            if pod_name not in pod_resource_map:
-                pod_resource_map[pod_name] = []
-            pod_resource_map[pod_name].append(resource)
-    
-    # pod_info_list와 매칭하여 최종 응답 구성
-    result = []
-    
-    for pod_info in pod_info_list:
-        pod_name = pod_info["pod_name"]
-        service_type = pod_info["service_type"]
-        
-        # 해당 Pod의 리소스 데이터 조회
-        pod_resources = pod_resource_map.get(pod_name, [])
-        
-        if not pod_resources:
-            continue
-            
-        # 타임스탬프별로 CPU/Memory 데이터 그룹화
-        timestamp_data_map = {}
-        
-        for resource in pod_resources:
-            timestamp_str = resource.timestamp.isoformat()
-            
-            if timestamp_str not in timestamp_data_map:
-                timestamp_data_map[timestamp_str] = {
-                    'timestamp': timestamp_str,
-                    'cpu_value': None,
-                    'memory_value': None,
-                    'cpu_request': resource.cpu_request_millicores,
-                    'cpu_limit': resource.cpu_limit_millicores,
-                    'memory_request': resource.memory_request_mb,
-                    'memory_limit': resource.memory_limit_mb
-                }
-            
-            # CPU 또는 Memory 데이터 설정
-            if resource.metric_type == 'cpu':
-                timestamp_data_map[timestamp_str]['cpu_value'] = resource.value
-            elif resource.metric_type == 'memory':
-                timestamp_data_map[timestamp_str]['memory_value'] = resource.value
-        
-        # 완전한 데이터만 선별하고 응답 형식으로 변환
-        resource_data = []
-        
-        for timestamp_str, data in timestamp_data_map.items():
-            if data['cpu_value'] is not None and data['memory_value'] is not None:
-                # 사용률 계산 (limit 기준)
-                cpu_percent = (data['cpu_value'] / data['cpu_limit'] * 100) if data['cpu_limit'] else 0
-                memory_percent = (data['memory_value'] / data['memory_limit'] * 100) if data['memory_limit'] else 0
-                
-                resource_data.append({
-                    "timestamp": timestamp_str,
-                    "usage": {
-                        "cpu_percent": round(cpu_percent, 2),
-                        "memory_percent": round(memory_percent, 2),
-                        "cpu_is_predicted": False,
-                        "memory_is_predicted": False
-                    },
-                    "actual_usage": {
-                        "cpu_millicores": data['cpu_value'],
-                        "memory_mb": data['memory_value']
-                    },
-                    "specs": {
-                        "cpu_request_millicores": data['cpu_request'],
-                        "cpu_limit_millicores": data['cpu_limit'],
-                        "memory_request_mb": data['memory_request'],
-                        "memory_limit_mb": data['memory_limit']
-                    }
-                })
-        
-        # 타임스탬프순으로 정렬
-        resource_data.sort(key=lambda x: x['timestamp'])
-        
-        result.append({
-            "pod_name": pod_name,
-            "service_type": service_type,
-            "resource_data": resource_data
-        })
-    
-    return result
+async def build_test_history_resources_summary_response(
+        db: AsyncSession,
+        test_history_id: int,
+):
+    response_builder = get_resource_response_builder("summary")
+    response = await response_builder.build_response(db, test_history_id)
+    return response
