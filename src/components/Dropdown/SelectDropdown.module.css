@@ -1,0 +1,68 @@
+.container {
+  position: relative;
+  width: 100%;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  margin-top: 2px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-white);
+  box-shadow: var(--shadow-primary);
+  max-height: 200px;
+  overflow: hidden;
+}
+
+.optionsList {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: var(--spacing-xs) 0;
+}
+
+.option {
+  padding: var(--spacing-md) var(--spacing-lg);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.option:hover {
+  background-color: var(--color-gray-100);
+}
+
+.optionLabel {
+  color: var(--color-black);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.optionValue {
+  color: var(--color-gray-200);
+  font-size: 12px;
+}
+
+/* 스크롤바 스타일링 */
+.optionsList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.optionsList::-webkit-scrollbar-track {
+  background: var(--color-gray-100);
+  border-radius: 3px;
+}
+
+.optionsList::-webkit-scrollbar-thumb {
+  background: var(--color-gray-200);
+  border-radius: 3px;
+}
+
+.optionsList::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gray-300);
+}
