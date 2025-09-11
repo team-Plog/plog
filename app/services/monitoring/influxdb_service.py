@@ -4,6 +4,7 @@ from influxdb import InfluxDBClient
 from app.core.config import settings
 from datetime import datetime, timedelta
 import pytz
+from app.sse.metrics_buffer import SmartMetricsBuffer
 
 logger = logging.getLogger(__name__)
 
@@ -770,7 +771,7 @@ class InfluxDBService:
 
     def get_cpu_metrics(self, pod_name: str, start_time: datetime, end_time: datetime) -> Optional[List[Dict]]:
         """
-        특정 pod의 CPU 사용량 메트릭 조회 (10초 단위)
+        특정 pod의 CPU 사용량 메트릭 조회 (5초 단위)
         
         Args:
             pod_name: Pod 이름
@@ -800,7 +801,7 @@ class InfluxDBService:
                 FROM "cadvisor_metrics" 
                 WHERE "pod" = '{pod_name}' AND "container" = '' AND "image" = '' 
                 AND time >= '{start_str}' AND time < '{end_str}'
-                GROUP BY time(10s) fill(linear) TZ('Asia/Seoul')
+                GROUP BY time(5s) fill(linear) TZ('Asia/Seoul')
             '''
             
             # 쿼리 실행
@@ -833,7 +834,7 @@ class InfluxDBService:
 
     def get_memory_metrics(self, pod_name: str, start_time: datetime, end_time: datetime) -> Optional[List[Dict]]:
         """
-        특정 pod의 Memory 사용량 메트릭 조회 (10초 단위)
+        특정 pod의 Memory 사용량 메트릭 조회 (5초 단위)
         
         Args:
             pod_name: Pod 이름
@@ -863,7 +864,7 @@ class InfluxDBService:
                 FROM "cadvisor_metrics" 
                 WHERE "pod" = '{pod_name}' AND "container" = '' AND "image" = '' 
                 AND time >= '{start_str}' AND time < '{end_str}'
-                GROUP BY time(10s) fill(linear) TZ('Asia/Seoul')
+                GROUP BY time(5s) fill(linear) TZ('Asia/Seoul')
             '''
             
             # 쿼리 실행
@@ -940,3 +941,87 @@ class InfluxDBService:
         except Exception as e:
             logger.error(f"Error getting resource metrics for job {job_name}: {e}")
             return None
+
+    def apply_smart_interpolation(self, metrics: List[Dict], metric_type: str, pod_name: str) -> List[Dict]:
+        """
+        SmartMetricsBuffer를 사용하여 메트릭 데이터의 빈 값을 보정
+        
+        Args:
+            metrics: 원본 메트릭 데이터 리스트
+            metric_type: 메트릭 타입 ('cpu' 또는 'memory')
+            pod_name: Pod 이름 (로깅용)
+            
+        Returns:
+            보정된 메트릭 데이터 리스트
+        """
+        if not metrics:
+            logger.warning(f"No metrics to interpolate for {pod_name} {metric_type}")
+            return metrics
+            
+        try:
+            # SmartMetricsBuffer 초기화
+            if metric_type == 'cpu':
+                buffer = SmartMetricsBuffer(f"{pod_name}_cpu_storage", "absolute", max_value=10000.0)
+            else:  # memory
+                buffer = SmartMetricsBuffer(f"{pod_name}_memory_storage", "absolute", max_value=100000.0)
+            
+            corrected_metrics = []
+            original_count = len(metrics)
+            interpolated_count = 0
+            
+            # 시간순 정렬
+            sorted_metrics = sorted(metrics, key=lambda x: x['timestamp'])
+            
+            # 5초 간격으로 연속된 타임스탬프 생성
+            if sorted_metrics:
+                start_time = sorted_metrics[0]['timestamp']
+                end_time = sorted_metrics[-1]['timestamp']
+                current_time = start_time
+                metric_index = 0
+                
+                while current_time <= end_time:
+                    # 현재 시간에 해당하는 실제 메트릭 데이터 찾기
+                    actual_metric = None
+                    if metric_index < len(sorted_metrics):
+                        metric_time = sorted_metrics[metric_index]['timestamp']
+                        # ±2.5초 오차 허용
+                        if abs((metric_time - current_time).total_seconds()) <= 2.5:
+                            actual_metric = sorted_metrics[metric_index]
+                            metric_index += 1
+                    
+                    if actual_metric:
+                        # 실제 값이 있는 경우
+                        buffer.add_value(actual_metric['value'], predicted=False, timestamp=current_time)
+                        corrected_metrics.append({
+                            'timestamp': current_time,
+                            'metric_type': metric_type,
+                            'unit': actual_metric['unit'],
+                            'value': actual_metric['value'],
+                            'is_interpolated': False
+                        })
+                    else:
+                        # 값이 없는 경우 예측값 사용
+                        predicted_value = buffer.predict_next()
+                        if predicted_value is not None:
+                            buffer.add_value(predicted_value, predicted=True, timestamp=current_time)
+                            corrected_metrics.append({
+                                'timestamp': current_time,
+                                'metric_type': metric_type,
+                                'unit': 'millicores' if metric_type == 'cpu' else 'mb',
+                                'value': predicted_value,
+                                'is_interpolated': True
+                            })
+                            interpolated_count += 1
+                    
+                    # 다음 5초 시간으로 이동
+                    current_time += timedelta(seconds=5)
+            
+            logger.info(f"Interpolated {interpolated_count} missing {metric_type} values for {pod_name} "
+                       f"(original: {original_count}, final: {len(corrected_metrics)})")
+            
+            return corrected_metrics
+            
+        except Exception as e:
+            logger.error(f"Error during smart interpolation for {pod_name} {metric_type}: {e}")
+            # 보정 실패시 원본 데이터 반환
+            return metrics
