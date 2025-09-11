@@ -1,6 +1,6 @@
-import React, {useEffect, useState} from "react";
+import React, {useState} from "react";
 import {History} from "lucide-react";
-import {useLocation, useNavigate} from "react-router-dom";
+import {useNavigate} from "react-router-dom";
 import {StatusBadge, type TestStatus} from "../Tag";
 import EmptyState from "../EmptyState/EmptyState";
 import styles from "./TestHistoryTable.module.css";
@@ -20,6 +20,7 @@ interface TestHistoryTableProps {
   onMenuToggle: () => void;
   titleText?: string;
   hideProjectTitleColumn?: boolean;
+  hideEmptyState?: boolean;
 }
 
 const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
@@ -27,6 +28,7 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
   onMenuToggle,
   titleText = "최근 실행",
   hideProjectTitleColumn = false,
+  hideEmptyState = false,
 }) => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
@@ -64,8 +66,8 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
 
   return (
     <div className={styles.recentRunning}>
-      {/* 테스트 이력이 없는 경우 EmptyState만 표시 */}
-      {testHistory.length === 0 ? (
+      {/* 테스트 이력이 없고 hideEmptyState가 true인 경우 아무것도 표시하지 않음 */}
+      {testHistory.length === 0 && hideEmptyState ? null : testHistory.length === 0 ? (
         <div className={styles.emptyStateContainer}>
           <EmptyState type="test" />
         </div>

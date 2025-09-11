@@ -40,8 +40,6 @@ const Home: React.FC = () => {
     navigate("/projectDetail", {state: {projectId}});
   };
 
-
-
   useEffect(() => {
     getProjectList()
       .then((res) => {
@@ -132,10 +130,11 @@ const Home: React.FC = () => {
           )}
         </main>
 
-        {/* 최근 실행 섹션 */}
+        {/* 최근 실행 섹션 - hideEmptyState를 true로 설정 */}
         <TestHistoryTable
           testHistory={testHistory}
           onMenuToggle={() => setIsMenuOpen(!isMenuOpen)}
+          hideEmptyState={true}
         />
       </div>
     </div>
