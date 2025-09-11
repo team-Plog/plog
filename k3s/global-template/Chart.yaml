@@ -1,0 +1,7 @@
+# Chart.yaml
+apiVersion: v2
+name: spring-mock-service
+description: A Helm chart for Spring Mock Service
+type: application
+version: 0.1.0
+appVersion: "1.0"

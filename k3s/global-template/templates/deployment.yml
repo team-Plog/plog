@@ -1,0 +1,67 @@
+# charts/plog-apps/templates/deployment.yaml
+{{- range $appName, $appConfig := .Values.applications }}
+  {{- if $appConfig.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $appName }}-deployment
+  namespace: {{ $.Values.global.namespace }}
+  labels:
+    app: {{ $appName }}
+    chart: {{ $.Chart.Name }}
+    release: {{ $.Release.Name }}
+spec:
+  replicas: {{ $appConfig.replicas }}
+  selector:
+    matchLabels:
+      app: {{ $appName }}
+  template:
+    metadata:
+      labels:
+        app: {{ $appName }}
+        release: {{ $.Release.Name }}
+    spec:
+      containers:
+        - name: {{ $appName }}-container
+          image: "{{ $.Values.global.imageRegistry }}/{{ $appConfig.image.repository }}:{{ $appConfig.image.tag }}"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: {{ $appConfig.port }}
+          {{- if $appConfig.envFrom }}
+          envFrom:
+          {{- range $envFromItem := $appConfig.envFrom }}
+          {{- if $envFromItem.secretRef }}
+          - secretRef:
+              name: {{ $envFromItem.secretRef.name }}
+          {{- else if $envFromItem.configMapRef }}
+          - configMapRef:
+              name: {{ $envFromItem.configMapRef.name }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+          {{- if $appConfig.env }}
+          env:
+          {{- range $key, $value := $appConfig.env }}
+          - name: {{ $key }}
+            {{- if typeIs "string" $value }}
+            value: {{ $value | quote }}
+            {{- else if $value.secretKeyRef }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ $value.secretKeyRef.name }}
+                key: {{ $value.secretKeyRef.key }}
+            {{- else if $value.configMapKeyRef }}
+            valueFrom:
+              configMapKeyRef:
+                name: {{ $value.configMapKeyRef.name }}
+                key: {{ $value.configMapKeyRef.key }}
+            {{- end }}
+          {{- end }}
+          {{- end }}
+          resources:
+            {{- toYaml $appConfig.resources | nindent 12 }}
+      imagePullSecrets:
+        - name: {{ $.Values.global.imagePullSecret }}
+  {{- end }}
+  {{- end }}
