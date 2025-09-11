@@ -19,6 +19,7 @@ import {
 import {InputWithIcon, InputField} from "../../components/Input";
 import ToggleButton from "../../components/Button/ToggleButton";
 import HttpMethodTag from "../../components/Tag/HttpMethodTag";
+import SelectDropdown from "../../components/Dropdown/SelectDropdown";
 import { type HttpMethod } from "../../components/Tag/types";
 import styles from "./ApiTestConfigCard.module.css";
 
@@ -67,6 +68,23 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
   const [isRequestConfigOpen, setIsRequestConfigOpen] = useState(false);
   const [isExecutionConfigOpen, setIsExecutionConfigOpen] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // 헤더 키 옵션들
+  const headerKeyOptions = [
+    { value: "Authorization", label: "Authorization" },
+    { value: "Content-Type", label: "Content-Type" },
+    { value: "Accept", label: "Accept" },
+    { value: "User-Agent", label: "User-Agent" },
+    { value: "Host", label: "Host" },
+    { value: "Cache-Control", label: "Cache-Control" },
+    { value: "Connection", label: "Connection" },
+    { value: "X-Request-Id", label: "X-Request-Id" },
+    { value: "X-Correlation-Id", label: "X-Correlation-Id" },
+    { value: "X-API-Key", label: "X-API-Key" },
+    { value: "X-Forwarded-For", label: "X-Forwarded-For" },
+    { value: "X-Forwarded-Proto", label: "X-Forwarded-Proto" },
+    { value: "X-Real-IP", label: "X-Real-IP" },
+  ];
 
   // 초기 데이터 설정 - 메서드별 필요한 필드들 초기화
   useEffect(() => {
@@ -236,11 +254,12 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
           </div>
           {headers.map((header, index) => (
             <div key={index} className={styles.parameterRow}>
-              <InputWithIcon
-                icon={<Key />}
+              <SelectDropdown
+                options={headerKeyOptions}
                 value={header.header_key}
                 onChange={(value) => updateHeader(index, "header_key", value)}
                 placeholder="Key"
+                icon={<Key />}
               />
               <InputWithIcon
                 icon={<ChartColumn />}
