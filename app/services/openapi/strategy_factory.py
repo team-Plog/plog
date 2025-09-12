@@ -5,7 +5,7 @@ import httpx
 
 from app.services.openapi.analysis_strategy import OpenAPIAnalysisStrategy, OpenAPIAnalysisContext
 from app.services.openapi.strategy_implementations import DirectOpenAPIStrategy, SwaggerUIStrategy
-from app.schemas.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
+from app.schemas.openapi_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 
 
 class OpenAPIStrategyFactory:

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Path
 from sqlalchemy.orm import Session
 from app.models import get_db
 from app.models.sqlite.models.project_models import OpenAPISpecModel
-from app.schemas.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
+from app.schemas.openapi_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 
 from app.schemas.project.openapi import OpenAPISpec
 from app.common.response.code import SuccessCode, FailureCode
@@ -78,3 +78,19 @@ async def delete_openapi_spec(
     db.commit()
     
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE)
+
+@router.post(
+    path="/deploy",
+    summary="새로운 애플리케이션을 배포하거나 업데이트 하는 API",
+    description="""
+        로컬 프로젝트 루트 디렉터리에 저장된 plog.json 파일 데이터를 통해 배포하는 API 
+        
+        쿠버네티스 패키징 도구 Helm을 통해서 애플리케이션을 아래와 같이 배포 또는 업데이트한다. 
+            1. k3s 배포 환경 설정 (helm upgrade --install ~~)
+            2. openapi_spec 생성 또는 새로운 버전의 openapi_spec_version 생성 
+    """
+)
+async def deploy_openapi_spec(
+
+):
+    pass
