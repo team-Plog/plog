@@ -13,7 +13,7 @@ from k8s.pod_service import PodService
 from app.services.infrastructure.server_infra_service import ServerInfraService
 from k8s.service_service import ServiceService
 from app.services.openapi.strategy_factory import analyze_openapi_with_strategy
-from app.services.openapi.service import save_openapi_spec
+from app.services.openapi.openapi_service import save_openapi_spec
 from app.schemas.openapi_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 
 logger = logging.getLogger(__name__)

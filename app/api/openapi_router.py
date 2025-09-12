@@ -1,16 +1,21 @@
+import logging
 from fastapi import APIRouter, Depends, Path
 from sqlalchemy.orm import Session
 from app.models import get_db
 from app.models.sqlite.models.project_models import OpenAPISpecModel
 from app.schemas.openapi_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
+from app.schemas.openapi_spec.plog_deploy_request import PlogConfigDTO
 
 from app.schemas.project.openapi import OpenAPISpec
 from app.common.response.code import SuccessCode, FailureCode
 from app.common.response.response_template import ResponseTemplate
 from app.services import *
 from app.services.openapi.strategy_factory import analyze_openapi_with_strategy
+from app.services.openapi.openapi_service import deploy_openapi_spec as deploy_openapi_spec_service
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
 
 @router.post(
     path="/analyze",
@@ -91,6 +96,15 @@ async def delete_openapi_spec(
     """
 )
 async def deploy_openapi_spec(
-
+    request: PlogConfigDTO,
+    db: Session = Depends(get_db)
 ):
-    pass
+    try:
+        # 비즈니스 로직 서비스에 위임
+        result = await deploy_openapi_spec_service(db, request)
+        
+        return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, result)
+        
+    except Exception as e:
+        logger.error(f"배포 중 오류 발생: {str(e)}")
+        return ResponseTemplate.fail(FailureCode.INTERNAL_SERVER_ERROR)
