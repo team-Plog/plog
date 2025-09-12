@@ -31,6 +31,6 @@ data:
 
     # InfluxDB v1 출력 (token 없음)
     [[outputs.influxdb]]
-      urls = ["http://influxdb.plog.svc.cluster.local:8086"]
+      urls = ["http://35.216.24.11:31000"]
       database = "k6"
 

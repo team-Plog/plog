@@ -1,6 +1,5 @@
 # charts/plog-apps/templates/deployment.yaml
 {{- range $appName, $appConfig := .Values.applications }}
-  {{- if $appConfig.enabled }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -63,5 +62,4 @@ spec:
             {{- toYaml $appConfig.resources | nindent 12 }}
       imagePullSecrets:
         - name: {{ $.Values.global.imagePullSecret }}
-  {{- end }}
   {{- end }}
