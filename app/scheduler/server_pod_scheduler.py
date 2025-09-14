@@ -14,7 +14,7 @@ from app.services.infrastructure.server_infra_service import ServerInfraService
 from k8s.service_service import ServiceService
 from app.services.openapi.strategy_factory import analyze_openapi_with_strategy
 from app.services.openapi.service import save_openapi_spec
-from app.schemas.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
+from app.schemas.openapi_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 
 logger = logging.getLogger(__name__)
 

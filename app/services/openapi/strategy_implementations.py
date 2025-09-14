@@ -7,7 +7,7 @@ import httpx
 from collections import defaultdict
 from sqlalchemy.orm import Session
 from app.models.sqlite.models.project_models import OpenAPISpecModel, OpenAPISpecVersionModel, EndpointModel, ParameterModel
-from app.schemas.open_api_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
+from app.schemas.openapi_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 from app.services.openapi.analysis_strategy import OpenAPIAnalysisStrategy
 
 
