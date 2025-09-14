@@ -2,7 +2,9 @@ import os
 import logging
 from sqlalchemy.orm import Session
 from app.models.sqlite.models.project_models import OpenAPISpecModel
+from app.schemas.openapi_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 from app.schemas.openapi_spec.plog_deploy_request import PlogConfigDTO
+from app.utils.helm_executor import HelmExecutor
 from app.utils.helm_values_generator import HelmValuesGenerator
 from app.utils.file_writer import FileWriter
 
@@ -63,11 +65,13 @@ async def deploy_openapi_spec(db: Session, request: PlogConfigDTO) -> dict:
         
         logger.info(f"values.yaml 파일 저장 완료: {saved_path}")
 
-
-        # TODO request.app_name을 통해서 service_name 미리 생성
         # ex) app_name = semi-medeasy -> service_name = semi_medeasy_service
-        #
-
+        helm_executor = HelmExecutor()
+        deployment_result = await helm_executor.upgrade_install(
+            chart_path=helm_chart_folder,
+            app_name=request.app_name,
+            namespace="test"
+        )
 
         # 5. 향후 확장 가능한 배포 결과 반환
         result = {

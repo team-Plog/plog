@@ -107,4 +107,12 @@ async def deploy_openapi_spec(
         
     except Exception as e:
         logger.error(f"배포 중 오류 발생: {str(e)}")
-        return ResponseTemplate.fail(FailureCode.INTERNAL_SERVER_ERROR)
+        
+        # 에러 상세 정보를 포함한 실패 응답
+        error_data = {
+            "app_name": request.app_name if hasattr(request, 'app_name') else "unknown",
+            "error": str(e),
+            "message": "애플리케이션 배포에 실패했습니다."
+        }
+        
+        return ResponseTemplate.fail(FailureCode.INTERNAL_SERVER_ERROR, error_data)
