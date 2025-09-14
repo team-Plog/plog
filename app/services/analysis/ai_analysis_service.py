@@ -16,7 +16,7 @@ from .ollama_client import get_ollama_client, OllamaConfig
 from .model_manager import get_model_manager, ModelConfiguration
 from app.services.testing.test_history_service import (
     get_test_history_by_id, build_test_history_detail_response,
-    build_test_history_resources_response
+    build_test_history_timeseries_resources_response
 )
 
 logger = logging.getLogger(__name__)
@@ -332,7 +332,7 @@ class AIAnalysisService:
         # 리소스 사용량 데이터 조회
         resource_usage_data = None
         try:
-            resource_usage_data = await build_test_history_resources_response(db_async, test_history_id)
+            resource_usage_data = await build_test_history_timeseries_resources_response(db_async, test_history_id)
         except Exception as e:
             logger.warning(f"Failed to get resource usage data: {e}")
         
