@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.models.sqlite.models.project_models import OpenAPISpecModel
 from app.schemas.openapi_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 from app.schemas.openapi_spec.plog_deploy_request import PlogConfigDTO
+from app.services.openapi.strategy_factory import analyze_openapi_with_strategy
 from app.utils.helm_executor import HelmExecutor
 from app.utils.helm_values_generator import HelmValuesGenerator
 from app.utils.file_writer import FileWriter
@@ -72,6 +73,18 @@ async def deploy_openapi_spec(db: Session, request: PlogConfigDTO) -> dict:
             app_name=request.app_name,
             namespace="test"
         )
+
+        # TODO app_name 기반 label -> service 찾기
+
+        # TODO service swagger ui url 스캔
+
+        # TODO openapi_spec 등록
+        # request = OpenAPISpecRegisterRequest(
+        #     project_id=1,
+        #     open_api_url=
+        # )
+        #
+        # analyze_openapi_with_strategy()
 
         # 5. 향후 확장 가능한 배포 결과 반환
         result = {
