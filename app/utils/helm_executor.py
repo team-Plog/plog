@@ -107,6 +107,21 @@ class HelmExecutor:
         normalized_name = app_name.lower().replace("_", "-")
         return f"{normalized_name}-service"
     
+    def get_expected_service_name(self, app_name: str) -> str:
+        """
+        애플리케이션 이름으로부터 예상되는 Kubernetes Service 이름을 생성
+        
+        Helm chart에서 생성되는 Service 이름은 일반적으로 release name과 동일하므로
+        _generate_release_name과 같은 로직을 사용
+        
+        Args:
+            app_name: PlogConfigDTO의 app_name (예: "semi-medeasy")
+            
+        Returns:
+            str: 예상 Service 이름 (예: "semi-medeasy-service")
+        """
+        return self._generate_release_name(app_name)
+    
     async def _execute_helm_command(self, command: list) -> Dict[str, Any]:
         """
         비동기로 helm 명령어 실행
