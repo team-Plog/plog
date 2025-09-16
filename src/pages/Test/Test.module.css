@@ -103,6 +103,14 @@
   padding-bottom: 32px;
 }
 
+.resourceSpecs {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--system-gray2, #666);
+}
+
 .carouselControls {
   display: flex;
   justify-content: center;
