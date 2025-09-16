@@ -4,3 +4,8 @@
   --gradient-point: linear-gradient(180deg, #bcfff7 0%, #ffffff 100%);
   --gradient-button: linear-gradient(180deg, #606060 0%, #000000 100%);
 }
+
+/* 다크 모드 */
+[data-theme="dark"] {
+  --gradient-button: linear-gradient(180deg, #ffffff 0%, #5f5f5f 100%);
+}

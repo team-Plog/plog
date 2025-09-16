@@ -481,7 +481,7 @@ const Test: React.FC = () => {
 
         <main className={styles.main}>
           <div className={styles.title}>
-            <div className="HeadingS">{projectTitle || "프로젝트명 없음"}</div>
+            <div className={`HeadingS ${styles.projectTitle}`}>{projectTitle || "프로젝트명 없음"}</div>
             <div className={styles.progress}>
               <div className={styles.status}>
                 <div className={styles.statusItem}>
@@ -520,12 +520,10 @@ const Test: React.FC = () => {
                     className={styles.arrowButton}>
                     <ChevronLeft />
                   </button>
-                  <div
-                    className="HeadingS"
-                    style={{minWidth: 160, textAlign: "center"}}>
+                  <div className={`HeadingS ${styles.carouselTitle}`}>
                     {currentSlide ? slideLabel(currentSlide) : "데이터 없음"}
                     {slides.length > 1 && (
-                      <span className="CaptionLight" style={{marginLeft: 8}}>
+                      <span className={`CaptionLight ${styles.carouselCounter}`}>
                         {slideIndex + 1} / {slides.length}
                       </span>
                     )}
