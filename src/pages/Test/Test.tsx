@@ -32,6 +32,8 @@ type Point = {
   users: number;
   p95ResponseTime?: number;
   p99ResponseTime?: number;
+  cpuPercent?: number;
+  memoryPercent?: number;
 };
 
 const OVERALL = "__OVERALL__";
@@ -51,16 +53,25 @@ const Test: React.FC = () => {
   const [testHistoryId, setTestHistoryId] = useState<number | null>(
     initialTestHistoryId || null
   );
-
-  // 테스트 완료 상태
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  // jobName 콜백
   const [jobNameState, setJobNameState] = useState<string | null>(
     jobName ?? null
   );
   const effectiveJobName = jobNameState;
+
+  const [resourceMetas, setResourceMetas] = useState<
+    {
+      podName?: string;
+      serviceType?: string;
+      cpuRequestMillicores?: number | null;
+      cpuLimitMillicores?: number | null;
+      memoryRequestMb?: number | null;
+      memoryLimitMb?: number | null;
+    }[]
+  >([]);
+  const [resourceIndex, setResourceIndex] = useState(0);
+  const currentResource = resourceMetas[resourceIndex] || null;
 
   const [chartData, setChartData] = useState<Point[]>([]);
   const [metrics, setMetrics] = useState({
@@ -71,8 +82,6 @@ const Test: React.FC = () => {
     p95: 0,
     p99: 0,
   });
-
-  // 시나리오별 상태
   const [scenarioChartData, setScenarioChartData] = useState<
     Record<string, Point[]>
   >({});
@@ -89,63 +98,55 @@ const Test: React.FC = () => {
       }
     >
   >({});
-
-  // 캐러셀 상태
   const scenarioNames = Object.keys(scenarioChartData);
   const slides = useMemo(() => [OVERALL, ...scenarioNames], [scenarioNames]);
   const [slideIndex, setSlideIndex] = useState(0);
   const currentSlide = slides[slideIndex] || null;
 
   const goPrev = () => {
-    if (slides.length === 0) return;
-    setSlideIndex((i) => (i - 1 + slides.length) % slides.length);
+    if (slides.length > 0)
+      setSlideIndex((i) => (i - 1 + slides.length) % slides.length);
   };
   const goNext = () => {
-    if (slides.length === 0) return;
-    setSlideIndex((i) => (i + 1) % slides.length);
+    if (slides.length > 0) setSlideIndex((i) => (i + 1) % slides.length);
   };
   const slideLabel = (name: string) => (name === OVERALL ? "전체" : `${name}`);
 
-  // 중단 로딩 & SSE
+  const goPrevResource = () => {
+    if (resourceMetas.length > 0)
+      setResourceIndex(
+        (i) => (i - 1 + resourceMetas.length) % resourceMetas.length
+      );
+  };
+  const goNextResource = () => {
+    if (resourceMetas.length > 0)
+      setResourceIndex((i) => (i + 1) % resourceMetas.length);
+  };
+
   const [stopping, setStopping] = useState(false);
   const sseRef = useRef<EventSource | null>(null);
 
-  // testHistoryId로 상세 정보 및 완료 상태 확인
   useEffect(() => {
     if (!testHistoryId) {
       setIsLoading(false);
       return;
     }
-
     getTestHistoryDetail(testHistoryId)
       .then((res) => {
         const data = res?.data?.data;
-        const apiJobName = data?.job_name;
-        const completed = data?.is_completed;
-
-        if (apiJobName && !jobNameState) {
-          setJobNameState(apiJobName);
-        }
-
-        setIsCompleted(completed || false);
+        if (data?.job_name && !jobNameState) setJobNameState(data.job_name);
+        setIsCompleted(data?.is_completed || false);
         setIsLoading(false);
       })
-      .catch((err) => {
-        console.error("테스트 상세 정보 조회 실패:", err);
-        setIsLoading(false);
-      });
+      .catch(() => setIsLoading(false));
   }, [testHistoryId]);
 
-  // 완료된 테스트의 시계열 데이터 로드
   useEffect(() => {
     if (!testHistoryId || !isCompleted || isLoading) return;
-
     getTestHistoryTimeseries(testHistoryId)
       .then((res) => {
         const data = res?.data?.data;
-
         if (data?.overall?.data) {
-          // 전체 데이터 변환
           const overallPoints: Point[] = data.overall.data.map((item: any) => ({
             time: new Date(item.timestamp).toLocaleTimeString("ko-KR", {
               hour: "2-digit",
@@ -159,11 +160,10 @@ const Test: React.FC = () => {
             users: item.vus || 0,
             p95ResponseTime: item.p95_response_time || 0,
             p99ResponseTime: item.p99_response_time || 0,
+            cpuPercent: item.cpu_percent || 0,
+            memoryPercent: item.memory_percent || 0,
           }));
-
           setChartData(overallPoints);
-
-          // 최신 메트릭 설정
           const latestOverall = data.overall.data[data.overall.data.length - 1];
           if (latestOverall) {
             setMetrics({
@@ -176,15 +176,11 @@ const Test: React.FC = () => {
             });
           }
         }
-
         if (data?.scenarios && Array.isArray(data.scenarios)) {
-          // 시나리오별 데이터 변환
           const newScenarioChartData: Record<string, Point[]> = {};
           const newScenarioMetrics: Record<string, any> = {};
-
           data.scenarios.forEach((scenario: any) => {
             const scenarioName = scenario.scenario_name || "unknown";
-
             if (scenario.data && Array.isArray(scenario.data)) {
               const points: Point[] = scenario.data.map((item: any) => ({
                 time: new Date(item.timestamp).toLocaleTimeString("ko-KR", {
@@ -200,10 +196,7 @@ const Test: React.FC = () => {
                 p95ResponseTime: item.p95_response_time || 0,
                 p99ResponseTime: item.p99_response_time || 0,
               }));
-
               newScenarioChartData[scenarioName] = points;
-
-              // 최신 메트릭
               const latestScenario = scenario.data[scenario.data.length - 1];
               if (latestScenario) {
                 newScenarioMetrics[scenarioName] = {
@@ -217,32 +210,23 @@ const Test: React.FC = () => {
               }
             }
           });
-
           setScenarioChartData(newScenarioChartData);
           setScenarioMetrics(newScenarioMetrics);
         }
       })
-      .catch((err) => {
-        console.error("시계열 데이터 로드 실패:", err);
-      });
+      .catch(() => {});
   }, [testHistoryId, isCompleted, isLoading]);
 
-  // 프로젝트 타이틀
   useEffect(() => {
     if (projectId && !passedProjectTitle) {
       getProjectDetail(projectId)
         .then((res) => setProjectTitle(res.data.data.title))
-        .catch((err) => {
-          console.error("프로젝트 타이틀 불러오기 실패:", err);
-          setProjectTitle("프로젝트명 없음");
-        });
+        .catch(() => setProjectTitle("프로젝트명 없음"));
     }
   }, [projectId, passedProjectTitle]);
 
-  // 실시간 SSE 연결 (완료되지 않은 테스트만)
   useEffect(() => {
     if (!effectiveJobName || isCompleted || isLoading) return;
-
     const sseUrl = getSseK6DataUrl(effectiveJobName);
     const eventSource = new EventSource(sseUrl);
     sseRef.current = eventSource;
@@ -250,7 +234,7 @@ const Test: React.FC = () => {
     eventSource.onmessage = (event) => {
       try {
         const parsedData = JSON.parse(event.data);
-
+        console.log("[PARSED SSE DATA]", parsedData);
         const timestamp = new Date(parsedData.timestamp).toLocaleTimeString(
           "ko-KR",
           {
@@ -260,7 +244,6 @@ const Test: React.FC = () => {
             hourCycle: "h23",
           }
         );
-
         const overall = parsedData.overall || {
           tps: 0,
           vus: 0,
@@ -270,7 +253,31 @@ const Test: React.FC = () => {
           p99_response_time: 0,
         };
 
-        // 전체 메트릭/차트
+        let cpuPercent = 0;
+        let memoryPercent = 0;
+        if (
+          Array.isArray(parsedData.resources) &&
+          parsedData.resources.length > 0
+        ) {
+          const newMetas = parsedData.resources.map((server: any) => ({
+            podName: server.pod_name ?? "",
+            serviceType: server.service_type ?? "",
+            cpuRequestMillicores: server.specs?.cpu_request_millicores ?? null,
+            cpuLimitMillicores: server.specs?.cpu_limit_millicores ?? null,
+            memoryRequestMb: server.specs?.memory_request_mb ?? null,
+            memoryLimitMb: server.specs?.memory_limit_mb ?? null,
+          }));
+          setResourceMetas(newMetas);
+
+          const server = parsedData.resources.find(
+            (r: any) => r.service_type === "SERVER"
+          );
+          if (server?.usage) {
+            cpuPercent = server.usage.cpu_percent ?? 0;
+            memoryPercent = server.usage.memory_percent ?? 0;
+          }
+        }
+
         setMetrics({
           tps: overall.tps,
           latency: overall.response_time,
@@ -291,11 +298,12 @@ const Test: React.FC = () => {
               users: overall.vus,
               p95ResponseTime: overall.p95_response_time || 0,
               p99ResponseTime: overall.p99_response_time || 0,
+              cpuPercent,
+              memoryPercent,
             },
           ].slice(-20)
         );
 
-        // 시나리오별
         const scenarios = Array.isArray(parsedData.scenarios)
           ? parsedData.scenarios
           : [];
@@ -318,7 +326,6 @@ const Test: React.FC = () => {
             });
             return next;
           });
-
           setScenarioMetrics((prev) => {
             const next = {...prev};
             scenarios.forEach((sc: any) => {
@@ -335,13 +342,10 @@ const Test: React.FC = () => {
             return next;
           });
         }
-      } catch (e) {
-        console.error("JSON 파싱 실패:", e);
-      }
+      } catch {}
     };
 
-    eventSource.onerror = (error) => {
-      console.error("SSE 연결 오류:", error);
+    eventSource.onerror = () => {
       eventSource.close();
       sseRef.current = null;
     };
@@ -352,15 +356,12 @@ const Test: React.FC = () => {
     };
   }, [effectiveJobName, isCompleted, isLoading]);
 
-  // 슬라이드 안전화
   useEffect(() => {
     if (slides.length === 0) {
       setSlideIndex(0);
       return;
     }
-    if (slideIndex >= slides.length) {
-      setSlideIndex(slides.length - 1);
-    }
+    if (slideIndex >= slides.length) setSlideIndex(slides.length - 1);
   }, [slides.length]);
 
   const handleStopTest = async () => {
@@ -376,16 +377,13 @@ const Test: React.FC = () => {
       }
       await stopJob(effectiveJobName);
       alert(`테스트 중단 요청 완료\njob_name: ${effectiveJobName}`);
-    } catch (err: any) {
-      console.error("테스트 중단 요청 실패:", err?.message);
-      console.error("config.url:", err?.config?.baseURL, err?.config?.url);
+    } catch {
       alert(`네트워크 오류로 중단 요청 실패\njob_name: ${effectiveJobName}`);
     } finally {
       setStopping(false);
     }
   };
 
-  // P95, P99 데이터가 있는지 확인 (완료된 테스트에서만 사용 가능)
   const hasPercentileData = isCompleted;
 
   const combinedSeries = [
@@ -478,10 +476,11 @@ const Test: React.FC = () => {
         <header className={styles.header}>
           <div className={styles.headerInner}></div>
         </header>
-
         <main className={styles.main}>
           <div className={styles.title}>
-            <div className={`HeadingS ${styles.projectTitle}`}>{projectTitle || "프로젝트명 없음"}</div>
+            <div className={`HeadingS ${styles.projectTitle}`}>
+              {projectTitle || "프로젝트명 없음"}
+            </div>
             <div className={styles.progress}>
               <div className={styles.status}>
                 <div className={styles.statusItem}>
@@ -507,8 +506,6 @@ const Test: React.FC = () => {
               )}
             </div>
           </div>
-
-          {/* 전체 + 시나리오 캐러셀 */}
           {slides.length > 0 && (
             <section className={styles.scenarioSection}>
               <div className={styles.scenarioHeader}>
@@ -523,7 +520,8 @@ const Test: React.FC = () => {
                   <div className={`HeadingS ${styles.carouselTitle}`}>
                     {currentSlide ? slideLabel(currentSlide) : "데이터 없음"}
                     {slides.length > 1 && (
-                      <span className={`CaptionLight ${styles.carouselCounter}`}>
+                      <span
+                        className={`CaptionLight ${styles.carouselCounter}`}>
                         {slideIndex + 1} / {slides.length}
                       </span>
                     )}
@@ -537,7 +535,6 @@ const Test: React.FC = () => {
                   </button>
                 </div>
               </div>
-
               {currentSlide && (
                 <div className={styles.scenarioBlock}>
                   <div className={styles.card}>
@@ -605,8 +602,6 @@ const Test: React.FC = () => {
                       </>
                     )}
                   </div>
-
-                  {/* 그래프 */}
                   <div className={styles.chartWrap}>
                     <MetricChart
                       title={`${slideLabel(currentSlide)} 종합 지표`}
@@ -633,6 +628,81 @@ const Test: React.FC = () => {
                     ))}
                   </div>
                 </div>
+              )}
+            </section>
+          )}
+          {resourceMetas.length > 0 && (
+            <section className={styles.resourceSection}>
+              <div className={styles.scenarioHeader}>
+                <div className={styles.carouselControls}>
+                  <button
+                    type="button"
+                    onClick={goPrevResource}
+                    disabled={resourceMetas.length <= 1}
+                    className={styles.arrowButton}>
+                    <ChevronLeft />
+                  </button>
+                  <div className={`HeadingS ${styles.carouselTitle}`}>
+                    {currentResource
+                      ? `${currentResource.podName || ""} : ${
+                          currentResource.serviceType || ""
+                        }`
+                      : "리소스 없음"}
+                    {resourceMetas.length > 1 && (
+                      <span
+                        className={`CaptionLight ${styles.carouselCounter}`}>
+                        {resourceIndex + 1} / {resourceMetas.length}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={goNextResource}
+                    disabled={resourceMetas.length <= 1}
+                    className={styles.arrowButton}>
+                    <ChevronRight />
+                  </button>
+                </div>
+              </div>
+              {currentResource && (
+                <>
+                  <MetricChart
+                    title="리소스 사용률(CPU / Memory)"
+                    data={
+                      currentSlide === OVERALL
+                        ? chartData
+                        : scenarioChartData[currentSlide] || []
+                    }
+                    combinedSeries={[
+                      {
+                        key: "cpuPercent",
+                        name: "CPU 사용률",
+                        color: "#f59e0b",
+                        unit: "%",
+                        yAxis: "left" as const,
+                      },
+                      {
+                        key: "memoryPercent",
+                        name: "Memory 사용률",
+                        color: "#10b981",
+                        unit: "%",
+                        yAxis: "right" as const,
+                      },
+                    ]}
+                    height={300}
+                  />
+                  <div className={styles.resourceSpecs}>
+                    <div className="CaptionLight">
+                      CPU 요청량: {currentResource.cpuRequestMillicores ?? "-"}{" "}
+                      mC / 제한량: {currentResource.cpuLimitMillicores ?? "-"}{" "}
+                      mC
+                    </div>
+                    <div className="CaptionLight">
+                      Memory 요청량: {currentResource.memoryRequestMb ?? "-"} MB
+                      / 제한량: {currentResource.memoryLimitMb ?? "-"} MB
+                    </div>
+                  </div>
+                </>
               )}
             </section>
           )}

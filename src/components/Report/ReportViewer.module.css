@@ -78,6 +78,7 @@
   flex-direction: column;
 }
 
+
 .subTitleGroup {
   display: flex;
   flex-direction: column;
@@ -101,10 +102,10 @@
 .textGroup .contentText {
   position: relative;
   padding-left: 16px;
+  white-space: pre-line;
 }
 
 .textGroup .contentText::before {
-  content: '・';
   position: absolute;
   left: 0;
   color: var(--color-black);
