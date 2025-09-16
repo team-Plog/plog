@@ -166,12 +166,18 @@ class ServerPodScheduler:
                                 project_id=1  # 기본 프로젝트 ID 사용
                             )
 
-                            # OpenAPI 분석 수행
-                            analysis_result = await analyze_openapi_with_strategy(openapi_request)
+                            # OpenAPI 분석 수행 (nodeport 변환 매핑 전달)
+                            conversion_mappings = getattr(self, '_nodeport_conversions', {}) if hasattr(self, '_nodeport_conversions') else {}
+                            analysis_result = await analyze_openapi_with_strategy(
+                                openapi_request,
+                                db=db,
+                                convert_url=True,
+                                conversion_mappings=conversion_mappings
+                            )
 
                             if analysis_result:
                                 logger.info(f"✅ OpenAPI spec analyzed for {pod_name}")
-                                analysis_result = self._convert_nodeport_url_if_needed(analysis_result, swagger_urls[0])
+                                # URL 변환 로직은 이제 analyze_openapi_with_strategy 내부에서 처리
                                 saved_openapi_spec = save_openapi_spec(db, analysis_result)
                                 break
 

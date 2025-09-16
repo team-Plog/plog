@@ -27,7 +27,7 @@ async def analyze_swagger(
     db: Session = Depends(get_db)
 ):
     # 1. analyze using strategy pattern
-    analyze_result: OpenAPISpecModel = await analyze_openapi_with_strategy(request)
+    analyze_result: OpenAPISpecModel = await analyze_openapi_with_strategy(request=request, db=db)
 
     # 2. save
     saved_open_api_spec: OpenAPISpecModel = save_openapi_spec(db, analyze_result)
