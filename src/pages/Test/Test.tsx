@@ -21,6 +21,7 @@ import {
   getTestHistoryDetail,
   getTestHistoryTimeseries,
   getSseK6DataUrl,
+  getTestHistoryResources,
 } from "../../api";
 import {stopJob} from "../../api/jobScheduler";
 
@@ -60,19 +61,15 @@ const Test: React.FC = () => {
   );
   const effectiveJobName = jobNameState;
 
-  const [resourceMetas, setResourceMetas] = useState<
-    {
-      podName?: string;
-      serviceType?: string;
-      cpuRequestMillicores?: number | null;
-      cpuLimitMillicores?: number | null;
-      memoryRequestMb?: number | null;
-      memoryLimitMb?: number | null;
-    }[]
-  >([]);
+  // 리소스 관련 상태
+  const [resourceMetas, setResourceMetas] = useState<any[]>([]);
   const [resourceIndex, setResourceIndex] = useState(0);
   const currentResource = resourceMetas[resourceIndex] || null;
+  const [resourceChartData, setResourceChartData] = useState<
+    Record<string, Point[]>
+  >({});
 
+  // 시나리오 관련 상태
   const [chartData, setChartData] = useState<Point[]>([]);
   const [metrics, setMetrics] = useState({
     tps: 0,
@@ -85,19 +82,9 @@ const Test: React.FC = () => {
   const [scenarioChartData, setScenarioChartData] = useState<
     Record<string, Point[]>
   >({});
-  const [scenarioMetrics, setScenarioMetrics] = useState<
-    Record<
-      string,
-      {
-        tps: number;
-        latency: number;
-        error_rate: number;
-        vus: number;
-        p95: number;
-        p99: number;
-      }
-    >
-  >({});
+  const [scenarioMetrics, setScenarioMetrics] = useState<Record<string, any>>(
+    {}
+  );
   const scenarioNames = Object.keys(scenarioChartData);
   const slides = useMemo(() => [OVERALL, ...scenarioNames], [scenarioNames]);
   const [slideIndex, setSlideIndex] = useState(0);
@@ -126,6 +113,50 @@ const Test: React.FC = () => {
   const [stopping, setStopping] = useState(false);
   const sseRef = useRef<EventSource | null>(null);
 
+  // 완료된 테스트 리소스 시계열 로드
+  useEffect(() => {
+    if (!testHistoryId || !isCompleted || isLoading) return;
+    getTestHistoryResources(testHistoryId)
+      .then((res) => {
+        const pods = res?.data?.data || [];
+        const newResourceChartData: Record<string, Point[]> = {};
+        const metas = pods.map((pod: any) => ({
+          podName: pod.pod_name,
+          serviceType: pod.service_type,
+          cpuRequestMillicores:
+            pod.resource_data[0]?.specs?.cpu_request_millicores ?? null,
+          cpuLimitMillicores:
+            pod.resource_data[0]?.specs?.cpu_limit_millicores ?? null,
+          memoryRequestMb:
+            pod.resource_data[0]?.specs?.memory_request_mb ?? null,
+          memoryLimitMb: pod.resource_data[0]?.specs?.memory_limit_mb ?? null,
+        }));
+        setResourceMetas(metas);
+
+        pods.forEach((pod: any) => {
+          const key = `${pod.pod_name}:${pod.service_type}`;
+          const points: Point[] = pod.resource_data.map((item: any) => ({
+            time: new Date(item.timestamp).toLocaleTimeString("ko-KR", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+              hourCycle: "h23",
+            }),
+            cpuPercent: item.usage?.cpu_percent ?? 0,
+            memoryPercent: item.usage?.memory_percent ?? 0,
+            tps: 0,
+            responseTime: 0,
+            errorRate: 0,
+            users: 0,
+          }));
+          newResourceChartData[key] = points;
+        });
+        setResourceChartData(newResourceChartData);
+      })
+      .catch((err) => console.error("리소스 시계열 로드 실패:", err));
+  }, [testHistoryId, isCompleted, isLoading]);
+
+  // 테스트 상세 조회
   useEffect(() => {
     if (!testHistoryId) {
       setIsLoading(false);
@@ -141,6 +172,7 @@ const Test: React.FC = () => {
       .catch(() => setIsLoading(false));
   }, [testHistoryId]);
 
+  // 완료된 테스트 시나리오 시계열 로드
   useEffect(() => {
     if (!testHistoryId || !isCompleted || isLoading) return;
     getTestHistoryTimeseries(testHistoryId)
@@ -217,6 +249,7 @@ const Test: React.FC = () => {
       .catch(() => {});
   }, [testHistoryId, isCompleted, isLoading]);
 
+  // 프로젝트 타이틀
   useEffect(() => {
     if (projectId && !passedProjectTitle) {
       getProjectDetail(projectId)
@@ -225,16 +258,15 @@ const Test: React.FC = () => {
     }
   }, [projectId, passedProjectTitle]);
 
+  // SSE 실시간 (미완료 테스트)
   useEffect(() => {
     if (!effectiveJobName || isCompleted || isLoading) return;
     const sseUrl = getSseK6DataUrl(effectiveJobName);
     const eventSource = new EventSource(sseUrl);
     sseRef.current = eventSource;
-
     eventSource.onmessage = (event) => {
       try {
         const parsedData = JSON.parse(event.data);
-        console.log("[PARSED SSE DATA]", parsedData);
         const timestamp = new Date(parsedData.timestamp).toLocaleTimeString(
           "ko-KR",
           {
@@ -253,8 +285,8 @@ const Test: React.FC = () => {
           p99_response_time: 0,
         };
 
-        let cpuPercent = 0;
-        let memoryPercent = 0;
+        let cpuPercent = 0,
+          memoryPercent = 0;
         if (
           Array.isArray(parsedData.resources) &&
           parsedData.resources.length > 0
@@ -268,7 +300,6 @@ const Test: React.FC = () => {
             memoryLimitMb: server.specs?.memory_limit_mb ?? null,
           }));
           setResourceMetas(newMetas);
-
           const server = parsedData.resources.find(
             (r: any) => r.service_type === "SERVER"
           );
@@ -286,7 +317,6 @@ const Test: React.FC = () => {
           p95: overall.p95_response_time || 0,
           p99: overall.p99_response_time || 0,
         });
-
         setChartData((prev) =>
           [
             ...prev,
@@ -344,41 +374,31 @@ const Test: React.FC = () => {
         }
       } catch {}
     };
-
     eventSource.onerror = () => {
       eventSource.close();
       sseRef.current = null;
     };
-
     return () => {
       eventSource.close();
       sseRef.current = null;
     };
   }, [effectiveJobName, isCompleted, isLoading]);
 
-  useEffect(() => {
-    if (slides.length === 0) {
-      setSlideIndex(0);
-      return;
-    }
-    if (slideIndex >= slides.length) setSlideIndex(slides.length - 1);
-  }, [slides.length]);
-
   const handleStopTest = async () => {
     if (!effectiveJobName) {
       alert("jobName이 없어 중단 요청을 보낼 수 없습니다.");
       return;
     }
-    
+
     try {
       setStopping(true);
-      
+
       // SSE 연결을 먼저 끊어서 프론트엔드에서는 즉시 중단된 것처럼 보이게 함
       if (sseRef.current) {
         sseRef.current.close();
         sseRef.current = null;
       }
-      
+
       // API 호출을 시도하지만 실패해도 사용자에게는 성공 메시지 표시
       try {
         await stopJob(effectiveJobName);
@@ -386,10 +406,9 @@ const Test: React.FC = () => {
         // API 호출이 실패하더라도 에러를 무시하고 성공 메시지 표시
         console.warn(`Stop job API 호출 실패: ${error}`);
       }
-      
+
       // 항상 성공 메시지 표시
       alert(`테스트 중단 요청 완료\njob_name: ${effectiveJobName}`);
-      
     } catch (error) {
       // 예상치 못한 에러가 발생해도 성공 메시지 표시
       console.error(`Unexpected error in handleStopTest: ${error}`);
@@ -488,39 +507,8 @@ const Test: React.FC = () => {
     <div className={styles.container}>
       <Header testHistoryId={testHistoryId} />
       <div className={styles.content}>
-        <header className={styles.header}>
-          <div className={styles.headerInner}></div>
-        </header>
         <main className={styles.main}>
-          <div className={styles.title}>
-            <div className={`HeadingS ${styles.projectTitle}`}>
-              {projectTitle || "프로젝트명 없음"}
-            </div>
-            <div className={styles.progress}>
-              <div className={styles.status}>
-                <div className={styles.statusItem}>
-                  <Timer className={styles.icon} />
-                  <div className="Body">
-                    {isCompleted ? "완료됨" : "1분 23초"}
-                  </div>
-                </div>
-                <div className={styles.statusItem}>
-                  <RotateCw className={styles.icon} />
-                  <div className="Body">{isCompleted ? "100%" : "30%"}</div>
-                </div>
-              </div>
-              {!isCompleted && (
-                <div className={styles.progressButton}>
-                  <Button
-                    variant="primaryGradient"
-                    onClick={handleStopTest}
-                    disabled={stopping || !effectiveJobName}>
-                    {stopping ? "중단 요청 중..." : "테스트 중단하기"}
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
+          {/* 시나리오 영역 */}
           {slides.length > 0 && (
             <section className={styles.scenarioSection}>
               <div className={styles.scenarioHeader}>
@@ -550,6 +538,7 @@ const Test: React.FC = () => {
                   </button>
                 </div>
               </div>
+
               {currentSlide && (
                 <div className={styles.scenarioBlock}>
                   <div className={styles.card}>
@@ -617,6 +606,7 @@ const Test: React.FC = () => {
                       </>
                     )}
                   </div>
+
                   <div className={styles.chartWrap}>
                     <MetricChart
                       title={`${slideLabel(currentSlide)} 종합 지표`}
@@ -646,6 +636,8 @@ const Test: React.FC = () => {
               )}
             </section>
           )}
+
+          {/* 리소스 영역 */}
           {resourceMetas.length > 0 && (
             <section className={styles.resourceSection}>
               <div className={styles.scenarioHeader}>
@@ -679,14 +671,19 @@ const Test: React.FC = () => {
                   </button>
                 </div>
               </div>
+
               {currentResource && (
                 <>
                   <MetricChart
                     title="리소스 사용률(CPU / Memory)"
                     data={
-                      currentSlide === OVERALL
+                      isCompleted
+                        ? resourceChartData[
+                            `${currentResource.podName}:${currentResource.serviceType}`
+                          ] || []
+                        : currentSlide === OVERALL
                         ? chartData
-                        : scenarioChartData[currentSlide] || []
+                        : scenarioChartData[currentSlide!] || []
                     }
                     combinedSeries={[
                       {
