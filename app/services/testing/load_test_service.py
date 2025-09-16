@@ -1,5 +1,6 @@
 import json
 from typing import List
+import logging
 
 from sqlalchemy.orm import Session
 
@@ -7,6 +8,8 @@ from app.models.sqlite.models import OpenAPISpecVersionModel
 from app.models.sqlite.models.project_models import EndpointModel, OpenAPISpecModel
 from app.schemas.load_test.load_test_request import LoadTestRequest, ScenarioConfig
 from fastapi import HTTPException
+
+logger = logging.getLogger(__name__)
 
 def get_endpoint_by_id(db: Session, endpoint_id: int):
     endpoint = db.query(EndpointModel).filter(EndpointModel.id == endpoint_id).first()
@@ -22,6 +25,8 @@ def generate_k6_script(payload: LoadTestRequest, job_name: str, db: Session) -> 
 
     # base_url 조회 (첫 시나리오 기준으로 openapi_spec_id 역추적)
     first_scenario = payload.scenarios[0]
+    logger.info("first scenario: %s", first_scenario)
+
     endpoint = get_endpoint_by_id(db, first_scenario.endpoint_id)
     openapi_spec = (db.query(OpenAPISpecModel)
                     .join(OpenAPISpecModel.openapi_spec_versions)

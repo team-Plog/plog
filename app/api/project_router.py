@@ -1,7 +1,8 @@
 from fastapi import Path
 
+import logging
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, selectinload, contains_eager
 from app.models import get_db
 from app.models.sqlite.models import OpenAPISpecVersionModel
 from app.schemas.project.openapi import ProjectResponse
@@ -11,7 +12,7 @@ from app.schemas.project.register_project_request import RegisterProjectRequest
 from app.models.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, EndpointModel
 from app.common.response.code import SuccessCode, FailureCode
 from app.common.response.response_template import ResponseTemplate
-
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post(
@@ -69,18 +70,17 @@ async def get_project_info(
     project_id: int = Path(..., description="조회할 프로젝트의 ID"),
     db: Session = Depends(get_db)
 ):
+    from sqlalchemy.orm import joinedload
+
     project = (
         db.query(ProjectModel)
-        .join(ProjectModel.openapi_specs)
-        .join(OpenAPISpecModel.openapi_spec_versions)
-        .filter(
-            ProjectModel.id == project_id,
-            OpenAPISpecVersionModel.is_activate == True
-        )
+        .filter(ProjectModel.id == project_id)
         .options(
-            selectinload(ProjectModel.openapi_specs)
-            .selectinload(OpenAPISpecModel.openapi_spec_versions)
-            .selectinload(OpenAPISpecVersionModel.endpoints)
+            selectinload(ProjectModel.openapi_specs).selectinload(
+                OpenAPISpecModel.openapi_spec_versions.and_(
+                    OpenAPISpecVersionModel.is_activate == 1
+                )
+            ).selectinload(OpenAPISpecVersionModel.endpoints)
             .selectinload(EndpointModel.parameters)
         )
         .first()
