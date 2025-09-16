@@ -1,7 +1,8 @@
 import logging
 from fastapi import APIRouter, Depends, Path
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
-from app.models import get_db
+from app.models import get_db, get_async_db
 from app.models.sqlite.models.project_models import OpenAPISpecModel
 from app.schemas.openapi_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 from app.schemas.openapi_spec.plog_deploy_request import PlogConfigDTO
@@ -11,7 +12,8 @@ from app.common.response.code import SuccessCode, FailureCode
 from app.common.response.response_template import ResponseTemplate
 from app.services import *
 from app.services.openapi.strategy_factory import analyze_openapi_with_strategy
-from app.services.openapi.openapi_service import deploy_openapi_spec as deploy_openapi_spec_service
+from app.services.openapi.openapi_service import deploy_openapi_spec as deploy_openapi_spec_service, \
+    build_response_openapi_spec_version_list
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -127,4 +129,16 @@ async def deploy_openapi_spec(
             "message": "애플리케이션 배포에 실패했습니다."
         }
         
-        return ResponseTemplate.fail(FailureCode.INTERNAL_SERVER_ERROR, error_data)
+        return ResponseTemplate.fail(FailureCode.INTERNAL_SERVER_ERROR, data=error_data)
+
+@router.get(
+    path="/{openapi_spec_id}/versions",
+    summary="서버 버전 리스트 조회 API",
+    description="등록된 서버의 현재 버전을 포함한 과거 버전 정보 리스트를 반환합니다."
+)
+async def get_openapi_spec_version_list(
+        openapi_spec_id: int = Path(..., title="openapi_spec의 ID", ge=1),
+        db: AsyncSession = Depends(get_async_db)
+):
+    response = await build_response_openapi_spec_version_list(db, openapi_spec_id)
+    return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response)

@@ -6,6 +6,9 @@ from urllib.parse import urlparse
 import httpx
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from app.models.sqlite.models.project_models import OpenAPISpecModel, OpenAPISpecVersionModel, EndpointModel, ParameterModel
 from app.schemas.openapi_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
@@ -543,3 +546,31 @@ def _is_http_port(port: int) -> bool:
     """
     common_http_ports = [80, 8080, 3000, 4000, 5000, 8000, 9000]
     return port in common_http_ports or (8000 <= port <= 9999)
+
+
+async def build_response_openapi_spec_version_list(
+        db: AsyncSession,
+        openapi_spec_id: int
+):
+    stmt = select(OpenAPISpecVersionModel).where(OpenAPISpecVersionModel.open_api_spec_id == openapi_spec_id)
+    result = await db.execute(stmt)
+    versions = result.scalars().all()
+
+    responses = []
+
+    for version in versions:
+        response = {
+            "openapi_spec_version_id": version.id,
+            "created_at": version.created_at,
+            "commit_hash": version.commit_hash,
+            "is_active": version.is_activate
+        }
+        responses.append(response)
+
+    return responses
+
+async def update_openapi_spec_version_activate(
+        db: AsyncSession,
+
+):
+    pass
