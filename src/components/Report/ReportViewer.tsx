@@ -315,34 +315,26 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
               <div className={`${styles.subTitle} TitleS`}>가. 테스트 조건</div>
               <div className={styles.textGroup}>
                 {renderEditableBlock({
-                  keyName: "testCondition1",
-                  defaultText: `${
+                  keyName: "testCondition",
+                  defaultText: [
                     reportData.scenarios && reportData.scenarios.length > 0
                       ? `${reportData.scenarios
                           .map(
                             (s) => s.endpoint.summary || s.endpoint.description
                           )
                           .join(", ")} 동시 호출 기준으로 테스트`
-                      : "테스트 시나리오 정보를 확인할 수 없습니다."
-                  }`,
-                  className: `${styles.contentText} Body`,
-                })}
-                {renderEditableBlock({
-                  keyName: "testCondition2",
-                  defaultText: `가상사용자 : 고정 사용자 수 ${
-                    reportData.overall?.vus?.max
-                      ? `${reportData.overall.vus.max}명`
-                      : "정보 없음"
-                  }에 대해서 테스트`,
-                  className: `${styles.contentText} Body`,
-                })}
-                {renderEditableBlock({
-                  keyName: "testCondition3",
-                  defaultText: `지속 시간: ${
-                    reportData.overall?.test_duration
-                      ? `${reportData.overall.test_duration}초`
-                      : "정보 없음"
-                  } 동안 테스트`,
+                      : "테스트 시나리오 정보를 확인할 수 없습니다.",
+                    `가상사용자 : 고정 사용자 수 ${
+                      reportData.overall?.vus?.max
+                        ? `${reportData.overall.vus.max}명`
+                        : "정보 없음"
+                    }에 대해서 테스트`,
+                    `지속 시간: ${
+                      reportData.overall?.test_duration
+                        ? `${reportData.overall.test_duration}초`
+                        : "정보 없음"
+                    } 동안 테스트`,
+                  ].join("\n"), // ← 점 없이 순수 줄바꿈
                   className: `${styles.contentText} Body`,
                 })}
               </div>
@@ -353,19 +345,12 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
               </div>
               <div className={styles.textGroup}>
                 {renderEditableBlock({
-                  keyName: "analysisProc1",
-                  defaultText:
+                  keyName: "analysisProc",
+                  defaultText: [
                     "요청 처리율, 응답 속도, 에러율에 대해서 목표 설정",
-                  className: `${styles.contentText} Body`,
-                })}
-                {renderEditableBlock({
-                  keyName: "analysisProc2",
-                  defaultText: "테스트 결과와 에러율 비교, 목표 달성 분석",
-                  className: `${styles.contentText} Body`,
-                })}
-                {renderEditableBlock({
-                  keyName: "analysisProc3",
-                  defaultText: "테스트 대상 자원 사용량 분석",
+                    "테스트 결과와 에러율 비교, 목표 달성 분석",
+                    "테스트 대상 자원 사용량 분석",
+                  ].join("\n"),
                   className: `${styles.contentText} Body`,
                 })}
               </div>
