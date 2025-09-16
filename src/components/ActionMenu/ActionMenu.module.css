@@ -44,6 +44,10 @@
   color: var(--color-gray-200);
 }
 
+.text {
+  color: var(--color-black);
+}
+
 .item:hover {
   background-color: var(--color-gray-100);
 }

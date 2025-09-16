@@ -673,7 +673,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                           </td>
                           <td>
                             {scenario.response_time_target
-                              ? `${scenario.response_time_target}초`
+                              ? `${formatNumber(scenario.response_time_target / 1000, 3)}초`
                               : "X"}
                           </td>
                         </tr>
