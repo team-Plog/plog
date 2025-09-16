@@ -30,10 +30,14 @@ async def analyze_swagger(
     analyze_result: OpenAPISpecModel = await analyze_openapi_with_strategy(request)
 
     # 2. save
-    saved_open_api_spec: OpenAPISpecModel = await save_openapi_spec(db, analyze_result)
+    saved_open_api_spec: OpenAPISpecModel = save_openapi_spec(db, analyze_result)
 
-    # 3. converter
-    response = OpenAPISpec.from_orm(saved_open_api_spec).model_dump()
+    response = {
+        "id": saved_open_api_spec.id,
+        "title": saved_open_api_spec.title,
+        "version": saved_open_api_spec.version,
+        "base_url": saved_open_api_spec.base_url,
+    }
 
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response)
 
@@ -48,8 +52,16 @@ async def get_openapi_specs(
     # DB에서 모든 OpenAPISpecModel 조회
     openapi_specs = db.query(OpenAPISpecModel).all()
 
-    # Pydantic 모델로 변환
-    response = [OpenAPISpec.from_orm(spec).model_dump() for spec in openapi_specs]
+    # 수동 변환으로 안전하게 처리
+    response = []
+    for spec in openapi_specs:
+        response.append({
+            "id": spec.id,
+            "title": spec.title,
+            "version": spec.version,
+            "base_url": spec.base_url,
+            "versions": []  # 필요시 나중에 관계 데이터 로딩
+        })
 
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response)
 
