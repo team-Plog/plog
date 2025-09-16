@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel
-from typing import List, Optional, Any
+from pydantic import BaseModel, Field
+from typing import Optional, Any, List
+
 
 class ProjectResponse(BaseModel):
     id: int
@@ -10,9 +11,49 @@ class ProjectResponse(BaseModel):
     description: str
     status: Optional[str] = None
     updated_at: Optional[datetime] = None
+    openapi_specs: List["OpenAPISpec"] = []
 
     model_config = {
         "from_attributes": True  # pydantic v2 -> 기존 from_orm = True 와 동일
+    }
+
+class OpenAPISpec(BaseModel):
+    id: int
+    title: Optional[str] = None
+    version: Optional[str] = None
+    base_url: str
+    project_id: Optional[int] = None
+    versions: List["OpenAPISpecVersion"] = Field(default=[], alias="openapi_spec_versions")
+
+    model_config = {
+        "from_attributes": True
+    }
+
+class OpenAPISpecVersion(BaseModel):
+    id: int
+    created_at: datetime
+    commit_hash: Optional[str] = None  # nullable=True
+    is_activate: bool
+    open_api_spec_id: int  # 순환 참조 방지를 위해 객체 대신 ID만 사용
+    endpoints: List["Endpoint"] = []
+
+    model_config = {
+        "from_attributes": True
+    }
+
+class Endpoint(BaseModel):
+    id: int
+    path: str
+    method: str
+    summary: str
+    description: str
+    tag_name: str
+    tag_description: str
+    openapi_spec_version_id: int  # 순환 참조 방지를 위해 ID만 사용
+    parameters: List["Parameter"] = []
+
+    model_config = {
+        "from_attributes": True
     }
 
 class Parameter(BaseModel):
@@ -24,36 +65,8 @@ class Parameter(BaseModel):
     title: Optional[str]
     description: Optional[str]
     value: Optional[Any]  # JSON 데이터
+    endpoint_id: Optional[int] = None  # 순환 참조 방지를 위해 ID만 사용
 
-    class Config:
-        from_attributes = True
-
-class Endpoint(BaseModel):
-    id: int
-    path: str
-    method: str
-    summary: Optional[str]
-    description: Optional[str]
-    parameters: List[Parameter] = []  # 엔드포인트의 파라미터들
-
-    class Config:
-        from_attributes = True
-
-class Tag(BaseModel):
-    id: int
-    name: str
-    description: Optional[str]
-    endpoints: List[Endpoint]  # 이 태그가 가지는 엔드포인트들
-
-    class Config:
-        from_attributes = True
-
-class OpenAPISpec(BaseModel):
-    id: int
-    title: str
-    version: str
-    base_url: str
-    tags: List[Tag]  # 이 명세가 가지는 태그들
-
-    class Config:
-        from_attributes = True
+    model_config = {
+        "from_attributes": True
+    }

@@ -107,10 +107,13 @@ class ServiceService:
                 label_selector=label_selector
             )
 
-            pod_names = [pod.metadata.name for pod in pods.items]
-            
-            logger.info(f"Found {len(pod_names)} pods matching service {service_name}")
-            return pod_names
+            # Running 상태의 Pod만 필터링 (Rolling Update 중 Terminating Pod 제외)
+            running_pod_names = []
+            for pod in pods.items:
+                if pod.status.phase == "Running":
+                    running_pod_names.append(pod.metadata.name)
+
+            return running_pod_names
 
         except Exception as e:
             logger.error(f"Error finding pods for service {service_name}: {e}")

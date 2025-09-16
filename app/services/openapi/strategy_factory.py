@@ -155,7 +155,13 @@ async def create_openapi_analysis_context(request: OpenAPISpecRegisterRequest) -
     return await OpenAPIStrategyFactory.create_context_for_request(request)
 
 
-async def analyze_openapi_with_strategy(request: OpenAPISpecRegisterRequest):
-    """전략 패턴을 사용하여 OpenAPI를 분석합니다."""
-    context = await create_openapi_analysis_context(request)
-    return await context.analyze(request)
+async def analyze_openapi_with_strategy(
+        request: OpenAPISpecRegisterRequest,
+        db=None,
+        convert_url=True,
+        conversion_mappings=None
+):
+    """전략 패턴을 사용하여 OpenAPI를 분석합니다. (호환성을 위한 래퍼 함수)"""
+    # openapi_service의 함수로 위임
+    from app.services.openapi.openapi_service import analyze_openapi_with_strategy as service_analyze
+    return await service_analyze(request, db, convert_url, conversion_mappings)
