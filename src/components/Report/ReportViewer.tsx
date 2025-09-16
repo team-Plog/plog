@@ -314,29 +314,9 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
             <div className={styles.subTitleGroup}>
               <div className={`${styles.subTitle} TitleS`}>가. 테스트 조건</div>
               <div className={styles.textGroup}>
-                <div
-                  className={getTextClassName(
-                    `${styles.contentText} Body`,
-                    "testCondition1"
-                  )}
-                  data-editable
-                  onClick={() =>
-                    handleTextClick(
-                      "testCondition1",
-                      `${
-                        reportData.scenarios && reportData.scenarios.length > 0
-                          ? `${reportData.scenarios
-                              .map(
-                                (s) =>
-                                  s.endpoint.summary || s.endpoint.description
-                              )
-                              .join(", ")} 동시 호출 기준으로 테스트`
-                          : "테스트 시나리오 정보를 확인할 수 없습니다."
-                      }`
-                    )
-                  }>
-                  {getEditableText(
-                    "testCondition1",
+                {renderEditableBlock({
+                  keyName: "testCondition1",
+                  defaultText: `${
                     reportData.scenarios && reportData.scenarios.length > 0
                       ? `${reportData.scenarios
                           .map(
@@ -344,58 +324,27 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                           )
                           .join(", ")} 동시 호출 기준으로 테스트`
                       : "테스트 시나리오 정보를 확인할 수 없습니다."
-                  )}
-                </div>
-                <div
-                  className={getTextClassName(
-                    `${styles.contentText} Body`,
-                    "testCondition2"
-                  )}
-                  data-editable
-                  onClick={() =>
-                    handleTextClick(
-                      "testCondition2",
-                      `가상사용자 : 고정 사용자 수 ${
-                        reportData.overall?.vus?.max
-                          ? `${reportData.overall.vus.max}명`
-                          : "정보 없음"
-                      }에 대해서 테스트`
-                    )
-                  }>
-                  {getEditableText(
-                    "testCondition2",
-                    `가상사용자 : 고정 사용자 수 ${
-                      reportData.overall?.vus?.max
-                        ? `${reportData.overall.vus.max}명`
-                        : "정보 없음"
-                    }에 대해서 테스트`
-                  )}
-                </div>
-                <div
-                  className={getTextClassName(
-                    `${styles.contentText} Body`,
-                    "testCondition3"
-                  )}
-                  data-editable
-                  onClick={() =>
-                    handleTextClick(
-                      "testCondition3",
-                      `지속 시간: ${
-                        reportData.overall?.test_duration
-                          ? `${reportData.overall.test_duration}초`
-                          : "정보 없음"
-                      } 동안 테스트`
-                    )
-                  }>
-                  {getEditableText(
-                    "testCondition3",
-                    `지속 시간: ${
-                      reportData.overall?.test_duration
-                        ? `${reportData.overall.test_duration}초`
-                        : "정보 없음"
-                    } 동안 테스트`
-                  )}
-                </div>
+                  }`,
+                  className: `${styles.contentText} Body`,
+                })}
+                {renderEditableBlock({
+                  keyName: "testCondition2",
+                  defaultText: `가상사용자 : 고정 사용자 수 ${
+                    reportData.overall?.vus?.max
+                      ? `${reportData.overall.vus.max}명`
+                      : "정보 없음"
+                  }에 대해서 테스트`,
+                  className: `${styles.contentText} Body`,
+                })}
+                {renderEditableBlock({
+                  keyName: "testCondition3",
+                  defaultText: `지속 시간: ${
+                    reportData.overall?.test_duration
+                      ? `${reportData.overall.test_duration}초`
+                      : "정보 없음"
+                  } 동안 테스트`,
+                  className: `${styles.contentText} Body`,
+                })}
               </div>
             </div>
             <div className={styles.subTitleGroup}>
@@ -403,57 +352,22 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                 나. 테스트 결과 분석 절차
               </div>
               <div className={styles.textGroup}>
-                <div
-                  className={getTextClassName(
-                    `${styles.contentText} Body`,
-                    "analysisProc1"
-                  )}
-                  data-editable
-                  onClick={() =>
-                    handleTextClick(
-                      "analysisProc1",
-                      "요청 처리율, 응답 속도, 에러율에 대해서 목표 설정"
-                    )
-                  }>
-                  {getEditableText(
-                    "analysisProc1",
-                    "요청 처리율, 응답 속도, 에러율에 대해서 목표 설정"
-                  )}
-                </div>
-                <div
-                  className={getTextClassName(
-                    `${styles.contentText} Body`,
-                    "analysisProc2"
-                  )}
-                  data-editable
-                  onClick={() =>
-                    handleTextClick(
-                      "analysisProc2",
-                      "테스트 결과와 에러율 비교, 목표 달성 분석"
-                    )
-                  }>
-                  {getEditableText(
-                    "analysisProc2",
-                    "테스트 결과와 에러율 비교, 목표 달성 분석"
-                  )}
-                </div>
-                <div
-                  className={getTextClassName(
-                    `${styles.contentText} Body`,
-                    "analysisProc3"
-                  )}
-                  data-editable
-                  onClick={() =>
-                    handleTextClick(
-                      "analysisProc3",
-                      "테스트 대상 자원 사용량 분석"
-                    )
-                  }>
-                  {getEditableText(
-                    "analysisProc3",
-                    "테스트 대상 자원 사용량 분석"
-                  )}
-                </div>
+                {renderEditableBlock({
+                  keyName: "analysisProc1",
+                  defaultText:
+                    "요청 처리율, 응답 속도, 에러율에 대해서 목표 설정",
+                  className: `${styles.contentText} Body`,
+                })}
+                {renderEditableBlock({
+                  keyName: "analysisProc2",
+                  defaultText: "테스트 결과와 에러율 비교, 목표 달성 분석",
+                  className: `${styles.contentText} Body`,
+                })}
+                {renderEditableBlock({
+                  keyName: "analysisProc3",
+                  defaultText: "테스트 대상 자원 사용량 분석",
+                  className: `${styles.contentText} Body`,
+                })}
               </div>
             </div>
 
@@ -578,23 +492,12 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
               <div className={`${styles.subTitle} TitleS`}>
                 나. 비 기능 테스트 상세내역
               </div>
-              <div
-                className={getTextClassName(
-                  `${styles.contentText} Body`,
-                  "testDetails"
-                )}
-                data-editable
-                onClick={() =>
-                  handleTextClick(
-                    "testDetails",
-                    "비 기능 테스트의 경우 하드웨어 사양뿐 아니라, OS 및 애플리케이션 구성에 따라 성능 측정 결과가 상이하므로, 실제 운영 환경에서 적용할 경우 테스트 결과가 다를 수 있다."
-                  )
-                }>
-                {getEditableText(
-                  "testDetails",
-                  "비 기능 테스트의 경우 하드웨어 사양뿐 아니라, OS 및 애플리케이션 구성에 따라 성능 측정 결과가 상이하므로, 실제 운영 환경에서 적용할 경우 테스트 결과가 다를 수 있다."
-                )}
-              </div>
+              {renderEditableBlock({
+                keyName: "testDetails",
+                defaultText:
+                  "비 기능 테스트의 경우 하드웨어 사양뿐 아니라, OS 및 애플리케이션 구성에 따라 성능 측정 결과가 상이하므로, 실제 운영 환경에서 적용할 경우 테스트 결과가 다를 수 있다.",
+                className: `${styles.contentText} Body`,
+              })}
             </div>
 
             <div className={styles.subTitleGroup}>
@@ -870,23 +773,12 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                   <Sparkle className={styles.icon} />
                   <span>요약</span>
                 </div>
-                <div
-                  className={getTextClassName(
-                    `${styles.summaryContent} Body`,
-                    "responseTimeSummary"
-                  )}
-                  data-editable
-                  onClick={() =>
-                    handleTextClick(
-                      "responseTimeSummary",
-                      "최소, 평균 응답 시간은 목표를 달성하였으나, P95의 경우 약간 못 미치는 결과 발생하였음. 약 92% 사용자에게 원활한 서비스 제공 가능할 것으로 예상."
-                    )
-                  }>
-                  {getEditableText(
-                    "responseTimeSummary",
-                    "최소, 평균 응답 시간은 목표를 달성하였으나, P95의 경우 약간 못 미치는 결과 발생하였음. 약 92% 사용자에게 원활한 서비스 제공 가능할 것으로 예상."
-                  )}
-                </div>
+                {renderEditableBlock({
+                  keyName: "responseTimeSummary",
+                  defaultText:
+                    "최소, 평균 응답 시간은 목표를 달성하였으나, P95의 경우 약간 못 미치는 결과 발생하였음. 약 92% 사용자에게 원활한 서비스 제공 가능할 것으로 예상.",
+                  className: `${styles.contentText} Body`,
+                })}
               </div>
             </div>
 
@@ -970,26 +862,14 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                   <Sparkle className={styles.icon} />
                   <span>요약</span>
                 </div>
-                <div
-                  className={getTextClassName(
-                    `${styles.summaryContent} Body`,
-                    "tpsSummary"
-                  )}
-                  data-editable
-                  onClick={() =>
-                    handleTextClick(
-                      "tpsSummary",
-                      "테스트 시나리오별 TPS는 참고값으로만 사용하며, 전체 TPS에 대해서 목표를 비교하였음. 전체 평균 TPS는 목표에 거의 유사하게 근접하였음. (TPS의 경우 테스트 초반 가상 사용자 수가 부족한 경우도 존재. 최소 TPS에 대해서는 참고값으로만 사용하였음.)"
-                    )
-                  }>
-                  {getEditableText(
-                    "tpsSummary",
-                    "테스트 시나리오별 TPS는 참고값으로만 사용하며, 전체 TPS에 대해서 목표를 비교하였음. 전체 평균 TPS는 목표에 거의 유사하게 근접하였음. (TPS의 경우 테스트 초반 가상 사용자 수가 부족한 경우도 존재. 최소 TPS에 대해서는 참고값으로만 사용하였음.)"
-                  )}
-                </div>
+                {renderEditableBlock({
+                  keyName: "tpsSummary",
+                  defaultText:
+                    "테스트 시나리오별 TPS는 참고값으로만 사용하며, 전체 TPS에 대해서 목표를 비교하였음. 전체 평균 TPS는 목표에 거의 유사하게 근접하였음. (TPS의 경우 테스트 초반 가상 사용자 수가 부족한 경우도 존재. 최소 TPS에 대해서는 참고값으로만 사용하였음.)",
+                  className: `${styles.contentText} Body`,
+                })}
               </div>
             </div>
-
             <div className={styles.subTitleGroup}>
               <div className={`${styles.subTitle} TitleS`}>
                 에러율 상세 결과
@@ -1100,23 +980,12 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                   <Sparkle className={styles.icon} />
                   <span>요약</span>
                 </div>
-                <div
-                  className={getTextClassName(
-                    `${styles.summaryContent} Body`,
-                    "errorRateSummary"
-                  )}
-                  data-editable
-                  onClick={() =>
-                    handleTextClick(
-                      "errorRateSummary",
-                      "대부분의 경우 목표 에러율보다 안정적이었으나, 최대 에러율의 경우 목표치보다 높은 것으로 추정. 요청 수가 많아질 때 시스템 위험성을 고려해야 함."
-                    )
-                  }>
-                  {getEditableText(
-                    "errorRateSummary",
-                    "대부분의 경우 목표 에러율보다 안정적이었으나, 최대 에러율의 경우 목표치보다 높은 것으로 추정. 요청 수가 많아질 때 시스템 위험성을 고려해야 함."
-                  )}
-                </div>
+                {renderEditableBlock({
+                  keyName: "errorRateSummary",
+                  defaultText:
+                    "대부분의 경우 목표 에러율보다 안정적이었으나, 최대 에러율의 경우 목표치보다 높은 것으로 추정. 요청 수가 많아질 때 시스템 위험성을 고려해야 함.",
+                  className: `${styles.contentText} Body`,
+                })}
               </div>
             </div>
             <div className={`${styles.subTitle} TitleS`}>
@@ -1185,23 +1054,12 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                 <Sparkle className={styles.icon} />
                 <span>요약</span>
               </div>
-              <div
-                className={getTextClassName(
-                  `${styles.summaryContent} Body`,
-                  "resourceSummary"
-                )}
-                data-editable
-                onClick={() =>
-                  handleTextClick(
-                    "resourceSummary",
-                    "테스트 결과 백엔드 서버의 CPU 사용량이 최대 100%에 도달하며 높은 부하를 보였으나, DB 서버의 CPU 및 메모리 사용량은 여유가 있었습니다. 이는 서비스 병목 현상이 백엔드 서버의 CPU에 있음을 나타냅니다. 따라서 백엔드 서버의 스케일 아웃을 통해 성능 향상 및 안정성을 확보할 필요가 있습니다."
-                  )
-                }>
-                {getEditableText(
-                  "resourceSummary",
-                  "테스트 결과 백엔드 서버의 CPU 사용량이 최대 100%에 도달하며 높은 부하를 보였으나, DB 서버의 CPU 및 메모리 사용량은 여유가 있었습니다. 이는 서비스 병목 현상이 백엔드 서버의 CPU에 있음을 나타냅니다. 따라서 백엔드 서버의 스케일 아웃을 통해 성능 향상 및 안정성을 확보할 필요가 있습니다."
-                )}
-              </div>
+              {renderEditableBlock({
+                keyName: "resourceSummary",
+                defaultText:
+                  "테스트 결과 백엔드 서버의 CPU 사용량이 최대 100%에 도달하며 높은 부하를 보였으나, DB 서버의 CPU 및 메모리 사용량은 여유가 있었습니다. 이는 서비스 병목 현상이 백엔드 서버의 CPU에 있음을 나타냅니다. 따라서 백엔드 서버의 스케일 아웃을 통해 성능 향상 및 안정성을 확보할 필요가 있습니다.",
+                className: `${styles.contentText} Body`,
+              })}
             </div>
           </div>
         </div>
