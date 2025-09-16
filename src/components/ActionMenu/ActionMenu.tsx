@@ -46,14 +46,14 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
       {!deleteOnly && onEdit && (
         <button onClick={() => onEdit(projectId)} className={styles.item}>
           <Pen />
-          <span className="Body">편집</span>
+          <span className={`Body ${styles.text}`}>편집</span>
         </button>
       )}
       <button 
         onClick={() => onDelete(projectId)} 
         className={`${styles.item} ${deleteOnly ? styles.singleItem : ''}`}>
         <Trash />
-        <span className="Body">삭제</span>
+        <span className={`Body ${styles.text}`}>삭제</span>
       </button>
     </div>
   );
