@@ -1,0 +1,88 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: var(--color-gray-200);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background-color: var(--color-white);
+  border-radius: var(--radius-md);
+  width: 480px;
+  min-height: 596px;
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.imageSection {
+  /* 이미지 영역 전체 */
+}
+
+.imageContainer {
+  height: 200px;
+  background: var(
+    --gradient-point,
+    linear-gradient(180deg, #bcfff7 0%, #fff 100%)
+  );
+  border-radius: 8px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.contentSection {
+  flex: 1;
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.inputContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  gap: var(--spacing-lg);
+  align-self: stretch;
+  flex: 1;
+}
+
+.card1 {
+  /* position: absolute; */
+  /* top: 20%; */
+  transform: rotate(-7.806deg) translateX(40%) translateY(30%);
+  z-index: 1;
+}
+
+.card2 {
+  /* position: absolute; */
+  z-index: 2;
+}
+
+.card3 {
+  /* position: absolute; */
+  /* top: 20%; */
+  transform: rotate(9.426deg) translateX(-40%) translateY(30%);
+  z-index: 3;
+}
+
+.buttonGroup {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+}

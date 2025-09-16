@@ -1,0 +1,258 @@
+.container {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-primary);
+  box-shadow: var(--shadow-primary);
+  padding: var(--spacing-lg);
+  background-color: var(--color-background-secondary);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-lg);
+  gap: var(--spacing-sm);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-width: 0;
+  flex: 1;
+}
+
+.endpoint {
+  color: var(--color-black);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.removeButton {
+  background: none;
+  border: none;
+  padding: var(--spacing-xs);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.removeButton:hover {
+  background-color: var(--color-gray-100);
+}
+
+.removeButton svg {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  color: var(--color-gray-200);
+}
+
+.configSection {
+  margin-bottom: var(--spacing-lg);
+}
+
+.configSection:last-child {
+  margin-bottom: 0;
+}
+
+.toggleButton {
+  width: 100%;
+  background: none;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s ease;
+  background-color: var(--color-gray-100);
+}
+
+.toggleButton:hover {
+  background-color: var(--color-gray-100);
+}
+
+.toggleLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-width: 0;
+}
+
+.toggleIcon {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  color: var(--color-gray-200);
+}
+
+/* 토글 버튼이 열렸을 때 하단 모서리 제거 및 하단 보더 제거 */
+.toggleButtonOpen {
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border-bottom: none;
+}
+
+/* 셰브론 아이콘 스타일 */
+.chevronIcon {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  color: var(--color-gray-300);
+  transition: transform 0.2s ease;
+}
+
+.toggleTitle {
+  color: var(--color-black);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}
+
+.configContent {
+  border: 1px solid var(--color-border-primary);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  background-color: var(--color-gray-100);
+}
+
+.configItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  flex: 1;
+  min-width: 0;
+}
+
+.configLabel {
+  color: var(--color-gray-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.horizontalGroup {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: nowrap;
+}
+
+.parameterRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.parameterRow > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.parameterRow .headerButtons {
+  flex: 0 0 auto;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.stagesSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.stagesHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.stageColumn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  min-width: 0;
+}
+
+.stageButtonColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: fit-content;
+}
+
+.stageInputRow {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.labelWithButton {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.addButton {
+  background: none;
+  border: none;
+  padding: var(--spacing-xs);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.addButton:hover {
+  background-color: var(--color-gray-100);
+}
+
+.addButton svg {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  color: var(--color-gray-200);
+}
+
+.removeStepButton {
+  background: none;
+  border: none;
+  padding: var(--spacing-xs);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.removeStepButton:hover {
+  background-color: var(--color-gray-100);
+}
+
+.removeStepButton svg {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  color: var(--color-gray-200);
+}
+
+.stageItem {
+  width: 100%;
+}

@@ -1,0 +1,102 @@
+.buttonPrimaryGradient {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  flex: 1 0 0;
+  background: var(--gradient-button);
+  color: var(--color-white);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  border: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: var(--button-font-size);
+  font-family: var(--button-font-family);
+  font-weight: var(--button-font-weight);
+  line-height: var(--button-line-height);
+  box-shadow: inset 0 0 0 2px var(--color-black);
+}
+
+.buttonSecondary {
+  display: flex;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex: 1 0 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-primary);
+  white-space: nowrap;
+  background: var(--color-background-secondary);
+  color: var(--color-gray-300);
+  font-size: var(--button-font-size);
+  font-family: var(--button-font-family);
+  font-weight: var(--button-font-weight);
+  line-height: var(--button-line-height);
+  cursor: pointer;
+}
+
+.buttonWarning {
+  display: flex;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex: 1 0 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-primary);
+  white-space: nowrap;
+  background: var(--color-accent-error);
+  color: var(--color-white);
+  font-size: var(--button-font-size);
+  font-family: var(--button-font-family);
+  font-weight: var(--button-font-weight);
+  line-height: var(--button-line-height);
+  cursor: pointer;
+}
+
+.iconWrapper {
+  display: inline-flex;
+  align-items: center;
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+}
+
+.buttonWarning .iconWrapper svg {
+  color: var(--color-white);
+}
+
+/* 반응형 버튼 스타일 */
+.responsive {
+  min-width: 0; /* flex-shrink를 허용 */
+  overflow: hidden;
+}
+
+.responsive .textContent {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: opacity 0.2s ease;
+}
+
+/* 텍스트가 숨겨질 때의 스타일 */
+.textHidden .textContent {
+  opacity: 0;
+  width: 0;
+  margin: 0;
+}
+
+.textHidden {
+  gap: 0;
+  padding: var(--spacing-sm);
+  min-width: calc(var(--icon-size-md) + var(--spacing-sm) * 2);
+}
+
+/* 반응형 버튼의 기본 최소 너비 */
+.responsive.buttonPrimaryGradient,
+.responsive.buttonSecondary,
+.responsive.buttonWarning {
+  min-width: calc(var(--icon-size-md) + var(--spacing-sm) * 2);
+}

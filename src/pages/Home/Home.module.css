@@ -1,0 +1,110 @@
+.container {
+  min-height: 100vh;
+  background-color: var(--color-background-secondary);
+  padding-top: 40px;
+  width: 100vw;
+}
+
+.content {
+  max-width: 992px;
+  margin: 0 auto;
+  padding: 64px 20px 0 20px;
+}
+
+/* Header 스타일 */
+.header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.headerInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin: 0;
+}
+
+.leftGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.menuButton {
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.2s;
+  padding: 4px;
+}
+
+.menuButton:hover {
+  background-color: var(--color-gray-100);
+}
+
+.menuIcon {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  color: var(--color-gray-200);
+}
+
+.title {
+  color: var(--color-black);
+  white-space: nowrap;
+  margin: 0;
+}
+
+.rightGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.searchContainer {
+  width: 320px;
+  flex-shrink: 0;
+}
+
+/* Main Content 스타일 */
+.main {
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.projectsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+}
+
+/* 반응형 디자인 - Home 전용 */
+@media (max-width: 768px) {
+  .content {
+    padding: 32px 16px 0 16px;
+  }
+
+  .headerInner {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .leftGroup {
+    justify-content: center;
+  }
+
+  .rightGroup {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .searchContainer {
+    width: 100%;
+  }
+
+  .projectsGrid {
+    justify-content: center;
+  }
+}

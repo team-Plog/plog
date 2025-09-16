@@ -1,0 +1,49 @@
+.dropdown {
+  position: absolute;
+  top: 32px;
+  right: 13px;
+  background-color: var(--color-background-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-primary);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  width: 110px;
+  align-items: flex-start;
+}
+
+/* deleteOnly일 때 다른 위치 스타일 */
+.deleteOnlyMenu {
+  position: fixed;
+  top: auto;
+  right: auto;
+  box-shadow: var(--shadow-primary);
+  border: 1px solid var(--color-border-primary);
+}
+
+.item {
+  display: flex;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  align-items: center;
+  gap: var(--spacing-sm);
+  align-self: stretch;
+  border: none;
+  width: 100%;
+  background-color: transparent;
+  cursor: pointer;
+}
+
+.item:first-child:not(.singleItem) {
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.item svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  color: var(--color-gray-200);
+}
+
+.item:hover {
+  background-color: var(--color-gray-100);
+}

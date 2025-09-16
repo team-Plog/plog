@@ -1,0 +1,91 @@
+:root {
+  /* Typography Variables */
+  --heading-l-font-size: 32px;
+  --heading-l-font-family: Pretendard, sans-serif;
+  --heading-l-font-weight: 700;
+  --heading-l-line-height: 48px;
+
+  --heading-s-font-size: 18px;
+  --heading-s-font-family: Pretendard, sans-serif;
+  --heading-s-font-weight: 700;
+  --heading-s-line-height: 27px;
+
+  --title-l-font-size: 16px;
+  --title-l-font-family: Pretendard, sans-serif;
+  --title-l-font-weight: 700;
+  --title-l-line-height: 24px;
+
+  --title-s-font-size: 14px;
+  --title-s-font-family: Pretendard, sans-serif;
+  --title-s-font-weight: 700;
+  --title-s-line-height: 21px;
+
+  --body-font-size: 14px;
+  --body-font-family: Pretendard, sans-serif;
+  --body-font-weight: 500;
+  --body-line-height: 21px;
+
+  --caption-bold-font-size: 12px;
+  --caption-bold-font-family: Pretendard, sans-serif;
+  --caption-bold-font-weight: 600;
+  --caption-bold-line-height: 18px;
+
+  --caption-light-font-size: 12px;
+  --caption-light-font-family: Pretendard, sans-serif;
+  --caption-light-font-weight: 500;
+  --caption-light-line-height: 18px;
+
+  --button-font-size: 14px;
+  --button-font-family: Pretendard, sans-serif;
+  --button-font-weight: 600;
+  --button-line-height: 16px;
+}
+
+.HeadingL {
+  font-size: 32px;
+  font-family: Pretendard, sans-serif;
+  font-weight: 700;
+  line-height: 48px;
+}
+.HeadingS {
+  font-size: 18px;
+  font-family: Pretendard, sans-serif;
+  font-weight: 700;
+  line-height: 27px;
+}
+.TitleL {
+  font-size: 16px;
+  font-family: Pretendard, sans-serif;
+  font-weight: 700;
+  line-height: 24px;
+}
+.TitleS {
+  font-size: 14px;
+  font-family: Pretendard, sans-serif;
+  font-weight: 700;
+  line-height: 21px;
+}
+.Body {
+  font-size: 14px;
+  font-family: Pretendard, sans-serif;
+  font-weight: 500;
+  line-height: 21px;
+}
+.CaptionBold {
+  font-size: 12px;
+  font-family: Pretendard, sans-serif;
+  font-weight: 600; /* undefined → 보통 600 or 700 */
+  line-height: 18px;
+}
+.CaptionLight {
+  font-size: 12px;
+  font-family: Pretendard, sans-serif;
+  font-weight: 500;
+  line-height: 18px;
+}
+.Button {
+  font-size: 14px;
+  font-family: Pretendard, sans-serif;
+  font-weight: 600; /* undefined → 보통 600 or 700 */
+  line-height: 16px;
+}
