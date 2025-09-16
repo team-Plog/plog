@@ -569,8 +569,16 @@ async def build_response_openapi_spec_version_list(
 
     return responses
 
-async def update_openapi_spec_version_activate(
+async def process_openapi_spec_version_update(
         db: AsyncSession,
-
+        openapi_spec_version_id: int
 ):
+    # version id -> openapi_spec, 현재 활성화된 version 추적
+    # TODO git hooks 시 values 정보를 저장해야할 듯 -> 어디에? -> openapi_spec_version에 저장
+    # TODO 버그!!! git hooks 배포를 할 때 commit_hash를 저장하지 않고 있음 ** 먼저 해결 필요 **
+
+
+    # TODO 위 두개를 먼저 해결 commit_hash를 가진 image로 helm package 재배포
+    # TODO 선택한 버전 is_activate=True, 현재 버전은 is_activate=False
+    # TODO 응답으로는 변경되기 전 activate의 commit_hash, 변경 후 commit_hash를 첨부하면 좋을듯
     pass

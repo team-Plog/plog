@@ -13,7 +13,7 @@ from app.common.response.response_template import ResponseTemplate
 from app.services import *
 from app.services.openapi.strategy_factory import analyze_openapi_with_strategy
 from app.services.openapi.openapi_service import deploy_openapi_spec as deploy_openapi_spec_service, \
-    build_response_openapi_spec_version_list
+    build_response_openapi_spec_version_list, process_openapi_spec_version_update
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -142,3 +142,18 @@ async def get_openapi_spec_version_list(
 ):
     response = await build_response_openapi_spec_version_list(db, openapi_spec_id)
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response)
+
+@router.patch(
+    path="/versions/{openapi_spec_version_id}",
+    summary="서버 버전 변경 API",
+    description="""
+    선택한 version id로 openapi_spec의 버전을 변경합니다.
+    """
+)
+async def update_openapi_spec_version(
+        openapi_spec_version_id: int = Path(..., title="openapi_spec_version의 ID", ge=1),
+        db: AsyncSession = Depends(get_async_db)
+):
+    await process_openapi_spec_version_update(db, openapi_spec_version_id)
+
+    pass
