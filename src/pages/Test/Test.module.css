@@ -17,6 +17,10 @@
   align-items: center;
 }
 
+.projectTitle {
+  color: var(--color-black);
+}
+
 .scenarioName {
   color: var(--color-gray-300);
   margin-left: var(--spacing-sm);
@@ -75,7 +79,7 @@
 }
 
 .icon {
-  color: var(--color-gray-200);
+  color: var(--color-gray-300);
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
   flex-shrink: 0;
@@ -105,9 +109,22 @@
   gap: var(--spacing-md);
 }
 
+.carouselTitle {
+  color: var(--color-black);
+  min-width: 160px;
+  text-align: center;
+}
+
+.carouselCounter {
+  color: var(--color-gray-200);
+  margin-left: 8px;
+}
+
 .arrowButton {
   border: none;
   padding: 0 var(--spacing-lg);
+  color: var(--color-black);
+  background-color: transparent;
   cursor: pointer;
 }
 

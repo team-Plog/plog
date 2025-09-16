@@ -90,7 +90,7 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
     <div className={styles.header}>
       <div className={styles.title}>
         <div className={styles.filledCircle} />
-        <div className="HeadingS" onClick={handleNavigateToMain}>
+        <div className={`HeadingS ${styles.logo}`} onClick={handleNavigateToMain}>
           PLog
         </div>
         <div className={styles.button}>

@@ -36,6 +36,10 @@
   height: var(--icon-size-sm);
 }
 
+.value {
+  color: var(--color-black);
+}
+
 .tps {
   background-color: var(--color-http-get-bg);
   color: var(--color-http-get);
