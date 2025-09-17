@@ -3,7 +3,7 @@ import styles from "./ReportViewer.module.css";
 import {Sparkle} from "lucide-react";
 import type {TestData, ReportConfig} from "../../pages/Report/Report";
 import MetricChart from "../MetricChart/MetricChart";
-import {getTestHistoryTimeseries} from "../../api";
+import {getTestHistoryTimeseries, getTestHistoryResourceSummary} from "../../api";
 import {InputField} from "../Input";
 
 interface ReportViewerProps {
@@ -58,6 +58,8 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
     null
   );
   const [timeseriesLoading, setTimeseriesLoading] = useState<boolean>(false);
+  const [resourceData, setResourceData] = useState<any[] | null>(null);
+  const [resourceLoading, setResourceLoading] = useState<boolean>(false);
 
   // 시계열 데이터 가져오기
   useEffect(() => {
@@ -76,6 +78,25 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
     };
 
     fetchTimeseriesData();
+  }, [reportData.test_history_id]);
+
+  // 리소스 데이터 가져오기
+  useEffect(() => {
+    const fetchResourceData = async () => {
+      if (!reportData.test_history_id) return;
+
+      setResourceLoading(true);
+      try {
+        const res = await getTestHistoryResourceSummary(reportData.test_history_id);
+        setResourceData(res.data.data);
+      } catch (error) {
+        console.error("리소스 데이터 조회 실패:", error);
+      } finally {
+        setResourceLoading(false);
+      }
+    };
+
+    fetchResourceData();
   }, [reportData.test_history_id]);
 
   const formatDateOnly = (dateString: string) => {
@@ -976,6 +997,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
             <div className={`${styles.subTitle} TitleS`}>
               다. 자원 사용량 분석
             </div>
+            {/* CPU 사용량 테이블 */}
             <div className={styles.tableContainer}>
               <div className={`${styles.tableTitle} CaptionLight`}>
                 표 서버별 CPU 사용량
@@ -983,28 +1005,51 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th></th>
-                    <th>최소 사용량</th>
-                    <th>평균 사용량</th>
-                    <th>최대 사용량</th>
+                    <th>서버 유형</th>
+                    <th>최소 사용량(%)</th>
+                    <th>평균 사용량(%)</th>
+                    <th>최대 사용량(%)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td>Backend</td>
-                    <td>0.0%</td>
-                    <td>0.0%</td>
-                    <td>0.0%</td>
-                  </tr>
-                  <tr>
-                    <td>DB Server</td>
-                    <td>0.0%</td>
-                    <td>0.0%</td>
-                    <td>0.0%</td>
-                  </tr>
+                  {resourceData && resourceData.length > 0 ? (
+                    resourceData.map((resource, index) => (
+                      <tr key={index}>
+                        <td>
+                          {resource.service_type === 'SERVER' ? 'Backend' : 'DB Server'}
+                        </td>
+                        <td>
+                          {formatNumber(resource.cpu_usage_summary.percent.min, 1)}%
+                        </td>
+                        <td>
+                          {formatNumber(resource.cpu_usage_summary.percent.avg, 1)}%
+                        </td>
+                        <td>
+                          {formatNumber(resource.cpu_usage_summary.percent.max, 1)}%
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <>
+                      <tr>
+                        <td>Backend</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                      </tr>
+                      <tr>
+                        <td>DB Server</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                      </tr>
+                    </>
+                  )}
                 </tbody>
               </table>
             </div>
+            
+            {/* Memory 사용량 테이블 */}
             <div className={styles.tableContainer}>
               <div className={`${styles.tableTitle} CaptionLight`}>
                 표 서버별 Memory 사용량
@@ -1012,25 +1057,46 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th></th>
-                    <th>최소 사용량</th>
-                    <th>평균 사용량</th>
-                    <th>최대 사용량</th>
+                    <th>서버 유형</th>
+                    <th>최소 사용량(%)</th>
+                    <th>평균 사용량(%)</th>
+                    <th>최대 사용량(%)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td>Backend</td>
-                    <td>0.0%</td>
-                    <td>0.0%</td>
-                    <td>0.0%</td>
-                  </tr>
-                  <tr>
-                    <td>DB Server</td>
-                    <td>0.0%</td>
-                    <td>0.0%</td>
-                    <td>0.0%</td>
-                  </tr>
+                  {resourceData && resourceData.length > 0 ? (
+                    resourceData.map((resource, index) => (
+                      <tr key={index}>
+                        <td>
+                          {resource.service_type === 'SERVER' ? 'Backend' : 'DB Server'}
+                        </td>
+                        <td>
+                          {formatNumber(resource.memory_usage_summary.percent.min, 1)}%
+                        </td>
+                        <td>
+                          {formatNumber(resource.memory_usage_summary.percent.avg, 1)}%
+                        </td>
+                        <td>
+                          {formatNumber(resource.memory_usage_summary.percent.max, 1)}%
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <>
+                      <tr>
+                        <td>Backend</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                      </tr>
+                      <tr>
+                        <td>DB Server</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                      </tr>
+                    </>
+                  )}
                 </tbody>
               </table>
             </div>
