@@ -269,6 +269,7 @@ async def deploy_openapi_spec(db: Session, request: PlogConfigDTO) -> dict:
                         open_api_url=HttpUrl(swagger_urls[0])
                     )
 
+
                     parsed_url = urlparse(swagger_urls[0])
 
                     logger.info(f"parsed_url parsing 구조 파악: {parsed_url}")
@@ -291,6 +292,10 @@ async def deploy_openapi_spec(db: Session, request: PlogConfigDTO) -> dict:
                         convert_url=True,
                         conversion_mappings=conversion_mappings
                     )
+
+                    for version in analysis_result.openapi_spec_versions:
+                        if version.is_activate == 1:
+                            version.commit_hash = request.image_tag
 
                     logger.info(f"OpenAPI 분석 완료: {analysis_result}")
 
@@ -422,6 +427,7 @@ async def _discover_swagger_urls_with_fallback(services: List[Dict[str, Any]]) -
     Returns:
         발견된 Swagger URL 리스트
     """
+    logger.info(f"✅✅✅ discover debug services {services}")
     swagger_urls = []
     
     swagger_paths = [
@@ -451,9 +457,15 @@ async def _discover_swagger_urls_with_fallback(services: List[Dict[str, Any]]) -
         
         # NodePort fallback
         if service_type == "NodePort":
+            logger.info(f"✅✅✅ nodeport fallback")
             node_ports = service.get("node_ports", [])
             port_mappings = service.get("port_mappings", {})
             await _try_nodeport_fallback(service_name, node_ports, port_mappings, swagger_paths, swagger_urls)
+
+            # NodePort fallback에서 URL을 찾았다면 즉시 반환
+            if swagger_urls:
+                logger.info(f"NodePort fallback에서 Swagger URL 발견: {swagger_urls}")
+                return swagger_urls
     
     return swagger_urls
 

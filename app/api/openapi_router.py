@@ -1,3 +1,4 @@
+import json
 import logging
 from fastapi import APIRouter, Depends, Path
 from sqlalchemy import select
@@ -121,6 +122,7 @@ async def deploy_openapi_spec(
 ):
     try:
         # 비즈니스 로직 서비스에 위임
+        logger.info("Request payload: %s", json.dumps(request.dict(), ensure_ascii=False))
         result = await deploy_openapi_spec_service(db, request)
         
         return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, result)
