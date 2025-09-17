@@ -34,6 +34,10 @@ class Settings:
     # 자동 정리 설정
     AUTO_DELETE_COMPLETED_JOBS: bool = os.getenv("AUTO_DELETE_COMPLETED_JOBS", "true").lower() == "true"
     
+    # AI 분석 설정
+    AI_MODEL_NAME: str = os.getenv("AI_MODEL_NAME", "llama3.1:8b")
+    OLLAMA_HOST: str = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+    
     @classmethod
     def get_scheduler_config(cls) -> dict:
         """스케줄러 설정을 딕셔너리로 반환"""
