@@ -1,9 +1,10 @@
 import logging
 from fastapi import APIRouter, Depends, Path
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from app.models import get_db, get_async_db
-from app.models.sqlite.models.project_models import OpenAPISpecModel
+from app.models.sqlite.models.project_models import OpenAPISpecModel, OpenAPISpecVersionModel
 from app.schemas.openapi_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 from app.schemas.openapi_spec.plog_deploy_request import PlogConfigDTO
 
@@ -51,19 +52,24 @@ async def analyze_swagger(
 async def get_openapi_specs(
     db: Session = Depends(get_db)
 ):
-    # DB에서 모든 OpenAPISpecModel 조회
-    openapi_specs = db.query(OpenAPISpecModel).all()
+    stmt = (
+        select(
+            OpenAPISpecModel.id,
+            OpenAPISpecModel.title,
+            OpenAPISpecModel.version,
+            OpenAPISpecModel.base_url,
+            OpenAPISpecVersionModel.commit_hash,
+            OpenAPISpecVersionModel.created_at
+        )
+        .join(
+            OpenAPISpecVersionModel,
+            (OpenAPISpecVersionModel.open_api_spec_id == OpenAPISpecModel.id)
+            & (OpenAPISpecVersionModel.is_activate == True)  # ✅ 활성화 버전만
+        )
+    )
 
-    # 수동 변환으로 안전하게 처리
-    response = []
-    for spec in openapi_specs:
-        response.append({
-            "id": spec.id,
-            "title": spec.title,
-            "version": spec.version,
-            "base_url": spec.base_url,
-            "versions": []  # 필요시 나중에 관계 데이터 로딩
-        })
+    result = db.execute(stmt)
+    response = result.mappings().all()
 
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response)
 
