@@ -1,16 +1,21 @@
+import logging
 from fastapi import APIRouter, Depends, Path
 from sqlalchemy.orm import Session
 from app.models import get_db
 from app.models.sqlite.models.project_models import OpenAPISpecModel
 from app.schemas.openapi_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
+from app.schemas.openapi_spec.plog_deploy_request import PlogConfigDTO
 
 from app.schemas.project.openapi import OpenAPISpec
 from app.common.response.code import SuccessCode, FailureCode
 from app.common.response.response_template import ResponseTemplate
 from app.services import *
 from app.services.openapi.strategy_factory import analyze_openapi_with_strategy
+from app.services.openapi.openapi_service import deploy_openapi_spec as deploy_openapi_spec_service
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
 
 @router.post(
     path="/analyze",
@@ -22,13 +27,17 @@ async def analyze_swagger(
     db: Session = Depends(get_db)
 ):
     # 1. analyze using strategy pattern
-    analyze_result: OpenAPISpecModel = await analyze_openapi_with_strategy(request)
+    analyze_result: OpenAPISpecModel = await analyze_openapi_with_strategy(request=request, db=db)
 
     # 2. save
-    saved_open_api_spec: OpenAPISpecModel = await save_openapi_spec(db, analyze_result)
+    saved_open_api_spec: OpenAPISpecModel = save_openapi_spec(db, analyze_result)
 
-    # 3. converter
-    response = OpenAPISpec.from_orm(saved_open_api_spec).model_dump()
+    response = {
+        "id": saved_open_api_spec.id,
+        "title": saved_open_api_spec.title,
+        "version": saved_open_api_spec.version,
+        "base_url": saved_open_api_spec.base_url,
+    }
 
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response)
 
@@ -43,8 +52,16 @@ async def get_openapi_specs(
     # DB에서 모든 OpenAPISpecModel 조회
     openapi_specs = db.query(OpenAPISpecModel).all()
 
-    # Pydantic 모델로 변환
-    response = [OpenAPISpec.from_orm(spec).model_dump() for spec in openapi_specs]
+    # 수동 변환으로 안전하게 처리
+    response = []
+    for spec in openapi_specs:
+        response.append({
+            "id": spec.id,
+            "title": spec.title,
+            "version": spec.version,
+            "base_url": spec.base_url,
+            "versions": []  # 필요시 나중에 관계 데이터 로딩
+        })
 
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response)
 
@@ -91,6 +108,23 @@ async def delete_openapi_spec(
     """
 )
 async def deploy_openapi_spec(
-
+    request: PlogConfigDTO,
+    db: Session = Depends(get_db)
 ):
-    pass
+    try:
+        # 비즈니스 로직 서비스에 위임
+        result = await deploy_openapi_spec_service(db, request)
+        
+        return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, result)
+        
+    except Exception as e:
+        logger.error(f"배포 중 오류 발생: {str(e)}")
+        
+        # 에러 상세 정보를 포함한 실패 응답
+        error_data = {
+            "app_name": request.app_name if hasattr(request, 'app_name') else "unknown",
+            "error": str(e),
+            "message": "애플리케이션 배포에 실패했습니다."
+        }
+        
+        return ResponseTemplate.fail(FailureCode.INTERNAL_SERVER_ERROR, error_data)

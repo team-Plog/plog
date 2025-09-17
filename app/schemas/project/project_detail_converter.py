@@ -1,6 +1,8 @@
 from typing import List, Dict, Any
 from app.models.sqlite.models.project_models import ProjectModel, OpenAPISpecModel, EndpointModel
+import logging
 
+logger = logging.getLogger(__name__)
 
 class ProjectDetailConverter:
     """반정규화된 endpoint 구조를 기존 응답 형식으로 변환하는 컨버터"""
@@ -44,6 +46,7 @@ class ProjectDetailConverter:
         # endpoint들을 tag별로 그룹화
         tags_dict = {}
         activate_spec = spec.openapi_spec_versions[0]
+        logger.info(f"openapi_spec_versions length: {len(spec.openapi_spec_versions)}")
         
         for endpoint in activate_spec.endpoints:
             tag_name = endpoint.tag_name or "Default"
