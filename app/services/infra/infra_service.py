@@ -22,6 +22,7 @@ async def build_response_get_pods_info_list(
 
         response = {
             "server_infra_id": server_infra.id,
+            "openapi_spec_id": server_infra.openapi_spec_id,
             "pod_name": pod_name,
             "resource_type": server_infra.resource_type,
             "service_type": server_infra.service_type,
@@ -39,10 +40,12 @@ async def update_connection_openapi_spec_and_server_infra(
         db: AsyncSession,
         request: ConnectOpenAPIInfraRequest
 ):
-    stmt = select(ServerInfraModel).where(ServerInfraModel.id == request.server_infra_id)
-    server_infra = await db.scalar(stmt)
+    stmt = select(ServerInfraModel).where(ServerInfraModel.group_name == request.group_name)
+    result = await db.execute(stmt)
+    server_infras = result.scalars().all()
 
-    if not server_infra:
+
+    if not server_infras:
         raise ApiException(FailureCode.NOT_FOUND_DATA, "Not Found Server Infra")
 
     stmt = select(OpenAPISpecModel).where(OpenAPISpecModel.id == request.openapi_spec_id)
@@ -51,5 +54,7 @@ async def update_connection_openapi_spec_and_server_infra(
     if not openapi_spec:
         raise ApiException(FailureCode.NOT_FOUND_DATA, "Not Found OpenAPI Spec")
 
-    server_infra.openapi_spec_id = request.openapi_spec_id
+    for server_infra in server_infras:
+        server_infra.openapi_spec_id = request.openapi_spec_id
+
     await db.commit()

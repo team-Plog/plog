@@ -21,7 +21,7 @@ async def get_pods_info_list(
         db: AsyncSession = Depends(get_async_db)
 ):
     response = await build_response_get_pods_info_list(db)
-    return response
+    return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response)
 
 @router.patch(
     path="",
@@ -40,7 +40,7 @@ async def connect_openapi_spec_and_server_infra(
     if not request.openapi_spec_id:
         raise ApiException(FailureCode.BAD_REQUEST, "open api spec id is null")
 
-    if not request.server_infra_id:
+    if not request.group_name:
         raise ApiException(FailureCode.BAD_REQUEST, "server infra id is null")
 
     await update_connection_openapi_spec_and_server_infra(db, request)
