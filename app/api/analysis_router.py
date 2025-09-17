@@ -153,7 +153,6 @@ async def perform_comparison_analysis(
 async def compare_with_latest_project_test(
     test_history_id: int,
     focus_areas: Optional[List[str]] = Query(None, description="집중 분석 영역"),
-    model_name: Optional[str] = Query(None, description="사용할 모델명"),
     db_sync: Session = Depends(get_db),
     db_async: AsyncSession = Depends(get_async_db)
 ):
@@ -284,24 +283,93 @@ async def get_background_analysis_result(task_id: str):
 @router.get("/history/{test_history_id}", response_model=AnalysisHistoryResponse)
 async def get_analysis_history(
     test_history_id: int,
+    limit: int = Query(50, description="조회할 이력 개수 (최대 100개)"),
+    analysis_type: Optional[str] = Query(None, description="특정 분석 유형 필터링"),
     db: AsyncSession = Depends(get_async_db)
 ):
     """
     테스트의 분석 이력 조회
-    
+
+    ## 기능
+    - 특정 테스트에 대한 모든 AI 분석 이력 조회
+    - 개별 분석 및 비교 분석 결과 모두 포함
+    - 분석 유형별 필터링 지원
+
+    ## 파라미터
     - **test_history_id**: 테스트 히스토리 ID
-    
+    - **limit**: 조회할 이력 개수 (기본값: 50, 최대: 100)
+    - **analysis_type**: 분석 유형 필터 (tps, response_time, resource_usage, comparison 등)
+
+    ## 응답
+    - 최신 분석부터 시간 순서로 정렬
+    - 각 분석의 요약, 분석 유형, 수행 시각 포함
+    - 비교 분석의 경우 비교 대상 테스트 정보도 포함
+
     Returns:
         분석 이력 목록
     """
-    
-    # TODO: Repository Pattern으로 분석 이력 구현
-    # 현재는 빈 응답 반환
-    return AnalysisHistoryResponse(
-        test_history_id=test_history_id,
-        total_count=0,
-        analyses=[]
-    )
+
+    try:
+        from app.repositories.analysis_history_repository import get_analysis_history_repository
+
+        # 제한값 검증
+        limit = min(max(1, limit), 100)
+
+        history_repo = get_analysis_history_repository()
+
+        if analysis_type:
+            # 특정 분석 유형 필터링
+            analyses = await history_repo.get_analyses_by_type(db, test_history_id, analysis_type, limit)
+        else:
+            # 모든 분석 이력 조회
+            analyses = await history_repo.get_test_analysis_history(db, test_history_id, limit)
+
+        # 응답 데이터 구성
+        analysis_items = []
+        for analysis in analyses:
+            # analysis_type을 AnalysisType enum으로 변환
+            analysis_type_enum = None
+            try:
+                from app.schemas.analysis.analysis_request import AnalysisType
+                if analysis.analysis_type in [at.value for at in AnalysisType]:
+                    analysis_type_enum = AnalysisType(analysis.analysis_type)
+                else:
+                    # comparison 등 enum에 없는 경우 기본값 사용
+                    analysis_type_enum = AnalysisType.comprehensive
+            except:
+                analysis_type_enum = AnalysisType.comprehensive
+
+            item = {
+                "id": analysis.id,
+                "test_history_id": analysis.primary_test_id,  # AnalysisHistoryItem에서 요구하는 필드명
+                "analysis_type": analysis_type_enum,
+                "model_name": analysis.model_name,
+                "analyzed_at": analysis.analyzed_at,
+                "summary": _extract_summary_from_result(analysis.analysis_result)
+            }
+            analysis_items.append(item)
+
+        return AnalysisHistoryResponse(
+            test_history_id=test_history_id,
+            total_count=len(analysis_items),
+            analyses=analysis_items
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve analysis history: {str(e)}"
+        )
+
+
+def _extract_summary_from_result(analysis_result: dict) -> str:
+    """분석 결과에서 요약 텍스트 추출"""
+    if "summary" in analysis_result:
+        return analysis_result["summary"]
+    elif "comparison_summary" in analysis_result:
+        return analysis_result["comparison_summary"]
+    else:
+        return "분석 요약 정보 없음"
 
 
 @router.get("/health", response_model=HealthCheckResponse)

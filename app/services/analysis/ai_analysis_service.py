@@ -13,7 +13,7 @@ from app.schemas.analysis import (
 )
 from .prompt_manager import PromptManager
 from .ollama_client import get_ollama_client, OllamaConfig
-from .model_manager import get_model_manager, ModelConfiguration
+# 모델 매니저 제거됨 - 간단한 설정 사용
 from app.services.testing.test_history_service import (
     get_test_history_by_id, build_test_history_detail_response,
     build_test_history_timeseries_resources_response
@@ -27,16 +27,13 @@ class AIAnalysisService:
     
     def __init__(self):
         self.prompt_manager = PromptManager()
-        self.model_manager = get_model_manager()
     
     async def perform_single_analysis(
         self,
         db_sync: Session,
         db_async: AsyncSession,
         test_history_id: int,
-        analysis_type: AnalysisType,
-        model_name: Optional[str] = None,
-        priority: str = "balanced"
+        analysis_type: AnalysisType
     ) -> SingleAnalysisResponse:
         """
         개별 분석 수행
@@ -46,8 +43,6 @@ class AIAnalysisService:
             db_async: 비동기 데이터베이스 세션
             test_history_id: 분석할 테스트 히스토리 ID
             analysis_type: 분석 유형
-            model_name: 사용할 모델명 (미지정시 자동 선택)
-            priority: 분석 우선순위 (speed, quality, balanced)
             
         Returns:
             개별 분석 결과
@@ -56,33 +51,77 @@ class AIAnalysisService:
         
         try:
             logger.info(f"Starting {analysis_type.value} analysis for test_history_id: {test_history_id}")
+
+            # 1. 실제 테스트 데이터 수집
+            logger.debug("Step 1: Collecting actual test data from database")
+            from app.schemas.analysis import LLMAnalysisInput
+            from app.schemas.analysis.analysis_models import convert_test_history_to_llm_input
+            from app.services.testing.test_history_service import build_test_history_detail_response
+
+            # 실제 테스트 데이터 조회
+            from app.services.testing.test_history_service import get_test_history_by_id
+
+            test_history = get_test_history_by_id(db_sync, test_history_id)
+            if not test_history:
+                raise ValueError(f"Test history not found for ID: {test_history_id}")
+
+            test_detail_response = build_test_history_detail_response(test_history)
+            test_history_detail = test_detail_response.dict()  # Pydantic 객체를 dict로 변환
+
+            # 리소스 사용량 데이터 수집
+            resource_usage_data = None
+            try:
+                # build_test_history_timeseries_resources_response returns the raw data directly
+                resource_usage_data = await build_test_history_timeseries_resources_response(db_async, test_history_id)
+                logger.debug(f"Resource usage data type: {type(resource_usage_data)}")
+                logger.debug(f"Resource usage data: {resource_usage_data}")
+
+                if resource_usage_data and isinstance(resource_usage_data, list):
+                    logger.debug(f"Resource usage data collected: {len(resource_usage_data)} servers")
+                    if resource_usage_data:
+                        logger.debug(f"First server keys: {resource_usage_data[0].keys()}")
+                        if "resource_data" in resource_usage_data[0]:
+                            logger.debug(f"First server has {len(resource_usage_data[0]['resource_data'])} resource data points")
+                else:
+                    logger.warning(f"Resource usage data is empty or invalid: {resource_usage_data}")
+                    resource_usage_data = None
+            except Exception as e:
+                logger.warning(f"Failed to get resource usage data: {e}")
+                import traceback
+                logger.debug(f"Full traceback: {traceback.format_exc()}")
+                resource_usage_data = None
+
+            # LLMAnalysisInput으로 변환
+            llm_input_data = convert_test_history_to_llm_input(
+                test_history_detail=test_history_detail,
+                resource_usage_data=resource_usage_data
+            )
+            logger.debug("Step 1: Real test data collected and converted successfully")
             
-            # 1. 테스트 데이터 수집
-            llm_input_data = await self._collect_test_data(db_sync, db_async, test_history_id)
-            
-            # 2. 모델 선택 및 설정
-            if model_name:
-                # 사용자 지정 모델 사용
-                model_config = await self._get_model_config_by_name(model_name, analysis_type.value)
-            else:
-                # 자동 모델 선택
-                model_config = await self.model_manager.select_model_for_analysis(
-                    analysis_type=analysis_type.value,
-                    data_complexity=self._estimate_data_complexity(llm_input_data),
-                    user_preference=priority
-                )
-            
-            if not model_config:
-                raise Exception("No suitable model available for analysis")
+            # 2. 모델 설정 (환경변수에서 직접 가져오기)
+            logger.debug("Step 2: Setting up model configuration")
+            from app.core.config import settings
+
+            # 간단한 모델 설정
+            model_config = {
+                'model_name': settings.AI_MODEL_NAME,
+                'temperature': 0.1,
+                'max_tokens': 3000,
+                'timeout_seconds': 120
+            }
+            logger.debug(f"Step 2: Model config created: {model_config}")
             
             # 3. Ollama 클라이언트 설정
+            logger.debug("Step 3: Setting up Ollama client")
             ollama_client = await get_ollama_client()
-            ollama_client.config = OllamaConfig(
-                model_name=model_config.model_name,
-                temperature=model_config.temperature,
-                max_tokens=model_config.max_tokens,
-                timeout_seconds=model_config.timeout_seconds
-            )
+            config = OllamaConfig()
+            config.base_url = settings.OLLAMA_HOST  # 환경변수에서 Ollama 호스트 설정
+            config.model_name = model_config['model_name']
+            config.temperature = model_config['temperature']
+            config.max_tokens = model_config['max_tokens']
+            config.timeout_seconds = model_config['timeout_seconds']
+            ollama_client.config = config
+            logger.debug(f"Step 3: Ollama client configured with host: {settings.OLLAMA_HOST}")
             
             if not await ollama_client.is_available():
                 raise Exception("Ollama server is not available")
@@ -92,18 +131,12 @@ class AIAnalysisService:
                 llm_input_data, analysis_type, ollama_client
             )
             
-            # 5. 성능 기록
+            # 5. 성능 기록 (간단한 로그)
             duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
-            self.model_manager.record_performance(
-                model_name=model_config.model_name,
-                analysis_type=analysis_type.value,
-                duration_ms=duration_ms,
-                quality_score=analysis_result.confidence_score or 0.5,
-                success=True
-            )
+            logger.info(f"Analysis completed in {duration_ms}ms using {model_config['model_name']}")
             
             # 6. 응답 구성
-            return SingleAnalysisResponse(
+            response = SingleAnalysisResponse(
                 analysis_type=analysis_type,
                 summary=analysis_result.summary,
                 detailed_analysis=analysis_result.detailed_analysis,
@@ -111,23 +144,26 @@ class AIAnalysisService:
                 performance_score=analysis_result.performance_score,
                 confidence_score=analysis_result.confidence_score,
                 analyzed_at=datetime.now(),
-                model_name=model_config.model_name,
+                model_name=model_config['model_name'],
                 analysis_duration_ms=duration_ms
             )
+
+            # 7. 분석 결과 이력 저장
+            try:
+                from app.repositories.analysis_history_repository import get_analysis_history_repository
+                history_repo = get_analysis_history_repository()
+                await history_repo.save_single_analysis(db_async, test_history_id, response)
+                logger.debug(f"Analysis result saved to history for test_history_id: {test_history_id}")
+            except Exception as e:
+                logger.warning(f"Failed to save analysis history: {e}")
+                # 이력 저장 실패해도 분석 결과는 반환
+
+            return response
             
         except Exception as e:
-            # 실패 시 성능 기록
+            # 실패 로그
             duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
-            if model_config:
-                self.model_manager.record_performance(
-                    model_name=model_config.model_name,
-                    analysis_type=analysis_type.value,
-                    duration_ms=duration_ms,
-                    quality_score=0.0,
-                    success=False
-                )
-            
-            logger.error(f"Single analysis failed for test_history_id {test_history_id}: {e}")
+            logger.error(f"Single analysis failed for test_history_id {test_history_id} after {duration_ms}ms: {e}")
             raise
     
     async def perform_comprehensive_analysis(
@@ -136,22 +172,18 @@ class AIAnalysisService:
         db_async: AsyncSession,
         test_history_id: int,
         analysis_types: List[AnalysisType] = None,
-        model_name: Optional[str] = None,
-        priority: str = "balanced",
         comparison_test_ids: Optional[List[int]] = None
     ) -> ComprehensiveAnalysisResponse:
         """
         종합 분석 수행
-        
+
         Args:
             db_sync: 동기 데이터베이스 세션
             db_async: 비동기 데이터베이스 세션
             test_history_id: 분석할 테스트 히스토리 ID
             analysis_types: 수행할 분석 유형 목록 (기본값: 전체)
-            model_name: 사용할 모델명 (미지정시 자동 선택)
-            priority: 분석 우선순위
             comparison_test_ids: 비교 분석용 테스트 ID 목록
-            
+
         Returns:
             종합 분석 결과
         """
@@ -175,7 +207,7 @@ class AIAnalysisService:
             for analysis_type in analysis_types:
                 try:
                     single_result = await self.perform_single_analysis(
-                        db_sync, db_async, test_history_id, analysis_type, model_name, priority
+                        db_sync, db_async, test_history_id, analysis_type
                     )
                     analyses.append(single_result)
                     logger.info(f"Completed {analysis_type.value} analysis")
@@ -226,22 +258,18 @@ class AIAnalysisService:
         db_async: AsyncSession,
         current_test_id: int,
         previous_test_id: int,
-        focus_areas: Optional[List[str]] = None,
-        model_name: Optional[str] = None,
-        priority: str = "balanced"
+        focus_areas: Optional[List[str]] = None
     ) -> ComparisonAnalysisResponse:
         """
         비교 분석 수행
-        
+
         Args:
             db_sync: 동기 데이터베이스 세션
             db_async: 비동기 데이터베이스 세션
             current_test_id: 현재 테스트 ID
             previous_test_id: 이전 테스트 ID
             focus_areas: 집중 분석 영역
-            model_name: 사용할 모델명
-            priority: 분석 우선순위
-            
+
         Returns:
             비교 분석 결과
         """
@@ -254,18 +282,15 @@ class AIAnalysisService:
             current_data = await self._collect_test_data(db_sync, db_async, current_test_id)
             previous_data = await self._collect_test_data(db_sync, db_async, previous_test_id)
             
-            # 2. 모델 선택
-            if model_name:
-                model_config = await self._get_model_config_by_name(model_name, "comparison")
-            else:
-                model_config = await self.model_manager.select_model_for_analysis(
-                    analysis_type="comparison",
-                    data_complexity="high",  # 비교 분석은 복잡도 높음
-                    user_preference=priority
-                )
-            
-            if not model_config:
-                raise Exception("No suitable model available for comparison analysis")
+            # 2. 모델 설정 (환경변수에서 직접 가져오기)
+            from app.core.config import settings
+
+            model_config = {
+                'model_name': settings.AI_MODEL_NAME,
+                'temperature': 0.05,  # 비교 분석은 일관성이 중요
+                'max_tokens': 3000,
+                'timeout_seconds': 120
+            }
             
             # 3. 비교 분석용 프롬프트 생성
             comparison_prompt = self._generate_comparison_prompt(
@@ -274,12 +299,12 @@ class AIAnalysisService:
             
             # 4. Ollama 클라이언트 설정 및 분석 수행
             ollama_client = await get_ollama_client()
-            ollama_client.config = OllamaConfig(
-                model_name=model_config.model_name,
-                temperature=0.05,  # 비교 분석은 일관성이 중요
-                max_tokens=model_config.max_tokens,
-                timeout_seconds=model_config.timeout_seconds
-            )
+            config = OllamaConfig()
+            config.model_name = model_config['model_name']
+            config.temperature = model_config['temperature']
+            config.max_tokens = model_config['max_tokens']
+            config.timeout_seconds = model_config['timeout_seconds']
+            ollama_client.config = config
             
             result = await ollama_client.analyze_performance(comparison_prompt, "comparison")
             
@@ -291,23 +316,29 @@ class AIAnalysisService:
                 result["response"], current_data, previous_data
             )
             
-            # 6. 성능 기록
+            # 6. 성능 기록 (간단한 로그)
             duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
-            self.model_manager.record_performance(
-                model_name=model_config.model_name,
-                analysis_type="comparison",
-                duration_ms=duration_ms,
-                quality_score=0.8,  # 비교 분석은 품질 측정이 어려움
-                success=True
-            )
-            
-            return ComparisonAnalysisResponse(
+            logger.info(f"Comparison analysis completed in {duration_ms}ms using {model_config['model_name']}")
+
+            response = ComparisonAnalysisResponse(
                 current_test_id=current_test_id,
                 previous_test_id=previous_test_id,
                 analyzed_at=datetime.now(),
-                model_name=model_config.model_name,
+                model_name=model_config['model_name'],
                 **comparison_result
             )
+
+            # 비교 분석 결과 이력 저장
+            try:
+                from app.repositories.analysis_history_repository import get_analysis_history_repository
+                history_repo = get_analysis_history_repository()
+                await history_repo.save_comparison_analysis(db_async, current_test_id, previous_test_id, response)
+                logger.debug(f"Comparison analysis result saved to history: {current_test_id} vs {previous_test_id}")
+            except Exception as e:
+                logger.warning(f"Failed to save comparison analysis history: {e}")
+                # 이력 저장 실패해도 분석 결과는 반환
+
+            return response
             
         except Exception as e:
             logger.error(f"Comparison analysis failed: {e}")
@@ -338,20 +369,7 @@ class AIAnalysisService:
         
         return convert_test_history_to_llm_input(test_detail_dict, resource_usage_data)
     
-    async def _get_model_config_by_name(self, model_name: str, analysis_type: str) -> Optional[ModelConfiguration]:
-        """모델명으로 설정 조회"""
-        
-        model_info = self.model_manager.registry.get_model(model_name)
-        if not model_info or not model_info.is_available:
-            return None
-        
-        return ModelConfiguration(
-            model_name=model_name,
-            provider=model_info.provider,
-            temperature=0.05 if analysis_type == "comparison" else 0.1,
-            max_tokens=min(model_info.max_tokens, 3000),
-            timeout_seconds=180 if "13b" in model_name else 120
-        )
+    # _get_model_config_by_name 메서드 제거됨 - 더 이상 필요 없음
     
     def _estimate_data_complexity(self, data: LLMAnalysisInput) -> str:
         """데이터 복잡도 추정"""

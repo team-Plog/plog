@@ -190,3 +190,33 @@ class StageHistoryModel(Base):
 
     scenario_id = Column(Integer, ForeignKey("scenario_history.id"))
     scenario = relationship("ScenarioHistoryModel", back_populates="stages")
+
+
+class AnalysisHistoryModel(Base):
+    """AI 분석 이력 통합 저장 테이블"""
+    __tablename__ = "analysis_history"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # 기본 분석 정보
+    primary_test_id = Column(Integer, ForeignKey("test_history.id"), nullable=False)
+    analysis_category = Column(String(50), nullable=False)  # 'single', 'comparison', 'comprehensive'
+    analysis_type = Column(String(50), nullable=False)  # 'tps', 'response_time', 'resource_usage', etc.
+
+    # 비교 분석용 (comparison일 때만 사용)
+    comparison_test_id = Column(Integer, ForeignKey("test_history.id"), nullable=True)
+
+    # 분석 결과 (JSON으로 유연하게 저장)
+    analysis_result = Column(JSON, nullable=False)
+
+    # 메타데이터
+    model_name = Column(String(100), nullable=False)
+    analysis_duration_ms = Column(Integer, nullable=True)
+
+    # 타임스탬프
+    analyzed_at = Column(DateTime, default=now_kst, nullable=False)
+    created_at = Column(DateTime, default=now_kst, nullable=False)
+
+    # 관계 설정
+    primary_test = relationship("TestHistoryModel", foreign_keys=[primary_test_id], backref="primary_analyses")
+    comparison_test = relationship("TestHistoryModel", foreign_keys=[comparison_test_id], backref="comparison_analyses")

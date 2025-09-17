@@ -239,7 +239,7 @@ def convert_test_history_to_llm_input(
     
     return LLMAnalysisInput(
         test_history_id=test_history_detail.get("test_history_id", 0),
-        tested_at=datetime.fromisoformat(test_history_detail.get("tested_at", datetime.now().isoformat()).replace('Z', '+00:00')),
+        tested_at=test_history_detail.get("tested_at") if isinstance(test_history_detail.get("tested_at"), datetime) else datetime.fromisoformat(test_history_detail.get("tested_at", datetime.now().isoformat()).replace('Z', '+00:00')),
         is_completed=test_history_detail.get("is_completed", False),
         configuration=configuration,
         overall_tps=overall_tps,

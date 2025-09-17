@@ -43,8 +43,9 @@ app/
 ## 주요 기능
 1. **자동 OpenAPI 분석** - 전략 패턴 기반 다양한 소스 지원
 2. **k6 부하 테스트** - Kubernetes Job 확장 실행
-3. **실시간 모니터링** - SSE 기반 실시간 스트리밍  
+3. **실시간 모니터링** - SSE 기반 실시간 스트리밍
 4. **메트릭 분석** - 성능 지표 집계 및 분석
+5. **AI 분석 이력 관리** - Repository Pattern 기반 분석 결과 저장 및 조회
 
 ### 핵심 함수: analyze_openapi_with_strategy
 **위치**: `app/services/openapi/strategy_factory.py:158-161`
@@ -284,3 +285,145 @@ class MetricsCalculator:
 - **테스트 용이성**: 정적 메서드로 단위 테스트 작성 용이
 - **코드 재사용성**: 다른 Service에서도 MetricsCalculator 재사용 가능
 - **유지보수성**: 계산 로직 변경시 한 곳에서만 수정하면 되는 구조
+
+---
+
+### 2025-09-17: AI 분석 이력 관리 시스템 구현
+
+#### 📋 구현 목적
+AI 분석 결과의 체계적 저장 및 이력 관리로 분석 결과 추적성과 비교 분석 지원
+
+#### 🔧 주요 변경사항
+1. **통합 분석 이력 테이블** (`AnalysisHistoryModel`)
+   - 개별 분석, 비교 분석, 종합 분석 결과 통합 저장
+   - JSON 컬럼 활용으로 유연한 데이터 구조 지원
+   - 분석 메타데이터(모델명, 소요시간, 신뢰도) 포함
+
+2. **Repository Pattern 적용** (`AnalysisHistoryRepository`)
+   - 비동기 DB 계층으로 분석 이력 CRUD 제공
+   - 테스트별, 분석 유형별 조회 메서드 지원
+   - 싱글톤 패턴으로 인스턴스 재사용성 확보
+
+3. **자동 이력 저장** (AI Analysis Service 통합)
+   - 모든 AI 분석 수행 시 자동으로 결과 저장
+   - 저장 실패해도 분석 결과 반환하는 안전한 구조
+   - 개별 분석 및 비교 분석 모두 지원
+
+4. **이력 조회 API** (`GET /analysis/history/{test_history_id}`)
+   - 분석 유형별 필터링 지원
+   - 페이지네이션 및 제한값 검증
+   - 상세한 Swagger 문서화
+
+#### 🎯 핵심 아키텍처
+
+```python
+# 통합 분석 이력 테이블
+class AnalysisHistoryModel(Base):
+    primary_test_id = Column(Integer, ForeignKey("test_history.id"))
+    analysis_category = Column(String(50))  # 'single', 'comparison', 'comprehensive'
+    analysis_type = Column(String(50))      # 'tps', 'response_time', etc.
+    comparison_test_id = Column(Integer, ForeignKey("test_history.id"), nullable=True)
+    analysis_result = Column(JSON)          # 유연한 결과 저장
+    model_name = Column(String(100))
+    analyzed_at = Column(DateTime)
+
+# Repository Pattern
+class AnalysisHistoryRepository:
+    async def save_single_analysis(db, test_history_id, response)
+    async def save_comparison_analysis(db, current_id, previous_id, response)
+    async def get_test_analysis_history(db, test_history_id, limit)
+    async def get_analyses_by_type(db, test_history_id, analysis_type, limit)
+```
+
+#### 💡 데이터 저장 전략
+
+**개별 분석 저장 구조:**
+```json
+{
+  "primary_test_id": 4,
+  "analysis_category": "single",
+  "analysis_type": "resource_usage",
+  "analysis_result": {
+    "summary": "CPU 사용률 0.5%, Memory 67.7%...",
+    "detailed_analysis": "상세 분석 내용",
+    "insights": [...],
+    "performance_score": 85.0,
+    "confidence_score": 0.64
+  },
+  "model_name": "gpt-oss:20b"
+}
+```
+
+**비교 분석 저장 구조:**
+```json
+{
+  "primary_test_id": 4,
+  "comparison_test_id": 1,
+  "analysis_category": "comparison",
+  "analysis_type": "comparison",
+  "analysis_result": {
+    "comparison_summary": "이전 테스트 대비 성능 향상...",
+    "improvement_percentage": 15.2,
+    "tps_comparison": {...},
+    "improvements": [...],
+    "regressions": [...]
+  }
+}
+```
+
+#### 🔧 API 사용법
+
+**1. 분석 이력 조회**
+```bash
+GET /analysis/history/4?limit=20&analysis_type=resource_usage
+```
+
+**응답 예시:**
+```json
+{
+  "test_history_id": 4,
+  "total_count": 3,
+  "analyses": [
+    {
+      "id": 15,
+      "analysis_category": "single",
+      "analysis_type": "resource_usage",
+      "model_name": "gpt-oss:20b",
+      "analyzed_at": "2025-09-17T10:57:04",
+      "summary": "CPU 사용률이 0.5%로 매우 낮고..."
+    }
+  ]
+}
+```
+
+**2. 자동 이력 저장**
+- AI 분석 수행 시 자동으로 결과 저장
+- 저장 실패해도 분석 결과는 정상 반환
+- 모든 분석 유형(개별, 비교, 종합) 지원
+
+#### 📖 개발 가이드
+
+**Repository 사용 패턴:**
+```python
+from app.repositories.analysis_history_repository import get_analysis_history_repository
+
+# 이력 조회
+history_repo = get_analysis_history_repository()
+analyses = await history_repo.get_test_analysis_history(db, test_id, limit)
+
+# 자동 저장 (AI Analysis Service에서 처리)
+await history_repo.save_single_analysis(db, test_id, analysis_response)
+```
+
+**확장성 고려사항:**
+- **JSON 컬럼**: 새로운 분석 결과 형식 추가 시 스키마 변경 없이 확장 가능
+- **Repository Pattern**: 새로운 조회 조건 추가 시 Repository 메서드로 확장
+- **통합 테이블**: 모든 분석 유형을 하나의 테이블에서 관리하여 일관성 확보
+
+#### 🎯 핵심 기능
+- **분석 추적성**: 언제, 어떤 모델로, 어떤 결과가 나왔는지 완전 추적
+- **비교 분석 지원**: 이전 분석 결과와 현재 결과 비교 가능
+- **성능 모니터링**: 분석 소요시간, 신뢰도 점수 등 메타데이터 제공
+- **유연한 확장**: JSON 기반 결과 저장으로 새로운 분석 형식 자유롭게 추가
+
+이로써 AI 분석 시스템이 단순한 일회성 분석에서 체계적인 이력 관리 시스템으로 발전했습니다.
