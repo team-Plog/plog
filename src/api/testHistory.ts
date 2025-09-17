@@ -24,3 +24,7 @@ export const getTestHistoryTimeseries = (testHistoryId: number) =>
 // 테스트 리소스 시계열 데이터 조회
 export const getTestHistoryResources = (testHistoryId: number) =>
   axios.get(`/test-history/${testHistoryId}/resources`);
+
+// 테스트 리소스 요약 조회 (테스트 보고서용)
+export const getTestHistoryResourceSummary = (testHistoryId: number) =>
+  axios.get(`/test-history/${testHistoryId}/resource/summary`);
