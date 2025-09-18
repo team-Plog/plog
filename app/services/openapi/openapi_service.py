@@ -10,6 +10,8 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
+
+from app.models.sqlite.models import OpenAPISpecVersionDetailModel
 from app.models.sqlite.models.project_models import OpenAPISpecModel, OpenAPISpecVersionModel, EndpointModel, ParameterModel
 from app.schemas.openapi_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 from app.schemas.openapi_spec.plog_deploy_request import PlogConfigDTO
@@ -187,6 +189,7 @@ def save_openapi_spec(db: Session, openapi_spec_model: OpenAPISpecModel) -> Open
     return openapi_spec_model
 
 
+
 async def deploy_openapi_spec(db: Session, request: PlogConfigDTO) -> dict:
     """
     PlogConfigDTO를 받아서 배포 프로세스를 실행하는 서비스
@@ -254,8 +257,9 @@ async def deploy_openapi_spec(db: Session, request: PlogConfigDTO) -> dict:
         service_ready = await _wait_for_service_ready(service_name, timeout=60)
         if service_ready:
             logger.info(f"서비스 준비 완료: {service_name}")
-            
-            # Swagger URL 스캔
+
+            # Swagger URL 스캔 (Pod 준비 상태 확인 및 재시도 포함)
+            logger.info(f"Pod 준비 상태 확인 및 Swagger URL 탐지 시작: {service_name}")
             swagger_urls = await _scan_swagger_urls_for_service(service_name)
             
             if swagger_urls:
@@ -296,6 +300,7 @@ async def deploy_openapi_spec(db: Session, request: PlogConfigDTO) -> dict:
                     for version in analysis_result.openapi_spec_versions:
                         if version.is_activate == 1:
                             version.commit_hash = request.image_tag
+                            version_detail = convertOpenAPISpecDetailDtoToModel(request, version.id)
 
                     logger.info(f"OpenAPI 분석 완료: {analysis_result}")
 
@@ -355,27 +360,27 @@ async def _wait_for_service_ready(service_name: str, timeout: int = 60) -> bool:
 
 async def _scan_swagger_urls_for_service(service_name: str) -> List[str]:
     """
-    특정 서비스의 Swagger URL을 스캔
-    
+    특정 서비스의 Swagger URL을 스캔 (Pod 준비 상태 확인 및 재시도 포함)
+
     Args:
         service_name: 스캔할 서비스 이름
-        
+
     Returns:
         List[str]: 발견된 Swagger URL 리스트
     """
     service_service = ServiceService(namespace=settings.KUBERNETES_TEST_NAMESPACE)
     pod_service = PodService(namespace=settings.KUBERNETES_TEST_NAMESPACE)
-    
+
     try:
         # 서비스와 매칭되는 Pod 목록 조회
         pod_names = service_service.get_pod_names_matching_service(service_name)
-        
+
         if not pod_names:
             logger.warning(f"서비스에 매칭되는 Pod이 없음: {service_name}")
             return []
 
-        logger.info(f"🔥🔥🔥 pod name debug: {pod_names}")
-        
+        logger.info(f"발견된 Pod 목록: {pod_names}")
+
         # SERVER 타입 Pod 찾기
         server_pods_found = []
         for pod_name in pod_names:
@@ -386,13 +391,18 @@ async def _scan_swagger_urls_for_service(service_name: str) -> List[str]:
                     logger.info(f"SERVER Pod 발견: {pod_name}")
                     server_pods_found.append(pod_name)
 
+                    # Pod 준비 상태 확인 및 대기
+                    if not await _wait_for_pod_ready(pod_name, pod_service, timeout=60):
+                        logger.warning(f"Pod {pod_name}이 준비되지 않음 - Swagger 탐지 건너뜀")
+                        continue
+
                     # Pod의 레이블을 사용하여 서비스 찾기
                     services = pod_service.find_services_for_pod(detailed_pod_info["labels"])
                     logger.info(f"Pod {pod_name}에 대응하는 서비스 수: {len(services)}")
 
                     if services:
-                        # Swagger URL 탐지 (ServerPodScheduler 로직 재사용)
-                        swagger_urls = await _discover_swagger_urls_with_fallback(services)
+                        # Swagger URL 탐지 (재시도 로직 포함)
+                        swagger_urls = await _discover_swagger_urls_with_retry(services, max_retries=3)
                         logger.info(f"Pod {pod_name}에서 탐지된 Swagger URL 수: {len(swagger_urls)}")
 
                         if swagger_urls:
@@ -410,10 +420,78 @@ async def _scan_swagger_urls_for_service(service_name: str) -> List[str]:
         else:
             logger.warning(f"SERVER 타입 Pod을 찾을 수 없음: {service_name}")
         return []
-        
+
     except Exception as e:
         logger.error(f"Swagger URL 스캔 오류: {service_name}, error: {str(e)}")
         return []
+
+
+async def _wait_for_pod_ready(pod_name: str, pod_service: PodService, timeout: int = 60) -> bool:
+    """
+    Pod가 준비될 때까지 대기
+
+    Args:
+        pod_name: 대기할 Pod 이름
+        pod_service: PodService 인스턴스
+        timeout: 최대 대기 시간(초)
+
+    Returns:
+        bool: Pod 준비 완료 여부
+    """
+    check_interval = 5  # 5초마다 확인
+    max_attempts = timeout // check_interval
+
+    logger.info(f"Pod 준비 상태 확인 시작: {pod_name} (최대 {timeout}초 대기)")
+
+    for attempt in range(max_attempts):
+        try:
+            if pod_service.is_pod_ready(pod_name):
+                logger.info(f"Pod 준비 완료: {pod_name} (시도 {attempt + 1}/{max_attempts})")
+                return True
+
+            logger.debug(f"Pod 준비 대기 중: {pod_name} (시도 {attempt + 1}/{max_attempts})")
+            await asyncio.sleep(check_interval)
+
+        except Exception as e:
+            logger.warning(f"Pod 상태 확인 중 오류: {str(e)} (시도 {attempt + 1}/{max_attempts})")
+            await asyncio.sleep(check_interval)
+
+    logger.warning(f"Pod 준비 실패: {pod_name} ({timeout}초 초과)")
+    return False
+
+
+async def _discover_swagger_urls_with_retry(services: List[Dict[str, Any]], max_retries: int = 3) -> List[str]:
+    """
+    서비스 정보를 기반으로 Swagger URL을 탐지하고, 실패 시 재시도
+
+    Args:
+        services: Service 정보 리스트
+        max_retries: 최대 재시도 횟수
+
+    Returns:
+        발견된 Swagger URL 리스트
+    """
+    for attempt in range(max_retries):
+        try:
+            swagger_urls = await _discover_swagger_urls_with_fallback(services)
+
+            if swagger_urls:
+                logger.info(f"Swagger URL 탐지 성공 (시도 {attempt + 1}/{max_retries}): {swagger_urls}")
+                return swagger_urls
+
+            logger.debug(f"Swagger URL 탐지 실패, 재시도 예정 (시도 {attempt + 1}/{max_retries})")
+
+            # 마지막 시도가 아닌 경우 잠시 대기
+            if attempt < max_retries - 1:
+                await asyncio.sleep(10)  # 10초 대기
+
+        except Exception as e:
+            logger.warning(f"Swagger URL 탐지 중 오류 (시도 {attempt + 1}/{max_retries}): {str(e)}")
+            if attempt < max_retries - 1:
+                await asyncio.sleep(10)
+
+    logger.warning(f"모든 재시도 실패: Swagger URL을 찾을 수 없음 ({max_retries}회 시도)")
+    return []
 
 
 async def _discover_swagger_urls_with_fallback(services: List[Dict[str, Any]]) -> List[str]:
@@ -594,3 +672,19 @@ async def process_openapi_spec_version_update(
     # TODO 선택한 버전 is_activate=True, 현재 버전은 is_activate=False
     # TODO 응답으로는 변경되기 전 activate의 commit_hash, 변경 후 commit_hash를 첨부하면 좋을듯
     pass
+
+def convertOpenAPISpecDetailDtoToModel(request:PlogConfigDTO, openapi_spec_version_id: int):
+    model = OpenAPISpecVersionDetailModel(
+        openapi_spec_version_id=openapi_spec_version_id,
+        app_name=request.app_name,
+        replicas=request.replicas,
+        node_port=request.node_port,
+        port=request.port,
+        image_tag=request.image_tag,
+        git_info=request.git_info,
+        resources=request.resources,
+        volumes=request.volumes,
+        env=request.env,
+    )
+
+    return model;

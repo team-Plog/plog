@@ -16,7 +16,7 @@ class PlogConfigDTO(BaseModel):
     # 유연한 구조로 설계
     resources: Optional[Dict[str, Any]] = Field(default_factory=dict)
     volumes: Optional[Dict[str, Any]] = Field(default_factory=dict)
-    env: Dict[str, str] = Field(default_factory=dict)
+    env: Optional[Dict[str, str]] = Field(default_factory=dict)
 
     class Config:
         extra = "allow"  # 정의되지 않은 필드도 허용 (확장성)

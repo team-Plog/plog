@@ -392,44 +392,111 @@ class PodService:
                             
         return swagger_urls
 
+    def is_pod_ready(self, pod_name: str) -> bool:
+        """
+        Pod의 readiness 상태를 확인합니다.
+
+        Args:
+            pod_name: 확인할 Pod 이름
+
+        Returns:
+            Pod가 준비 상태인지 여부
+        """
+        try:
+            pod = v1_core.read_namespaced_pod(name=pod_name, namespace=self.namespace)
+
+            # Pod가 Running 상태이고 모든 컨테이너가 Ready 상태인지 확인
+            if pod.status.phase != "Running":
+                logger.debug(f"Pod {pod_name} is not in Running phase: {pod.status.phase}")
+                return False
+
+            # 컨테이너별 Ready 상태 확인
+            if pod.status.container_statuses:
+                for container_status in pod.status.container_statuses:
+                    if not container_status.ready:
+                        logger.debug(f"Container {container_status.name} in pod {pod_name} is not ready")
+                        return False
+
+            # readiness probe가 설정된 경우 상태 확인
+            if pod.status.conditions:
+                for condition in pod.status.conditions:
+                    if condition.type == "Ready":
+                        if condition.status != "True":
+                            logger.debug(f"Pod {pod_name} readiness condition is not True: {condition.status}")
+                            return False
+                        break
+
+            logger.debug(f"Pod {pod_name} is ready")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error checking pod readiness for {pod_name}: {e}")
+            return False
+
+    def get_pod_container_ports(self, pod_name: str) -> List[int]:
+        """
+        Pod의 모든 컨테이너 포트를 조회합니다.
+
+        Args:
+            pod_name: Pod 이름
+
+        Returns:
+            Pod의 컨테이너 포트 리스트
+        """
+        try:
+            pod = v1_core.read_namespaced_pod(name=pod_name, namespace=self.namespace)
+            ports = []
+
+            for container in pod.spec.containers:
+                if container.ports:
+                    for port in container.ports:
+                        if port.container_port:
+                            ports.append(port.container_port)
+
+            return list(set(ports))  # 중복 제거
+
+        except Exception as e:
+            logger.error(f"Error getting container ports for pod {pod_name}: {e}")
+            return []
+
     def _check_swagger_url(self, url: str, timeout: int = 3) -> bool:
         """
         주어진 URL이 유효한 Swagger 엔드포인트인지 확인합니다.
-        
+
         Args:
             url: 확인할 URL
             timeout: 타임아웃 (초)
-            
+
         Returns:
             유효한 Swagger 엔드포인트인지 여부
         """
         try:
             response = requests.get(url, timeout=timeout)
-            
+
             if response.status_code == 200:
                 content = response.text.lower()
                 # Swagger 관련 키워드들이 포함되어 있는지 확인
                 swagger_keywords = [
-                    "swagger", "openapi", "api documentation", 
+                    "swagger", "openapi", "api documentation",
                     "swagger-ui", "redoc", "rapidoc"
                 ]
-                
+
                 if any(keyword in content for keyword in swagger_keywords):
                     return True
-                    
+
                 # JSON 응답인 경우 OpenAPI 스펙인지 확인
                 try:
                     json_data = response.json()
                     if isinstance(json_data, dict) and (
-                        "swagger" in json_data or 
-                        "openapi" in json_data or 
+                        "swagger" in json_data or
+                        "openapi" in json_data or
                         "info" in json_data
                     ):
                         return True
                 except:
                     pass
-                    
+
         except Exception as e:
             logger.debug(f"Failed to check Swagger URL {url}: {e}")
-            
+
         return False
