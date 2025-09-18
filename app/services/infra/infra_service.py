@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, Any
 
 from sqlalchemy import select
@@ -15,6 +16,7 @@ from k8s.pod_service import PodService
 from k8s.resource_service import ResourceService
 from k8s.service_service import ServiceService
 
+logger = logging.getLogger(__name__)
 
 async def build_response_get_pods_info_list(
         db: AsyncSession
@@ -92,6 +94,7 @@ async def process_updated_server_infra_resource_usage(
         request: UpdateServerInfraResourceUsageRequest
 ):
     resource_service = ResourceService()
+    logger.info(f"Request recived {request.model_dump()}")
 
     # 현재 배포되어 있는 resource info 조회
     stmt = (
@@ -125,6 +128,7 @@ async def process_updated_server_infra_resource_usage(
     # TODO 리소스 사용량 요청 값 validate 함수 추가
     resource_info: Dict[str, Any] = version_detail.resources
     updated_resource_info = update_resource_info(resource_info, request)
+    logger.info(f"updated_resource_info: {updated_resource_info}")
 
     plog_config_dto:PlogConfigDTO = convertOpenAPISpecModelToDto(version_detail)
     plog_config_dto.resources=updated_resource_info
@@ -145,7 +149,17 @@ async def process_updated_server_infra_resource_usage(
                 "request": resource_info["request"]["memory"],
                 "limit": resource_info["limits"]["memory"],
             }
-        }
+        },
+        "current_resource_usage": {
+            "cpu": {
+                "request": resource_info["request"]["cpu"],
+                "limit": resource_info["limits"]["cpu"],
+            },
+            "memory": {
+                "request": resource_info["request"]["memory"],
+                "limit": resource_info["limits"]["memory"],
+            }
+        },
     }
 
     return response
@@ -167,15 +181,15 @@ def update_resource_info(
         Dict[str, Any]: 업데이트된 리소스 정보
     """
     if update_resource_info.cpu_request_millicores is not None:
-        current_resource_info["cpu_request_millicores"] = update_resource_info.cpu_request_millicores
+        current_resource_info["request"]["cpu"] = update_resource_info.cpu_request_millicores
 
     if update_resource_info.cpu_limit_millicores is not None:
-        current_resource_info["cpu_limit_millicores"] = update_resource_info.cpu_limit_millicores
+        current_resource_info["limits"]["cpu"] = update_resource_info.cpu_limit_millicores
 
     if update_resource_info.memory_request_millicores is not None:
-        current_resource_info["memory_request_millicores"] = update_resource_info.memory_request_millicores
+        current_resource_info["request"]["memory"] = update_resource_info.memory_request_millicores
 
     if update_resource_info.memory_limit_millicores is not None:
-        current_resource_info["memory_limit_millicores"] = update_resource_info.memory_limit_millicores
+        current_resource_info["limits"]["memory"] = update_resource_info.memory_limit_millicores
 
     return current_resource_info
