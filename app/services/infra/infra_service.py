@@ -126,13 +126,22 @@ async def process_updated_server_infra_resource_usage(
 
     # 변경할 resource 값으로 상태 변경
     # TODO 리소스 사용량 요청 값 validate 함수 추가
+    # TODO 리소스 사용량 현재 사용량 같을 경우 현상 유지
     resource_info: Dict[str, Any] = version_detail.resources
     updated_resource_info = update_resource_info(resource_info, request)
     logger.info(f"updated_resource_info: {updated_resource_info}")
 
     plog_config_dto:PlogConfigDTO = convertOpenAPISpecModelToDto(version_detail)
-    plog_config_dto.resources=updated_resource_info
-    version_detail.resources = plog_config_dto.resources
+    plog_config_dto.resources = updated_resource_info
+
+    # SQLAlchemy 변경 추적을 위한 명시적 처리
+    version_detail.resources = updated_resource_info.copy()  # 새로운 객체로 할당
+
+    # 또는 flag_modified 사용 (선택적)
+    from sqlalchemy.orm import flag_modified
+    flag_modified(version_detail, 'resources')
+
+    logger.info(f"Before commit - version_detail.resources: {version_detail.resources}")
     await db.commit()
 
 
