@@ -189,19 +189,23 @@ def update_resource_info(
     """
 
     if update_resource_info.cpu_request_millicores is None:
-        current_resource_info["request"]["cpu"] = None
-    else: current_resource_info["request"]["cpu"] = update_resource_info.cpu_request_millicores
+        current_resource_info["request"]["cpu"] = "null"
+    else:
+        current_resource_info["request"]["cpu"] = update_resource_info.cpu_request_millicores
 
     if update_resource_info.memory_request_millicores is None:
-        current_resource_info["request"]["memory"] = None
-    else: current_resource_info["request"]["memory"] = update_resource_info.memory_request_millicores
+        current_resource_info["request"]["memory"] = "null"
+    else:
+        current_resource_info["request"]["memory"] = update_resource_info.memory_request_millicores
 
     if update_resource_info.cpu_limit_millicores is None:
         current_resource_info["limits"]["cpu"] = "null"
-    else: current_resource_info["limits"]["cpu"] = update_resource_info.cpu_limit_millicores
+    else:
+        current_resource_info["limits"]["cpu"] = update_resource_info.cpu_limit_millicores
 
     if update_resource_info.memory_limit_millicores is None:
         current_resource_info["limits"]["memory"] = "null"
-    else: current_resource_info["limits"]["memory"] = update_resource_info.memory_limit_millicores
+    else:
+        current_resource_info["limits"]["memory"] = update_resource_info.memory_limit_millicores
 
     return current_resource_info
