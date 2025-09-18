@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 class ConnectOpenAPIInfraRequest(BaseModel):
@@ -6,7 +8,7 @@ class ConnectOpenAPIInfraRequest(BaseModel):
 
 class UpdateServerInfraResourceUsageRequest(BaseModel):
     group_name: str
-    cpu_request_millicores: str
-    cpu_limit_millicores: str
-    memory_request_millicores: str
-    memory_limit_millicores: str
+    cpu_request_millicores: Optional[str] = None
+    cpu_limit_millicores: Optional[str] = None
+    memory_request_millicores: Optional[str] = None
+    memory_limit_millicores: Optional[str] = None

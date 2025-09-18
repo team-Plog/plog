@@ -4,6 +4,7 @@ from typing import Dict, Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, contains_eager
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.common.exception.api_exception import ApiException
 from app.common.response.code import FailureCode
@@ -133,17 +134,14 @@ async def process_updated_server_infra_resource_usage(
 
     plog_config_dto:PlogConfigDTO = convertOpenAPISpecModelToDto(version_detail)
     plog_config_dto.resources = updated_resource_info
+    logger.info(f"plog_config_dto: {plog_config_dto.model_dump()}")
 
     # SQLAlchemy 변경 추적을 위한 명시적 처리
     version_detail.resources = updated_resource_info.copy()  # 새로운 객체로 할당
 
     # 또는 flag_modified 사용 (선택적)
-    from sqlalchemy.orm import flag_modified
     flag_modified(version_detail, 'resources')
-
-    logger.info(f"Before commit - version_detail.resources: {version_detail.resources}")
     await db.commit()
-
 
     # 변경된 resource 값으로 배포
     await process_helm_chart(plog_config_dto)
@@ -189,16 +187,21 @@ def update_resource_info(
     Returns:
         Dict[str, Any]: 업데이트된 리소스 정보
     """
-    if update_resource_info.cpu_request_millicores is not None:
-        current_resource_info["request"]["cpu"] = update_resource_info.cpu_request_millicores
 
-    if update_resource_info.cpu_limit_millicores is not None:
-        current_resource_info["limits"]["cpu"] = update_resource_info.cpu_limit_millicores
+    if update_resource_info.cpu_request_millicores is None:
+        current_resource_info["request"]["cpu"] = None
+    else: current_resource_info["request"]["cpu"] = update_resource_info.cpu_request_millicores
 
-    if update_resource_info.memory_request_millicores is not None:
-        current_resource_info["request"]["memory"] = update_resource_info.memory_request_millicores
+    if update_resource_info.memory_request_millicores is None:
+        current_resource_info["request"]["memory"] = None
+    else: current_resource_info["request"]["memory"] = update_resource_info.memory_request_millicores
 
-    if update_resource_info.memory_limit_millicores is not None:
-        current_resource_info["limits"]["memory"] = update_resource_info.memory_limit_millicores
+    if update_resource_info.cpu_limit_millicores is None:
+        current_resource_info["limits"]["cpu"] = "null"
+    else: current_resource_info["limits"]["cpu"] = update_resource_info.cpu_limit_millicores
+
+    if update_resource_info.memory_limit_millicores is None:
+        current_resource_info["limits"]["memory"] = "null"
+    else: current_resource_info["limits"]["memory"] = update_resource_info.memory_limit_millicores
 
     return current_resource_info
