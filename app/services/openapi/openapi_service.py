@@ -696,6 +696,8 @@ async def process_openapi_spec_version_update(
     current_activate_version_id = current_activate_version.id
     new_activate_version_id = new_activate_version.id
 
+    # TODO helm chart 배포 완료 후 정상인지 확인 예외 처리 추가
+    # TODO 자동 배포시에도 openapi_spec_version_detail 정보 추가하도록 수정
     await process_helm_chart(plog_config_dto)
 
     new_activate_version.is_activate = 1
