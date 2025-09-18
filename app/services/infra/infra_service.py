@@ -126,8 +126,6 @@ async def process_updated_server_infra_resource_usage(
     version_detail: OpenAPISpecVersionDetailModel = openapi_spec_version.version_detail
 
     # 변경할 resource 값으로 상태 변경
-    # TODO 리소스 사용량 요청 값 validate 함수 추가
-    # TODO 리소스 사용량 현재 사용량 같을 경우 현상 유지
     resource_info: Dict[str, Any] = version_detail.resources
     updated_resource_info = update_resource_info(resource_info, request)
     logger.info(f"updated_resource_info: {updated_resource_info}")
