@@ -59,7 +59,21 @@ spec:
           {{- end }}
           {{- end }}
           resources:
-            {{- toYaml $appConfig.resources | nindent 12 }}
+            requests:
+              {{- if $appConfig.resources.requests.cpu }}
+              cpu: {{ $appConfig.resources.requests.cpu }}
+              {{- end }}
+              {{- if $appConfig.resources.requests.memory }}
+              memory: {{ $appConfig.resources.requests.memory }}
+              {{- end }}
+            limits:
+              {{- if $appConfig.resources.limits.cpu }}
+              cpu: {{ $appConfig.resources.limits.cpu }}
+              {{- end }}
+              {{- if $appConfig.resources.limits.memory }}
+              memory: {{ $appConfig.resources.limits.memory }}
+              {{- end }}
+
       imagePullSecrets:
         - name: {{ $.Values.global.imagePullSecret }}
   {{- end }}
