@@ -9,8 +9,10 @@ from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
+from app.common.exception.api_exception import ApiException
+from app.common.response.code import FailureCode
 from app.models.sqlite.models import OpenAPISpecVersionDetailModel
 from app.models.sqlite.models.project_models import OpenAPISpecModel, OpenAPISpecVersionModel, EndpointModel, ParameterModel
 from app.schemas.openapi_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
@@ -188,6 +190,39 @@ def save_openapi_spec(db: Session, openapi_spec_model: OpenAPISpecModel) -> Open
 
     return openapi_spec_model
 
+async def process_helm_chart(request: PlogConfigDTO):
+    # 1. PlogConfigDTO를 Helm values.yaml로 변환
+    helm_generator = HelmValuesGenerator()
+    values_yaml_content = helm_generator.generate_values_yaml(request)
+
+    # 2. PLOG_HELM_CHART_FOLDER 환경변수에서 경로 가져오기
+    helm_chart_folder = os.getenv("PLOG_HELM_CHART_FOLDER")
+    if not helm_chart_folder:
+        raise EnvironmentError("PLOG_HELM_CHART_FOLDER 환경변수가 설정되지 않았습니다.")
+
+    # 3. 기존 values.yaml 파일 확인 및 제거
+    from pathlib import Path
+    target_file_path = str(Path(helm_chart_folder) / "values.yaml")
+
+    if FileWriter.file_exists(target_file_path):
+        FileWriter.remove_file(target_file_path)
+
+    # 4. values.yaml 파일 저장
+    saved_path = FileWriter.write_to_path(
+        content=values_yaml_content,
+        filename="values.yaml",
+        base_path=helm_chart_folder,
+    )
+
+    logger.info(f"2. values.yaml 파일 업데이트 완료: {saved_path}")
+    # ex) app_name = semi-medeasy -> service_name = semi_medeasy_service
+    helm_executor = HelmExecutor()
+    deployment_result = await helm_executor.upgrade_install(
+        chart_path=helm_chart_folder,
+        app_name=request.app_name,
+        namespace="test"
+    )
+
 
 
 async def deploy_openapi_spec(db: Session, request: PlogConfigDTO) -> dict:
@@ -207,38 +242,8 @@ async def deploy_openapi_spec(db: Session, request: PlogConfigDTO) -> dict:
     """
     try:
         logger.info(f"1. 배포 프로세스 시작: {request.app_name}")
-        
-        # 1. PlogConfigDTO를 Helm values.yaml로 변환
-        helm_generator = HelmValuesGenerator()
-        values_yaml_content = helm_generator.generate_values_yaml(request)
-        
-        # 2. PLOG_HELM_CHART_FOLDER 환경변수에서 경로 가져오기
-        helm_chart_folder = os.getenv("PLOG_HELM_CHART_FOLDER")
-        if not helm_chart_folder:
-            raise EnvironmentError("PLOG_HELM_CHART_FOLDER 환경변수가 설정되지 않았습니다.")
-        
-        # 3. 기존 values.yaml 파일 확인 및 제거
-        from pathlib import Path
-        target_file_path = str(Path(helm_chart_folder) / "values.yaml")
-        
-        if FileWriter.file_exists(target_file_path):
-            FileWriter.remove_file(target_file_path)
 
-        # 4. values.yaml 파일 저장
-        saved_path = FileWriter.write_to_path(
-            content=values_yaml_content,
-            filename="values.yaml",
-            base_path=helm_chart_folder,
-        )
-        
-        logger.info(f"2. values.yaml 파일 업데이트 완료: {saved_path}")
-        # ex) app_name = semi-medeasy -> service_name = semi_medeasy_service
-        helm_executor = HelmExecutor()
-        deployment_result = await helm_executor.upgrade_install(
-            chart_path=helm_chart_folder,
-            app_name=request.app_name,
-            namespace="test"
-        )
+        await process_helm_chart(request)
 
         logger.info(f"3. helm 패키지 배포 완료")
 
@@ -301,6 +306,7 @@ async def deploy_openapi_spec(db: Session, request: PlogConfigDTO) -> dict:
                         if version.is_activate == 1:
                             version.commit_hash = request.image_tag
                             version_detail = convertOpenAPISpecDetailDtoToModel(request, version.id)
+                            version.version_detail = version_detail
 
                     logger.info(f"OpenAPI 분석 완료: {analysis_result}")
 
@@ -664,18 +670,51 @@ async def process_openapi_spec_version_update(
         openapi_spec_version_id: int
 ):
     # version id -> openapi_spec, 현재 활성화된 version 추적
-    # TODO git hooks 시 values 정보를 저장해야할 듯 -> 어디에? -> openapi_spec_version에 저장
-    # TODO 버그!!! git hooks 배포를 할 때 commit_hash를 저장하지 않고 있음 ** 먼저 해결 필요 **
+    stmt = (select(OpenAPISpecVersionModel)
+            .options(joinedload(OpenAPISpecVersionModel.version_detail))
+            .where(OpenAPISpecVersionModel.id == openapi_spec_version_id))
 
+    new_activate_version = await db.scalar(stmt)
+    version_detail: OpenAPISpecVersionDetailModel = new_activate_version.version_detail
 
-    # TODO 위 두개를 먼저 해결 commit_hash를 가진 image로 helm package 재배포
-    # TODO 선택한 버전 is_activate=True, 현재 버전은 is_activate=False
-    # TODO 응답으로는 변경되기 전 activate의 commit_hash, 변경 후 commit_hash를 첨부하면 좋을듯
-    pass
+    if not new_activate_version.commit_hash:
+        return ApiException(FailureCode.BAD_REQUEST, "Git Hooks를 통해 배포한 버전으로만 회귀할 수 있습니다.")
+
+    plog_config_dto = convertOpenAPISpecModelToDto(version_detail)
+
+    stmt = (select(OpenAPISpecVersionModel)
+            .options(joinedload(OpenAPISpecVersionModel.version_detail))
+            .where(OpenAPISpecVersionModel.is_activate==1,
+                   OpenAPISpecVersionModel.open_api_spec_id == new_activate_version.open_api_spec_id)
+            )
+
+    current_activate_version = await db.scalar(stmt)
+    if not current_activate_version:
+        return ApiException(FailureCode.INTERNAL_SERVER_ERROR, "현재 설정된 버전이 존재하지 않습니다.")
+
+    # ID를 미리 추출 (lazy loading 방지)
+    current_activate_version_id = current_activate_version.id
+    new_activate_version_id = new_activate_version.id
+
+    await process_helm_chart(plog_config_dto)
+
+    new_activate_version.is_activate = 1
+
+    if current_activate_version:
+        current_activate_version.is_activate = 0
+
+    await db.commit()
+    response = {
+        "past_activate_openapi_spec_version_id" : current_activate_version_id,
+        "new_activate_openapi_spec_version_id" : new_activate_version_id,
+    }
+
+    return response
 
 def convertOpenAPISpecDetailDtoToModel(request:PlogConfigDTO, openapi_spec_version_id: int):
     model = OpenAPISpecVersionDetailModel(
         openapi_spec_version_id=openapi_spec_version_id,
+        image_registry_url=request.image_registry_url,
         app_name=request.app_name,
         replicas=request.replicas,
         node_port=request.node_port,
@@ -687,4 +726,20 @@ def convertOpenAPISpecDetailDtoToModel(request:PlogConfigDTO, openapi_spec_versi
         env=request.env,
     )
 
-    return model;
+    return model
+
+def convertOpenAPISpecModelToDto(model: OpenAPISpecVersionDetailModel):
+    dto = PlogConfigDTO(
+        image_registry_url=model.image_registry_url,
+        app_name=model.app_name,
+        replicas=model.replicas,
+        node_port=model.node_port,
+        port=model.port,
+        image_tag=model.image_tag,
+        git_info=model.git_info,
+        resources=model.resources,
+        volumes=model.volumes,
+        env=model.env,
+    )
+
+    return dto

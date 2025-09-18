@@ -42,6 +42,7 @@ class OpenAPISpecVersionModel(Base):
 class OpenAPISpecVersionDetailModel(Base):
     __tablename__ = "openapi_spec_version_detail"
     id = Column(Integer, primary_key=True, index=True)
+    image_registry_url = Column(String, nullable=True)
     openapi_spec_version_id = Column(Integer, ForeignKey("openapi_spec_version.id"), nullable=False)
     app_name = Column(String, nullable=True)
     replicas = Column(Integer, nullable=True)
