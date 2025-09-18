@@ -19,7 +19,7 @@ spec:
         - name: plog-backend-container
           ports:
             - containerPort: 8000
-          image: asia-northeast3-docker.pkg.dev/citric-replica-450012-a8/plog-image-repo/plog-backend:latest
+          image: 35.216.24.11:32000/plog/plog-backend:latest
           imagePullPolicy: Always
 
           env:
@@ -52,11 +52,14 @@ spec:
               name: k6-script-volume
             - mountPath: /app/sqlite-data
               name: sqlite-data-volume
+            - mountPath: /mnt/helm-chart
+              name: helm-chart-volume
 
       serviceAccountName: plog-backend-service-account
 
       imagePullSecrets:
         - name: gcp-artifact-registry-secret
+        - name: harbor-registry-secret
 
       volumes:
         - name: k6-script-volume
@@ -67,4 +70,8 @@ spec:
           hostPath:
             path: /data/sqlite
             type: DirectoryOrCreate
+
+        - name: helm-chart-volume
+          persistentVolumeClaim:
+            claimName: helm-chart-pvc
 

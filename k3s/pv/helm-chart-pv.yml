@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: k6-script-pv
+  name: helm-chart-pv
   namespace: plog # 명시하였지만 pv는 cluster 공용
 spec:
   capacity:
@@ -9,5 +9,5 @@ spec:
   accessModes:
     - ReadWriteMany
   hostPath:
-    path: "/mnt/k6-scripts"
-  storageClassName: k6-script
+    path: "/mnt/helm-chart"
+  storageClassName: helm-chart
