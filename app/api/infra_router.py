@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
@@ -6,9 +6,9 @@ from app.common.exception.api_exception import ApiException
 from app.common.response.code import FailureCode, SuccessCode
 from app.common.response.response_template import ResponseTemplate
 from app.models import get_db, get_async_db
-from app.schemas.infra import ConnectOpenAPIInfraRequest
+from app.schemas.infra import ConnectOpenAPIInfraRequest, UpdateServerInfraResourceUsageRequest
 from app.services.infra.infra_service import build_response_get_pods_info_list, \
-    update_connection_openapi_spec_and_server_infra
+    update_connection_openapi_spec_and_server_infra, process_updated_server_infra_resource_usage
 
 router = APIRouter()
 
@@ -45,3 +45,22 @@ async def connect_openapi_spec_and_server_infra(
 
     await update_connection_openapi_spec_and_server_infra(db, request)
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE)
+
+@router.patch(
+    path="/{server_infra_id}/resources",
+    summary="실행 환경 리소스 사용량 수정 API",
+    description="server infra 즉 openapi_spec이 실행되는 환경의 CPU, Memory 사용량을 조절하는 API"
+)
+async def updated_server_infra_resource_usage(
+        request: UpdateServerInfraResourceUsageRequest,
+        db: AsyncSession = Depends(get_async_db)
+):
+    if not request:
+        raise ApiException(FailureCode.BAD_REQUEST, "요청값이 누락되었습니다.")
+
+    if not request.group_name:
+        raise ApiException(FailureCode.BAD_REQUEST, "server infra group name is null")
+
+
+    response = await process_updated_server_infra_resource_usage(db, request)
+    return response
