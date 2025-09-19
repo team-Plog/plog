@@ -336,6 +336,163 @@ class PodService:
             logger.error(f"Error finding services for pod labels {pod_labels}: {e}")
             return []
 
+    def find_workloads_for_pod(self, pod_labels: Dict[str, str]) -> List[Dict[str, Any]]:
+        """
+        Pod labels와 매치되는 모든 워크로드(Deployment, StatefulSet, DaemonSet, ReplicaSet)를 조회합니다.
+
+        Args:
+            pod_labels: Pod의 labels
+
+        Returns:
+            워크로드 정보 리스트 (replica 정보 포함)
+            [
+                {
+                    "type": str,                    # "Deployment", "StatefulSet", "DaemonSet", "ReplicaSet"
+                    "name": str,                    # 워크로드 이름
+                    "namespace": str,               # 네임스페이스
+                    "desired_replicas": int,        # 원하는 replica 수
+                    "current_replicas": int,        # 현재 replica 수
+                    "ready_replicas": int,          # 준비된 replica 수
+                    "updated_replicas": int,        # 업데이트된 replica 수
+                    "labels": Dict[str, str],       # 워크로드 labels
+                    "creation_timestamp": datetime  # 생성 시간
+                },
+                ...
+            ]
+
+        Note:
+            - DaemonSet의 경우 desired_replicas는 desired_number_scheduled 값을 사용
+            - ReplicaSet의 경우 updated_replicas는 replicas 값을 사용 (updated_replicas 필드가 없음)
+            - 모든 워크로드 타입에서 동일한 형식의 replica 정보 제공
+        """
+        workloads = []
+
+        # Deployment 조회
+        workloads.extend(self._find_deployments(pod_labels))
+
+        # StatefulSet 조회
+        workloads.extend(self._find_statefulsets(pod_labels))
+
+        # DaemonSet 조회
+        workloads.extend(self._find_daemonsets(pod_labels))
+
+        # ReplicaSet 조회 (주로 Deployment가 관리하지만 독립적으로 존재할 수 있음)
+        workloads.extend(self._find_replicasets(pod_labels))
+
+        return workloads
+
+    def _find_deployments(self, pod_labels: Dict[str, str]) -> List[Dict[str, Any]]:
+        """Deployment 조회"""
+        deployments = []
+
+        try:
+            deployment_list = v1_apps.list_namespaced_deployment(namespace=self.namespace)
+
+            for deployment in deployment_list.items:
+                if deployment.spec.selector and self._labels_match(deployment.spec.selector.match_labels, pod_labels):
+                    deployment_info = {
+                        "type": "Deployment",
+                        "name": deployment.metadata.name,
+                        "namespace": deployment.metadata.namespace,
+                        "desired_replicas": deployment.spec.replicas or 0,
+                        "current_replicas": deployment.status.replicas or 0,
+                        "ready_replicas": deployment.status.ready_replicas or 0,
+                        "updated_replicas": deployment.status.updated_replicas or 0,
+                        "labels": deployment.metadata.labels or {},
+                        "creation_timestamp": deployment.metadata.creation_timestamp
+                    }
+                    deployments.append(deployment_info)
+
+            return deployments
+
+        except Exception as e:
+            logger.error(f"Error finding deployments for pod labels {pod_labels}: {e}")
+            return []
+
+    def _find_statefulsets(self, pod_labels: Dict[str, str]) -> List[Dict[str, Any]]:
+        """StatefulSet 조회"""
+        statefulsets = []
+
+        try:
+            statefulset_list = v1_apps.list_namespaced_stateful_set(namespace=self.namespace)
+
+            for statefulset in statefulset_list.items:
+                if statefulset.spec.selector and self._labels_match(statefulset.spec.selector.match_labels, pod_labels):
+                    statefulset_info = {
+                        "type": "StatefulSet",
+                        "name": statefulset.metadata.name,
+                        "namespace": statefulset.metadata.namespace,
+                        "desired_replicas": statefulset.spec.replicas or 0,
+                        "current_replicas": statefulset.status.replicas or 0,
+                        "ready_replicas": statefulset.status.ready_replicas or 0,
+                        "updated_replicas": statefulset.status.updated_replicas or 0,
+                        "labels": statefulset.metadata.labels or {},
+                        "creation_timestamp": statefulset.metadata.creation_timestamp
+                    }
+                    statefulsets.append(statefulset_info)
+
+            return statefulsets
+
+        except Exception as e:
+            logger.error(f"Error finding statefulsets for pod labels {pod_labels}: {e}")
+            return []
+
+    def _find_daemonsets(self, pod_labels: Dict[str, str]) -> List[Dict[str, Any]]:
+        """DaemonSet 조회"""
+        daemonsets = []
+
+        try:
+            daemonset_list = v1_apps.list_namespaced_daemon_set(namespace=self.namespace)
+
+            for daemonset in daemonset_list.items:
+                if daemonset.spec.selector and self._labels_match(daemonset.spec.selector.match_labels, pod_labels):
+                    daemonset_info = {
+                        "type": "DaemonSet",
+                        "name": daemonset.metadata.name,
+                        "namespace": daemonset.metadata.namespace,
+                        "desired_replicas": daemonset.status.desired_number_scheduled or 0,
+                        "current_replicas": daemonset.status.current_number_scheduled or 0,
+                        "ready_replicas": daemonset.status.number_ready or 0,
+                        "updated_replicas": daemonset.status.updated_number_scheduled or 0,
+                        "labels": daemonset.metadata.labels or {},
+                        "creation_timestamp": daemonset.metadata.creation_timestamp
+                    }
+                    daemonsets.append(daemonset_info)
+
+            return daemonsets
+
+        except Exception as e:
+            logger.error(f"Error finding daemonsets for pod labels {pod_labels}: {e}")
+            return []
+
+    def _find_replicasets(self, pod_labels: Dict[str, str]) -> List[Dict[str, Any]]:
+        """ReplicaSet 조회"""
+        replicasets = []
+
+        try:
+            replicaset_list = v1_apps.list_namespaced_replica_set(namespace=self.namespace)
+
+            for replicaset in replicaset_list.items:
+                if replicaset.spec.selector and self._labels_match(replicaset.spec.selector.match_labels, pod_labels):
+                    replicaset_info = {
+                        "type": "ReplicaSet",
+                        "name": replicaset.metadata.name,
+                        "namespace": replicaset.metadata.namespace,
+                        "desired_replicas": replicaset.spec.replicas or 0,
+                        "current_replicas": replicaset.status.replicas or 0,
+                        "ready_replicas": replicaset.status.ready_replicas or 0,
+                        "updated_replicas": replicaset.status.replicas or 0,  # ReplicaSet은 updated_replicas가 없어서 replicas 사용
+                        "labels": replicaset.metadata.labels or {},
+                        "creation_timestamp": replicaset.metadata.creation_timestamp
+                    }
+                    replicasets.append(replicaset_info)
+
+            return replicasets
+
+        except Exception as e:
+            logger.error(f"Error finding replicasets for pod labels {pod_labels}: {e}")
+            return []
+
     def _labels_match(self, selector: Dict[str, str], pod_labels: Dict[str, str]) -> bool:
         """
         Service selector와 Pod labels가 매치되는지 확인합니다.
