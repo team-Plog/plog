@@ -46,7 +46,7 @@ async def connect_openapi_spec_and_server_infra(
     await update_connection_openapi_spec_and_server_infra(db, request)
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE)
 
-@router.patch(
+@router.put(
     path="/{server_infra_id}/resources",
     summary="실행 환경 리소스 사용량 수정 API",
     description="server infra 즉 openapi_spec이 실행되는 환경의 CPU, Memory 사용량을 조절하는 API"
