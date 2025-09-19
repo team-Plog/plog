@@ -73,7 +73,7 @@ const VersionMenu: React.FC<VersionMenuProps> = ({
 
     try {
       setChangingVersion(versionId);
-      await updateOpenAPIVersion(versionId, { version: "active" });
+      await updateOpenAPIVersion(versionId);
       
       // 성공 시 버전 목록 다시 불러오기
       const response = await getOpenAPIVersions(openApiSpecId);
