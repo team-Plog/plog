@@ -50,7 +50,7 @@ async def build_response_get_pods_info_list(
         response = {
             "server_infra_id": server_infra.id,
             "openapi_spec_id": server_infra.openapi_spec_id,
-            "pod_name": pod_info,
+            "pod_name": pod_info.get("name"),
             "resource_type": server_infra.resource_type,
             "service_type": server_infra.service_type,
             "group_name": server_infra.group_name,
