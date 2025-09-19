@@ -220,7 +220,7 @@ class ServerPodScheduler:
                             service_type=detailed_pod_info.get("service_type"),  # SERVER, DATABASE
                             environment="K3S",
                             group_name=service_name,  # 서비스 이름
-                            label=detailed_pod_info.get("label"),
+                            label=detailed_pod_info.get("labels"),
                             namespace=settings.KUBERNETES_TEST_NAMESPACE,
                         )
                         new_server_infras.append(server_infra)
