@@ -195,3 +195,16 @@ def extract_service_info_from_url(url: str) -> Optional[Dict[str, str]]:
             }
 
     return None
+
+def is_same_origin_base_url(url1: str, url2: str) -> bool:
+    parse_url1 = urlparse(url1)
+    parse_url2 = urlparse(url2)
+
+    if parse_url1.scheme != parse_url2.scheme:
+        return False
+
+    if parse_url1.netloc != parse_url2.netloc:
+        return False
+
+    return True
+

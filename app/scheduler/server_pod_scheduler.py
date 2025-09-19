@@ -3,12 +3,16 @@ import logging
 from datetime import datetime, timedelta
 from typing import List, Any, Dict
 import threading
+from urllib.parse import urlparse
+
 from sqlalchemy.orm import Session
 import httpx
 
 from app.core.config import settings
 from app.models.sqlite.database import SessionLocal
 from app.models.sqlite.models import ServerInfraModel, OpenAPISpecModel
+from app.utils.url_converter import convert_url_with_mapping, is_same_origin_base_url, is_localhost_url, \
+    convert_localhost_to_service_url
 from k8s.pod_service import PodService
 from app.services.infrastructure.server_infra_service import ServerInfraService
 from k8s.service_service import ServiceService
@@ -106,15 +110,20 @@ class ServerPodScheduler:
             # Get existing services and pods
             saved_services = self.server_infra_service.get_server_infra_group_names_with_openapi_spec_id(db)
             saved_service_map = {group_name: spec_id for spec_id, group_name in saved_services}
+
             existing_group_names = self.server_infra_service.get_server_infra_exists_group_names(db)
             existing_services_set = set(existing_group_names)
 
             scan_service_map = self.service_service.get_pods_for_all_services()
 
+            openapi_specs = db.query(OpenAPISpecModel).all()
+
             new_server_infras = []
             delete_server_infra_names = []
 
+            # 쿠버네티스 service 목록과 server_infra 목록을 비교
             for service_name, pod_names in scan_service_map.items():
+                # 1. 쿠버네티스 service 가 server_infra에 이미 등록되어 있는 경우
                 if service_name in existing_services_set:
                     # Existing service: sync pods
                     spec_id = saved_service_map.get(service_name)
@@ -124,6 +133,7 @@ class ServerPodScheduler:
 
                     # Add new pods
                     for pod_name in pod_names:
+                        # 1.1. pod가 server_infra에 등록되지 않은 경우 -> 새로운 파드
                         if pod_name not in service_saved_pod_names:
                             detailed_pod_info = self.pod_service.get_pod_details_with_owner_info(pod_name)
                             
@@ -141,14 +151,17 @@ class ServerPodScheduler:
 
                     # Mark pods for deletion
                     for saved_pod_name in service_saved_pod_names:
+                        # 1.2. 반대로 저장되어있는 pod가 쿠버네티스에 존재하지 않음 -> 삭제된 파드
                         if saved_pod_name not in pod_names:
                             delete_server_infra_names.append(saved_pod_name)
 
-                # New service processing
+                # 2. 새로운 종류의 service -> OpenAPISpec 등록
                 else:
                     logger.info(f"✅ New service detected: {service_name}")
-                    saved_openapi_spec = None
-                    
+                    openapi_spec_id = None
+                    service_info = self.service_service.get_service_by_name(service_name)
+                    service_port = service_info["spec"]["ports"][0]["port"]
+
                     # Find SERVER pod for OpenAPI registration
                     for pod_name in pod_names:
                         detailed_pod_info = self.pod_service.get_pod_details_with_owner_info(pod_name)
@@ -160,6 +173,20 @@ class ServerPodScheduler:
                             if not swagger_urls:
                                 continue
 
+                            swagger_url = swagger_urls[0]
+                            service_name_url = convert_localhost_to_service_url(
+                                swagger_url,
+                                service_name,
+                                service_port,
+                                "test"
+                            )
+
+                            for openapi_spec in openapi_specs:
+                                if is_same_origin_base_url(service_name_url, openapi_spec.base_url):
+                                    openapi_spec_id = openapi_spec.id
+                                    return
+
+
                             # OpenAPI 분석 요청 생성
                             openapi_request = OpenAPISpecRegisterRequest(
                                 open_api_url=swagger_urls[0],
@@ -168,7 +195,7 @@ class ServerPodScheduler:
 
                             # OpenAPI 분석 수행 (nodeport 변환 매핑 전달)
                             conversion_mappings = getattr(self, '_nodeport_conversions', {}) if hasattr(self, '_nodeport_conversions') else {}
-                            analysis_result = await analyze_openapi_with_strategy(
+                            analysis_result: OpenAPISpecModel = await analyze_openapi_with_strategy(
                                 openapi_request,
                                 db=db,
                                 convert_url=True,
@@ -176,9 +203,10 @@ class ServerPodScheduler:
                             )
 
                             if analysis_result:
-                                logger.info(f"✅ OpenAPI spec analyzed for {pod_name}")
+                                logger.info(f"✅✅✅✅✅✅ OpenAPI spec analyzed for {pod_name}")
                                 # URL 변환 로직은 이제 analyze_openapi_with_strategy 내부에서 처리
                                 saved_openapi_spec = save_openapi_spec(db, analysis_result)
+                                openapi_spec_id = saved_openapi_spec.id
                                 break
 
                     # Save all pods to ServerInfra
@@ -186,18 +214,18 @@ class ServerPodScheduler:
                         detailed_pod_info = self.pod_service.get_pod_details_with_owner_info(pod_name)
                         
                         server_infra = ServerInfraModel(
-                            openapi_spec_id=saved_openapi_spec.id if saved_openapi_spec else None,
+                            openapi_spec_id=openapi_spec_id,
                             resource_type=detailed_pod_info.get("resource_type"),  # DEPLOYMENT, DAEMONSET, STATEFULSET
                             name=pod_name,
                             service_type=detailed_pod_info.get("service_type"),  # SERVER, DATABASE
                             environment="K3S",
                             group_name=service_name,  # 서비스 이름
-                            label=detailed_pod_info.get("label"),
+                            label=detailed_pod_info.get("labels"),
                             namespace=settings.KUBERNETES_TEST_NAMESPACE,
                         )
                         new_server_infras.append(server_infra)
 
-            # Apply changes
+            # 변경된 내용 배치 처리
             if new_server_infras:
                 db.add_all(new_server_infras)
                 logger.info(f"✅ Added {len(new_server_infras)} new pods")
