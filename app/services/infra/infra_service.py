@@ -42,6 +42,14 @@ async def build_response_get_pods_info_list(
 
         # 하나의 배포 단위 당 하나의 service가 존재한다고 가정
         services = pod_service.find_services_for_pod(pod_info["labels"])
+        workloads = pod_service.find_workloads_for_pod(pod_info["labels"])
+        workload = workloads[0]
+        replica = None
+
+        if not workload:
+            replica = 1
+        else:
+            replica = workload.get("current_replicas", 1)
 
         if not services:
             continue
@@ -57,6 +65,7 @@ async def build_response_get_pods_info_list(
             "label": server_infra.label,
             "namespace": server_infra.namespace,
             "resource_specs": resource_specs,
+            "replica": replica,
             "service_info": {
                 "port": service["ports"],
                 "node_port": service["node_ports"],
