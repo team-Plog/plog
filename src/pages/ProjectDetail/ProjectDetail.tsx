@@ -767,6 +767,7 @@ const ProjectDetail: React.FC = () => {
                 onDeleteServer={handleDeleteServer}
                 onDeleteGroup={handleDeleteGroup}
                 onDeleteEndpoint={handleDeleteEndpoint}
+                onVersionChanged={refreshProjectData}
               />
             ) : (
               <div className={styles.noApiData}>
