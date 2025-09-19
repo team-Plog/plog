@@ -100,16 +100,16 @@ const Home: React.FC = () => {
                 />
               </div>
               <Button
-                variant="secondary"
-                onClick={handleInfraManageClick}
-                icon={<Settings />}>
-                인프라 관리
-              </Button>
-              <Button
                 variant="primaryGradient"
                 onClick={() => setIsModalOpen(true)}
                 icon={<Plus />}>
                 새 프로젝트 추가하기
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleInfraManageClick}
+                icon={<Settings />}>
+                인프라 관리
               </Button>
             </div>
           </div>
