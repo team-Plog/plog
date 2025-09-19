@@ -162,6 +162,5 @@ async def update_openapi_spec_version(
         openapi_spec_version_id: int = Path(..., title="openapi_spec_version의 ID", ge=1),
         db: AsyncSession = Depends(get_async_db)
 ):
-    await process_openapi_spec_version_update(db, openapi_spec_version_id)
-
-    pass
+    response = await process_openapi_spec_version_update(db, openapi_spec_version_id)
+    return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response)

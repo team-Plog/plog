@@ -232,3 +232,57 @@ class ServiceService:
         """
         label_selector = ",".join([f"{key}={value}" for key, value in labels.items()])
         return self.get_services(label_selector=label_selector)
+
+    def get_service_by_name(self, name: str)-> Dict[str, Any]:
+        def get_service_by_name(self, name: str) -> Optional[Dict[str, Any]]:
+            """
+            주어진 이름의 Kubernetes Service 리소스를 조회합니다.
+
+            Args:
+                name (str): 조회할 Service 이름.
+
+            Returns:
+                Optional[Dict[str, Any]]: Service 객체를 dict 형태로 반환합니다.
+                반환되는 dict의 주요 구조는 아래와 같습니다:
+
+                {
+                    "api_version": "v1",
+                    "kind": "Service",
+                    "metadata": {
+                        "name": "my-service",
+                        "namespace": "test",
+                        "labels": {...},
+                        "annotations": {...},
+                        ...
+                    },
+                    "spec": {
+                        "type": "ClusterIP",
+                        "cluster_ip": "10.96.0.1",
+                        "ports": [
+                            {
+                                "port": 80,
+                                "target_port": 8080,
+                                "protocol": "TCP",
+                                ...
+                            }
+                        ],
+                        "selector": {...},
+                        ...
+                    },
+                    "status": {
+                        "load_balancer": {...}
+                    }
+                }
+
+                실패 시에는 None을 반환합니다.
+            """
+        try:
+            service = v1_core.read_namespaced_service(
+                name=name,
+                namespace=self.namespace
+            )
+            return service.to_dict()
+
+        except Exception as e:
+            logger.error(f"server error getting service: {e}")
+            return None

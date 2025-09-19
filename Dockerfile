@@ -13,13 +13,13 @@ FROM python:3.11-slim
 WORKDIR /app
 
 COPY --from=builder /install /usr/local
-
 COPY . .
 
-# sqlite3 설치 + 한국 시간대 설정
+# sqlite3, helm 설치 + 한국 시간대 설정
 ENV TZ=Asia/Seoul
 RUN apt-get update && \
-    apt-get install -y tzdata sqlite3 && \
+    apt-get install -y curl tar gzip tzdata sqlite3 && \
+    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash && \
     ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
