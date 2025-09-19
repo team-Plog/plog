@@ -6,6 +6,9 @@ from urllib.parse import urlparse
 import httpx
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from app.models.sqlite.models.project_models import OpenAPISpecModel, OpenAPISpecVersionModel, EndpointModel, ParameterModel
 from app.schemas.openapi_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
@@ -266,6 +269,7 @@ async def deploy_openapi_spec(db: Session, request: PlogConfigDTO) -> dict:
                         open_api_url=HttpUrl(swagger_urls[0])
                     )
 
+
                     parsed_url = urlparse(swagger_urls[0])
 
                     logger.info(f"parsed_url parsing 구조 파악: {parsed_url}")
@@ -288,6 +292,10 @@ async def deploy_openapi_spec(db: Session, request: PlogConfigDTO) -> dict:
                         convert_url=True,
                         conversion_mappings=conversion_mappings
                     )
+
+                    for version in analysis_result.openapi_spec_versions:
+                        if version.is_activate == 1:
+                            version.commit_hash = request.image_tag
 
                     logger.info(f"OpenAPI 분석 완료: {analysis_result}")
 
@@ -419,6 +427,7 @@ async def _discover_swagger_urls_with_fallback(services: List[Dict[str, Any]]) -
     Returns:
         발견된 Swagger URL 리스트
     """
+    logger.info(f"✅✅✅ discover debug services {services}")
     swagger_urls = []
     
     swagger_paths = [
@@ -448,9 +457,15 @@ async def _discover_swagger_urls_with_fallback(services: List[Dict[str, Any]]) -
         
         # NodePort fallback
         if service_type == "NodePort":
+            logger.info(f"✅✅✅ nodeport fallback")
             node_ports = service.get("node_ports", [])
             port_mappings = service.get("port_mappings", {})
             await _try_nodeport_fallback(service_name, node_ports, port_mappings, swagger_paths, swagger_urls)
+
+            # NodePort fallback에서 URL을 찾았다면 즉시 반환
+            if swagger_urls:
+                logger.info(f"NodePort fallback에서 Swagger URL 발견: {swagger_urls}")
+                return swagger_urls
     
     return swagger_urls
 
@@ -543,3 +558,39 @@ def _is_http_port(port: int) -> bool:
     """
     common_http_ports = [80, 8080, 3000, 4000, 5000, 8000, 9000]
     return port in common_http_ports or (8000 <= port <= 9999)
+
+
+async def build_response_openapi_spec_version_list(
+        db: AsyncSession,
+        openapi_spec_id: int
+):
+    stmt = select(OpenAPISpecVersionModel).where(OpenAPISpecVersionModel.open_api_spec_id == openapi_spec_id)
+    result = await db.execute(stmt)
+    versions = result.scalars().all()
+
+    responses = []
+
+    for version in versions:
+        response = {
+            "openapi_spec_version_id": version.id,
+            "created_at": version.created_at,
+            "commit_hash": version.commit_hash,
+            "is_active": version.is_activate
+        }
+        responses.append(response)
+
+    return responses
+
+async def process_openapi_spec_version_update(
+        db: AsyncSession,
+        openapi_spec_version_id: int
+):
+    # version id -> openapi_spec, 현재 활성화된 version 추적
+    # TODO git hooks 시 values 정보를 저장해야할 듯 -> 어디에? -> openapi_spec_version에 저장
+    # TODO 버그!!! git hooks 배포를 할 때 commit_hash를 저장하지 않고 있음 ** 먼저 해결 필요 **
+
+
+    # TODO 위 두개를 먼저 해결 commit_hash를 가진 image로 helm package 재배포
+    # TODO 선택한 버전 is_activate=True, 현재 버전은 is_activate=False
+    # TODO 응답으로는 변경되기 전 activate의 commit_hash, 변경 후 commit_hash를 첨부하면 좋을듯
+    pass

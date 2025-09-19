@@ -8,6 +8,7 @@ from app.api.test_history_router import router as test_history_router
 from app.api.endpoint_router import router as endpoint_router
 from app.api.scheduler_router import router as scheduler_router
 from app.api.debug_router import router as debug_router
+from app.api.infra_router import router as infra_router
 from app.api.analysis_router import router as analysis_router
 
 api_router = APIRouter()
@@ -57,6 +58,11 @@ api_router.include_router(
     tags=["Debug"]
 )
 
+api_router.include_router(
+    infra_router,
+    prefix="/infra",
+    tags=["Infra"]
+)
 api_router.include_router(
     analysis_router,
     tags=["AI Analysis"]

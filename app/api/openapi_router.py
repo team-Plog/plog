@@ -1,8 +1,11 @@
+import json
 import logging
 from fastapi import APIRouter, Depends, Path
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
-from app.models import get_db
-from app.models.sqlite.models.project_models import OpenAPISpecModel
+from app.models import get_db, get_async_db
+from app.models.sqlite.models.project_models import OpenAPISpecModel, OpenAPISpecVersionModel
 from app.schemas.openapi_spec.open_api_spec_register_request import OpenAPISpecRegisterRequest
 from app.schemas.openapi_spec.plog_deploy_request import PlogConfigDTO
 
@@ -11,7 +14,8 @@ from app.common.response.code import SuccessCode, FailureCode
 from app.common.response.response_template import ResponseTemplate
 from app.services import *
 from app.services.openapi.strategy_factory import analyze_openapi_with_strategy
-from app.services.openapi.openapi_service import deploy_openapi_spec as deploy_openapi_spec_service
+from app.services.openapi.openapi_service import deploy_openapi_spec as deploy_openapi_spec_service, \
+    build_response_openapi_spec_version_list, process_openapi_spec_version_update
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -49,19 +53,24 @@ async def analyze_swagger(
 async def get_openapi_specs(
     db: Session = Depends(get_db)
 ):
-    # DB에서 모든 OpenAPISpecModel 조회
-    openapi_specs = db.query(OpenAPISpecModel).all()
+    stmt = (
+        select(
+            OpenAPISpecModel.id,
+            OpenAPISpecModel.title,
+            OpenAPISpecModel.version,
+            OpenAPISpecModel.base_url,
+            OpenAPISpecVersionModel.commit_hash,
+            OpenAPISpecVersionModel.created_at
+        )
+        .join(
+            OpenAPISpecVersionModel,
+            (OpenAPISpecVersionModel.open_api_spec_id == OpenAPISpecModel.id)
+            & (OpenAPISpecVersionModel.is_activate == True)  # ✅ 활성화 버전만
+        )
+    )
 
-    # 수동 변환으로 안전하게 처리
-    response = []
-    for spec in openapi_specs:
-        response.append({
-            "id": spec.id,
-            "title": spec.title,
-            "version": spec.version,
-            "base_url": spec.base_url,
-            "versions": []  # 필요시 나중에 관계 데이터 로딩
-        })
+    result = db.execute(stmt)
+    response = result.mappings().all()
 
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response)
 
@@ -113,6 +122,7 @@ async def deploy_openapi_spec(
 ):
     try:
         # 비즈니스 로직 서비스에 위임
+        logger.info("Request payload: %s", json.dumps(request.dict(), ensure_ascii=False))
         result = await deploy_openapi_spec_service(db, request)
         
         return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, result)
@@ -127,4 +137,31 @@ async def deploy_openapi_spec(
             "message": "애플리케이션 배포에 실패했습니다."
         }
         
-        return ResponseTemplate.fail(FailureCode.INTERNAL_SERVER_ERROR, error_data)
+        return ResponseTemplate.fail(FailureCode.INTERNAL_SERVER_ERROR, data=error_data)
+
+@router.get(
+    path="/{openapi_spec_id}/versions",
+    summary="서버 버전 리스트 조회 API",
+    description="등록된 서버의 현재 버전을 포함한 과거 버전 정보 리스트를 반환합니다."
+)
+async def get_openapi_spec_version_list(
+        openapi_spec_id: int = Path(..., title="openapi_spec의 ID", ge=1),
+        db: AsyncSession = Depends(get_async_db)
+):
+    response = await build_response_openapi_spec_version_list(db, openapi_spec_id)
+    return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response)
+
+@router.patch(
+    path="/versions/{openapi_spec_version_id}",
+    summary="서버 버전 변경 API",
+    description="""
+    선택한 version id로 openapi_spec의 버전을 변경합니다.
+    """
+)
+async def update_openapi_spec_version(
+        openapi_spec_version_id: int = Path(..., title="openapi_spec_version의 ID", ge=1),
+        db: AsyncSession = Depends(get_async_db)
+):
+    await process_openapi_spec_version_update(db, openapi_spec_version_id)
+
+    pass

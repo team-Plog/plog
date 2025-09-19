@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Path, Query
 from fastapi.responses import StreamingResponse
+
+from app.models import get_db
 from app.models.influxdb.database import client
 import asyncio
 import json
@@ -10,6 +12,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from app.services.infrastructure.server_infra_service import get_job_pods_with_service_types
+from app.services.testing.test_history_service import get_test_history_by_job_name
 from app.sse.pod_spec_cache import get_pod_spec_cache
 from app.sse.metrics_buffer import SmartMetricsBuffer
 from app.models.sqlite.database import SessionLocal
@@ -310,10 +313,20 @@ def get_scenario_error_rate(job_name: str, scenario_name: str) -> float:
 def collect_metrics_data(job_name: str, include_resources: bool = True) -> Dict[str, Any]:
     """모든 메트릭 데이터를 수집하고 포맷팅 (k6 + resource 메트릭)"""
     logger.info(f"Starting metrics collection for job: {job_name} (include_resources={include_resources})")
-    
+    db = SessionLocal()
+
     # 1. 기존 k6 메트릭 수집
-    scenarios = get_scenario_names(job_name)
-    
+    scenario_tags = get_scenario_names(job_name)
+    test_history = get_test_history_by_job_name(db, job_name)
+    scenarios = test_history.scenarios
+
+    logger.info(f"scenarios length: {len(scenarios)}, scenario tags length: {len(scenario_tags)}")
+
+    scenario_tag_name_map = {
+        scenario.scenario_tag: scenario.name
+        for scenario in scenarios
+    }
+
     overall_metrics = {
         "tps": get_overall_tps(job_name),
         "vus": get_overall_vus(job_name), 
@@ -322,14 +335,14 @@ def collect_metrics_data(job_name: str, include_resources: bool = True) -> Dict[
     }
     
     scenario_list = []
-    for scenario in scenarios:
+    for scenario_tag in scenario_tags:
         scenario_list.append({
-            "name": scenario,
-            "scenario_tag": scenario,
-            "tps": get_scenario_tps(job_name, scenario),
-            "vus": get_scenario_vus(job_name, scenario),
-            "response_time": get_scenario_latency(job_name, scenario),
-            "error_rate": get_scenario_error_rate(job_name, scenario)
+            "name": scenario_tag_name_map.get(scenario_tag),
+            "scenario_tag": scenario_tag,
+            "tps": get_scenario_tps(job_name, scenario_tag),
+            "vus": get_scenario_vus(job_name, scenario_tag),
+            "response_time": get_scenario_latency(job_name, scenario_tag),
+            "error_rate": get_scenario_error_rate(job_name, scenario_tag)
         })
     
     # 2. 기본 응답 구조

@@ -2,9 +2,12 @@ from fastapi import Path
 
 import logging
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload, contains_eager
+from sqlalchemy.sql.functions import func
+
 from app.models import get_db
-from app.models.sqlite.models import OpenAPISpecVersionModel
+from app.models.sqlite.models import OpenAPISpecVersionModel, TestHistoryModel
 from app.schemas.project.openapi import ProjectResponse
 from app.schemas.project.project_detail_response import ProjectDetailResponse
 from app.schemas.project.project_detail_converter import ProjectDetailConverter
@@ -46,18 +49,24 @@ async def register_project(
 async def get_projects(
         db: Session = Depends(get_db)
 ):
-    projects = db.query(ProjectModel).all()
-    response = [
-        ProjectResponse(
-            id=project.id,
-            title=project.title,
-            summary=project.summary,
-            description=project.description,
-            status=None,
-            updated_at=None
+    stmt = (
+        select(
+            ProjectModel.id,
+            ProjectModel.title,
+            ProjectModel.summary,
+            ProjectModel.description,
+            func.max(TestHistoryModel.completed_at).label("updated_at")
         )
-        for project in projects
-    ]
+        .join(TestHistoryModel, TestHistoryModel.project_id == ProjectModel.id, isouter=True)  # LEFT JOIN
+        .group_by(
+            ProjectModel.id,
+            ProjectModel.title,
+            ProjectModel.summary,
+            ProjectModel.description
+        )
+    )
+    result = db.execute(stmt)
+    response = result.mappings().all()
 
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response)
 

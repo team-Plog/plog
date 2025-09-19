@@ -37,9 +37,6 @@ from app.schemas.test_history.test_history_timeseries_response import (
     ScenarioTimeseriesResponse,
     TimeseriesDataPoint
 )
-from app.sse.sse_k6data import collect_resource_metrics
-from app.services.infrastructure.server_infra_service import get_job_pods_with_service_types_async
-from app.utils.metrics_calculator import MetricsCalculator, MetricStats
 
 logger = logging.getLogger(__name__)
 kst = pytz.timezone('Asia/Seoul')
