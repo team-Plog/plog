@@ -8,6 +8,7 @@ class ConnectOpenAPIInfraRequest(BaseModel):
 
 class UpdateServerInfraResourceUsageRequest(BaseModel):
     group_name: str
+    replicas: int
     cpu_request_millicores: Optional[str] = None
     cpu_limit_millicores: Optional[str] = None
     memory_request_millicores: Optional[str] = None

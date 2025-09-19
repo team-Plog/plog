@@ -65,7 +65,7 @@ async def build_response_get_pods_info_list(
             "label": server_infra.label,
             "namespace": server_infra.namespace,
             "resource_specs": resource_specs,
-            "replica": replica,
+            "replicas": replica,
             "service_info": {
                 "port": service["ports"],
                 "node_port": service["node_ports"],
@@ -128,23 +128,28 @@ async def process_updated_server_infra_resource_usage(
         raise ApiException(FailureCode.NOT_FOUND_DATA, "Not Found Server Infra")
 
     first_server_infra = server_infras.first()
-    # current_resource_info = resource_service.get_pod_aggregated_resources(first_server_infra.name)
 
     openapi_spec = first_server_infra.openapi_spec
     openapi_spec_version = openapi_spec.openapi_spec_versions[0]
     version_detail: OpenAPISpecVersionDetailModel = openapi_spec_version.version_detail
 
-    # 변경할 resource 값으로 상태 변경
-    resource_info: Dict[str, Any] = version_detail.resources
-    updated_resource_info = update_resource_info(resource_info, request)
+    # version_detail 현재 값 조회 및 변경
+    current_replicas = version_detail.replicas
+    current_resource_info: Dict[str, Any] = version_detail.resources
+    updated_resource_info = update_resource_info(current_resource_info, request)
     logger.info(f"updated_resource_info: {updated_resource_info}")
 
+    # helm chart request 생성 및 변경된 값 적용
     plog_config_dto:PlogConfigDTO = convertOpenAPISpecModelToDto(version_detail)
     plog_config_dto.resources = updated_resource_info
+    plog_config_dto.replicas = request.replicas
     logger.info(f"plog_config_dto: {plog_config_dto.model_dump()}")
 
     # SQLAlchemy 변경 추적을 위한 명시적 처리
     version_detail.resources = updated_resource_info.copy()  # 새로운 객체로 할당
+
+    if request.replicas >= 1:
+        version_detail.replicas = request.replicas
 
     # 또는 flag_modified 사용 (선택적)
     flag_modified(version_detail, 'resources')
@@ -154,27 +159,34 @@ async def process_updated_server_infra_resource_usage(
     await process_helm_chart(plog_config_dto)
 
     response = {
-        "past_resource_usage": {
-            "cpu": {
-                "request": resource_info["request"]["cpu"],
-                "limit": resource_info["limits"]["cpu"],
-            },
-            "memory": {
-                "request": resource_info["request"]["memory"],
-                "limit": resource_info["limits"]["memory"],
+        "past" : {
+            "replicas": current_replicas,
+            "resource_usage": {
+                "cpu": {
+                    "request": current_resource_info["request"]["cpu"],
+                    "limit": current_resource_info["limits"]["cpu"],
+                },
+                "memory": {
+                    "request": current_resource_info["request"]["memory"],
+                    "limit": current_resource_info["limits"]["memory"],
+                }
             }
         },
-        "current_resource_usage": {
-            "cpu": {
-                "request": resource_info["request"]["cpu"],
-                "limit": resource_info["limits"]["cpu"],
-            },
-            "memory": {
-                "request": resource_info["request"]["memory"],
-                "limit": resource_info["limits"]["memory"],
+        "current": {
+            "replicas": request.replicas,
+            "resource_usage": {
+                "cpu": {
+                    "request": updated_resource_info["request"]["cpu"],
+                    "limit": updated_resource_info["limits"]["cpu"],
+                },
+                "memory": {
+                    "request": updated_resource_info["request"]["memory"],
+                    "limit": updated_resource_info["limits"]["memory"],
+                }
             }
-        },
+        }
     }
+
 
     return response
 
