@@ -30,23 +30,24 @@ interface MetricChartProps {
   hideTitle?: boolean; // 제목 숨김 옵션
   hideControls?: boolean; // 토글 컨트롤 숨김 옵션
   showLegend?: boolean; // 범례 표시 옵션
+  extraInfo?: React.ReactNode;
 }
 
 // Y축 값 포맷팅 함수
 const formatYAxisValue = (value: number): string => {
   // 값이 0이면 그대로 반환
   if (value === 0) return "0";
-  
+
   // 절대값이 1000 이상이면 정수로 표시
   if (Math.abs(value) >= 1000) {
     return Math.round(value).toLocaleString();
   }
-  
+
   // 절대값이 1 이상이면 소수점 1자리까지
   if (Math.abs(value) >= 1) {
     return Number(value.toFixed(1)).toString();
   }
-  
+
   // 1 미만이면 소수점 3자리까지
   return Number(value.toFixed(3)).toString();
 };
@@ -61,6 +62,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
   hideTitle = false,
   hideControls = false,
   showLegend = true,
+  extraInfo
 }) => {
   const multiMode = !!(combinedSeries && combinedSeries.length > 0);
 
@@ -221,6 +223,8 @@ const MetricChart: React.FC<MetricChartProps> = ({
             표시할 그래프가 없습니다. 위에서 선택하세요.
           </div>
         )}
+
+        {extraInfo && <div className={`${styles.extraInfo} Body`}>{extraInfo}</div>}
       </div>
     );
   }
@@ -240,7 +244,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
   //         </defs>
   //         <CartesianGrid strokeDasharray="3 3" />
   //         <XAxis dataKey="time" />
-  //         <YAxis 
+  //         <YAxis
   //           domain={[0, (dataMax: number) => dataMax * 1.2]}
   //           tickFormatter={formatYAxisValue}
   //         />

@@ -702,18 +702,25 @@ const Test: React.FC = () => {
                       },
                     ]}
                     height={300}
+                    extraInfo={
+                      <div className={styles.resourceSpecs}>
+                        <span>
+                          <span style={{color: "#f59e0b"}}>
+                            CPU 요청량:{" "}
+                            {currentResource.cpuRequestMillicores ?? "-"} mC /
+                            제한량: {currentResource.cpuLimitMillicores ?? "-"}{" "}
+                            mC
+                          </span>
+                          <span style={{margin: "0 10px"}}></span>
+                          <span style={{color: "#10b981"}}>
+                            Memory 요청량:{" "}
+                            {currentResource.memoryRequestMb ?? "-"} MB /
+                            제한량: {currentResource.memoryLimitMb ?? "-"} MB
+                          </span>
+                        </span>
+                      </div>
+                    }
                   />
-                  <div className={styles.resourceSpecs}>
-                    <div className="CaptionLight">
-                      CPU 요청량: {currentResource.cpuRequestMillicores ?? "-"}{" "}
-                      mC / 제한량: {currentResource.cpuLimitMillicores ?? "-"}{" "}
-                      mC
-                    </div>
-                    <div className="CaptionLight">
-                      Memory 요청량: {currentResource.memoryRequestMb ?? "-"} MB
-                      / 제한량: {currentResource.memoryLimitMb ?? "-"} MB
-                    </div>
-                  </div>
                 </>
               )}
             </section>
