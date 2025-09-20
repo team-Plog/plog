@@ -18,6 +18,14 @@ spec:
           image: redis:7
           ports:
             - containerPort: 6379
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "100Mi"
+            limits:
+              cpu: "300m"
+              memory: "300Mi"
+
           command: ["sh", "-c"]
           args:
             - "redis-server --requirepass $REDIS_PASSWORD"

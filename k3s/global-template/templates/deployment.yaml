@@ -60,20 +60,19 @@ spec:
           {{- end }}
           resources:
             requests:
-              {{- if $appConfig.resources.requests.cpu }}
+            {{- if $appConfig.resources.requests.cpu }}
               cpu: {{ $appConfig.resources.requests.cpu }}
-              {{- end }}
-              {{- if $appConfig.resources.requests.memory }}
+            {{- end }}
+            {{- if $appConfig.resources.requests.memory }}
               memory: {{ $appConfig.resources.requests.memory }}
-              {{- end }}
+            {{- end }}
             limits:
-              {{- if $appConfig.resources.limits.cpu }}
+            {{- if $appConfig.resources.limits.cpu }}
               cpu: {{ $appConfig.resources.limits.cpu }}
-              {{- end }}
-              {{- if $appConfig.resources.limits.memory }}
+            {{- end }}
+            {{- if $appConfig.resources.limits.memory }}
               memory: {{ $appConfig.resources.limits.memory }}
-              {{- end }}
-
+            {{- end }}
       imagePullSecrets:
         - name: {{ $.Values.global.imagePullSecret }}
   {{- end }}
