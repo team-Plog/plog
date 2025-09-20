@@ -264,6 +264,18 @@ const Infrastructure: React.FC = () => {
                       연결된 API: {group.connectedOpenAPI.title}
                     </p>
                   )}
+                  {group.pods.length > 0 && (
+                    <p className="CaptionLight">
+                      Port:{" "}
+                      {group.pods[0].service_info.port.length > 0
+                        ? group.pods[0].service_info.port.join(", ")
+                        : "-"}{" "}
+                      | NodePort:{" "}
+                      {group.pods[0].service_info.node_port.length > 0
+                        ? group.pods[0].service_info.node_port.join(", ")
+                        : "-"}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -283,16 +295,6 @@ const Infrastructure: React.FC = () => {
                     <p className="CaptionLight">
                       Memory: {pod.resource_specs.memory_request_mb}MB /{" "}
                       {pod.resource_specs.memory_limit_mb}MB
-                    </p>
-                    <p className="CaptionLight">
-                      Port:{" "}
-                      {pod.service_info.port.length > 0
-                        ? pod.service_info.port.join(", ")
-                        : "-"}{" "}
-                      | NodePort:{" "}
-                      {pod.service_info.node_port.length > 0
-                        ? pod.service_info.node_port.join(", ")
-                        : "-"}
                     </p>
                     <Button
                       variant="secondary"
