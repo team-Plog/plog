@@ -313,19 +313,24 @@ def get_scenario_error_rate(job_name: str, scenario_name: str) -> float:
 def collect_metrics_data(job_name: str, include_resources: bool = True) -> Dict[str, Any]:
     """모든 메트릭 데이터를 수집하고 포맷팅 (k6 + resource 메트릭)"""
     logger.info(f"Starting metrics collection for job: {job_name} (include_resources={include_resources})")
-    db = SessionLocal()
 
     # 1. 기존 k6 메트릭 수집
     scenario_tags = get_scenario_names(job_name)
-    test_history = get_test_history_by_job_name(db, job_name)
-    scenarios = test_history.scenarios
 
-    logger.info(f"scenarios length: {len(scenarios)}, scenario tags length: {len(scenario_tags)}")
+    # DB 세션을 안전하게 관리
+    db = SessionLocal()
+    try:
+        test_history = get_test_history_by_job_name(db, job_name)
+        scenarios = test_history.scenarios
 
-    scenario_tag_name_map = {
-        scenario.scenario_tag: scenario.name
-        for scenario in scenarios
-    }
+        logger.info(f"scenarios length: {len(scenarios)}, scenario tags length: {len(scenario_tags)}")
+
+        scenario_tag_name_map = {
+            scenario.scenario_tag: scenario.name
+            for scenario in scenarios
+        }
+    finally:
+        db.close()  # 반드시 DB 세션 닫기
 
     overall_metrics = {
         "tps": get_overall_tps(job_name),

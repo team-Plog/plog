@@ -48,7 +48,7 @@ class AIAnalysisService:
             개별 분석 결과
         """
         start_time = datetime.now()
-        
+
         try:
             logger.info(f"Starting {analysis_type.value} analysis for test_history_id: {test_history_id}")
 
@@ -97,7 +97,7 @@ class AIAnalysisService:
                 resource_usage_data=resource_usage_data
             )
             logger.debug("Step 1: Real test data collected and converted successfully")
-            
+
             # 2. 모델 설정 (환경변수에서 직접 가져오기)
             logger.debug("Step 2: Setting up model configuration")
             from app.core.config import settings
@@ -110,7 +110,7 @@ class AIAnalysisService:
                 'timeout_seconds': 120
             }
             logger.debug(f"Step 2: Model config created: {model_config}")
-            
+
             # 3. Ollama 클라이언트 설정
             logger.debug("Step 3: Setting up Ollama client")
             ollama_client = await get_ollama_client()
@@ -122,19 +122,19 @@ class AIAnalysisService:
             config.timeout_seconds = model_config['timeout_seconds']
             ollama_client.config = config
             logger.debug(f"Step 3: Ollama client configured with host: {settings.OLLAMA_HOST}")
-            
+
             if not await ollama_client.is_available():
                 raise Exception("Ollama server is not available")
-            
+
             # 4. 분석 실행
             analysis_result = await self._perform_analysis_with_model(
                 llm_input_data, analysis_type, ollama_client
             )
-            
+
             # 5. 성능 기록 (간단한 로그)
             duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
             logger.info(f"Analysis completed in {duration_ms}ms using {model_config['model_name']}")
-            
+
             # 6. 응답 구성
             response = SingleAnalysisResponse(
                 analysis_type=analysis_type,
@@ -159,13 +159,13 @@ class AIAnalysisService:
                 # 이력 저장 실패해도 분석 결과는 반환
 
             return response
-            
+
         except Exception as e:
             # 실패 로그
             duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
             logger.error(f"Single analysis failed for test_history_id {test_history_id} after {duration_ms}ms: {e}")
             raise
-    
+
     async def perform_comprehensive_analysis(
         self,
         db_sync: Session,
@@ -188,7 +188,7 @@ class AIAnalysisService:
             종합 분석 결과
         """
         start_time = datetime.now()
-        
+
         # 기본 분석 유형 설정
         if analysis_types is None:
             analysis_types = [
@@ -198,9 +198,9 @@ class AIAnalysisService:
                 AnalysisType.ERROR_RATE,
                 AnalysisType.RESOURCE_USAGE
             ]
-        
+
         logger.info(f"Starting comprehensive analysis for test_history_id: {test_history_id}")
-        
+
         try:
             # 1. 각 분석 유형별 실행
             analyses = []
@@ -215,27 +215,27 @@ class AIAnalysisService:
                     logger.error(f"Failed {analysis_type.value} analysis: {e}")
                     # 실패한 분석은 기본값으로 대체
                     analyses.append(self._create_fallback_analysis(analysis_type, str(e)))
-            
+
             # 2. 종합 분석 결과 계산
             overall_score = self._calculate_overall_score(analyses)
             executive_summary = self._generate_executive_summary(analyses)
             top_recommendations = self._extract_top_recommendations(analyses)
-            
+
             # 3. 비교 분석 (선택사항)
             trend_analysis = None
             if comparison_test_ids:
                 trend_analysis = await self._perform_trend_analysis(
                     db_sync, db_async, test_history_id, comparison_test_ids
                 )
-            
+
             # 4. 사용된 모델명 (첫 번째 성공한 분석의 모델 사용)
             used_model = next(
                 (a.model_name for a in analyses if a.model_name != "fallback"),
                 "unknown"
             )
-            
+
             duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
-            
+
             return ComprehensiveAnalysisResponse(
                 test_history_id=test_history_id,
                 analyzed_at=datetime.now(),
@@ -247,11 +247,11 @@ class AIAnalysisService:
                 trend_analysis=trend_analysis,
                 total_analysis_duration_ms=duration_ms
             )
-            
+
         except Exception as e:
             logger.error(f"Comprehensive analysis failed for test_history_id {test_history_id}: {e}")
             raise
-    
+
     async def perform_comparison_analysis(
         self,
         db_sync: Session,
@@ -274,14 +274,14 @@ class AIAnalysisService:
             비교 분석 결과
         """
         start_time = datetime.now()
-        
+
         logger.info(f"Starting comparison analysis: {current_test_id} vs {previous_test_id}")
-        
+
         try:
             # 1. 양쪽 테스트 데이터 수집
             current_data = await self._collect_test_data(db_sync, db_async, current_test_id)
             previous_data = await self._collect_test_data(db_sync, db_async, previous_test_id)
-            
+
             # 2. 모델 설정 (환경변수에서 직접 가져오기)
             from app.core.config import settings
 
@@ -291,12 +291,12 @@ class AIAnalysisService:
                 'max_tokens': 3000,
                 'timeout_seconds': 120
             }
-            
+
             # 3. 비교 분석용 프롬프트 생성
             comparison_prompt = self._generate_comparison_prompt(
                 current_data, previous_data, focus_areas
             )
-            
+
             # 4. Ollama 클라이언트 설정 및 분석 수행
             ollama_client = await get_ollama_client()
             config = OllamaConfig()
@@ -305,17 +305,17 @@ class AIAnalysisService:
             config.max_tokens = model_config['max_tokens']
             config.timeout_seconds = model_config['timeout_seconds']
             ollama_client.config = config
-            
+
             result = await ollama_client.analyze_performance(comparison_prompt, "comparison")
-            
+
             if not result["success"]:
                 raise Exception(f"Comparison analysis failed: {result.get('error', 'Unknown error')}")
-            
+
             # 5. 결과 파싱
             comparison_result = self._parse_comparison_response(
                 result["response"], current_data, previous_data
             )
-            
+
             # 6. 성능 기록 (간단한 로그)
             duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
             logger.info(f"Comparison analysis completed in {duration_ms}ms using {model_config['model_name']}")
@@ -339,65 +339,142 @@ class AIAnalysisService:
                 # 이력 저장 실패해도 분석 결과는 반환
 
             return response
-            
+
         except Exception as e:
             logger.error(f"Comparison analysis failed: {e}")
             raise
-    
+
     async def _collect_test_data(
-        self, 
-        db_sync: Session, 
-        db_async: AsyncSession, 
+        self,
+        db_sync: Session,
+        db_async: AsyncSession,
         test_history_id: int
     ) -> LLMAnalysisInput:
         """테스트 데이터 수집"""
-        
+
         test_history = get_test_history_by_id(db_sync, test_history_id)
         if not test_history:
             raise Exception(f"Test history not found: {test_history_id}")
-        
+
         # 응답 형식으로 변환
         test_detail = build_test_history_detail_response(test_history)
         test_detail_dict = test_detail.dict()
-        
+
         # 리소스 사용량 데이터 조회
         resource_usage_data = None
         try:
             resource_usage_data = await build_test_history_timeseries_resources_response(db_async, test_history_id)
         except Exception as e:
             logger.warning(f"Failed to get resource usage data: {e}")
-        
+
         return convert_test_history_to_llm_input(test_detail_dict, resource_usage_data)
-    
+
+    async def _detect_performance_bottlenecks(self, data: LLMAnalysisInput) -> str:
+        """
+        성능 병목 자동 탐지 및 컨텍스트 생성
+
+        Args:
+            data: LLM 분석 입력 데이터
+
+        Returns:
+            AI 프롬프트에 추가할 병목 분석 컨텍스트 (빈 문자열이면 병목 없음)
+        """
+        try:
+            # InfluxDB에서 시계열 데이터 가져오기
+            from app.services.monitoring.influxdb_service import InfluxDBService
+            from app.services.analysis.performance_bottleneck_detector import get_performance_bottleneck_detector
+
+            # test_history_id로부터 job_name 추출 (여기서는 간단히 test_history_id를 사용)
+            test_history_id = data.test_history_id
+
+            # InfluxDB 서비스를 통해 시계열 데이터 조회
+            influxdb_service = InfluxDBService()
+
+            # job_name은 일반적으로 "test-{test_history_id}" 형식으로 생성됨
+            job_name = f"test-{test_history_id}"
+
+            # k6 시계열 데이터 조회
+            timeseries_data = influxdb_service.get_test_timeseries_data(job_name)
+
+            if not timeseries_data:
+                logger.debug(f"No timeseries data found for job: {job_name}")
+                return ""
+
+            logger.debug(f"Retrieved {len(timeseries_data)} timeseries data points for bottleneck analysis")
+
+            # 리소스 사용량 데이터 준비 (이미 data.resource_usage에 있음)
+            resource_usage_data = []
+            if data.resource_usage:
+                for resource in data.resource_usage:
+                    # ServerResourceUsage 객체를 딕셔너리 형태로 변환
+                    usage_points = []
+                    for point in resource.usage_data:
+                        usage_points.append({
+                            'timestamp': point.timestamp,
+                            'cpu_usage_percent': point.cpu_usage_percent,
+                            'memory_usage_percent': point.memory_usage_percent,
+                            'cpu_usage_millicores': point.cpu_usage_millicores,
+                            'memory_usage_mb': point.memory_usage_mb
+                        })
+
+                    resource_usage_data.append({
+                        'pod_name': resource.pod_name,
+                        'service_type': resource.service_type,
+                        'usage_data': usage_points
+                    })
+
+            # 성능 병목 탐지기 실행
+            detector = get_performance_bottleneck_detector()
+            detected_problems = detector.detect_all_performance_problems(
+                load_test_timeseries=timeseries_data,
+                resource_usage_timeseries=resource_usage_data
+            )
+
+            if not detected_problems:
+                logger.debug("No performance bottlenecks detected")
+                return ""
+
+            # AI 분석용 컨텍스트 생성
+            bottleneck_context = detector.generate_ai_analysis_context(detected_problems)
+
+            logger.info(f"Detected {len(detected_problems)} performance bottlenecks for AI analysis")
+
+            return bottleneck_context
+
+        except Exception as e:
+            logger.error(f"Error during performance bottleneck detection: {e}")
+            # 병목 탐지 실패 시에도 기본 분석은 계속 진행
+            return ""
+
     # _get_model_config_by_name 메서드 제거됨 - 더 이상 필요 없음
-    
+
     def _estimate_data_complexity(self, data: LLMAnalysisInput) -> str:
         """데이터 복잡도 추정"""
-        
+
         complexity_score = 0
-        
+
         # 시나리오 수에 따른 복잡도
         scenario_count = len(data.scenarios)
         if scenario_count > 5:
             complexity_score += 2
         elif scenario_count > 2:
             complexity_score += 1
-        
+
         # 리소스 데이터 존재 여부
         if data.resource_usage:
             complexity_score += 1
-            
+
             # 리소스 데이터 포인트 수
             total_points = sum(len(r.usage_data) for r in data.resource_usage)
             if total_points > 1000:
                 complexity_score += 2
             elif total_points > 100:
                 complexity_score += 1
-        
+
         # 테스트 지속 시간
         if data.configuration.test_duration and data.configuration.test_duration > 300:  # 5분 이상
             complexity_score += 1
-        
+
         # 복잡도 분류
         if complexity_score >= 4:
             return "high"
@@ -405,7 +482,7 @@ class AIAnalysisService:
             return "medium"
         else:
             return "low"
-    
+
     async def _perform_analysis_with_model(
         self,
         data: LLMAnalysisInput,
@@ -413,12 +490,21 @@ class AIAnalysisService:
         ollama_client
     ) -> 'AnalysisResult':
         """모델을 사용한 분석 수행"""
-        
+
         # schemas의 AnalysisResult를 사용
         from app.schemas.analysis import AnalysisResult
-        
-        # 프롬프트 생성
-        prompt = self.prompt_manager.get_prompt(analysis_type, data)
+
+        # 성능 병목 자동 탐지 수행
+        bottleneck_context = await self._detect_performance_bottlenecks(data)
+
+        # 기본 프롬프트 생성
+        base_prompt = self.prompt_manager.get_prompt(analysis_type, data)
+
+        # 병목 분석 결과를 프롬프트에 추가
+        if bottleneck_context:
+            prompt = f"{base_prompt}\n\n{bottleneck_context}"
+        else:
+            prompt = base_prompt
         
         # Ollama API 호출
         result = await ollama_client.analyze_performance(prompt, analysis_type.value)

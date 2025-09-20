@@ -713,7 +713,7 @@ def get_test_timeseries_metrics(db: Session, test_history_id: int) -> List[TestM
         return (
             db.query(TestMetricsTimeseriesModel)
             .filter(TestMetricsTimeseriesModel.test_history_id == test_history_id)
-            .order_by(TestMetricsTimeseriesModel.timestamp.asc(), TestMetricsTimeseriesModel.scenario_id.asc())
+            .order_by(TestMetricsTimeseriesModel.timestamp.asc(), TestMetricsTimeseriesModel.scenario_history_id.asc())
             .all()
         )
     except Exception as e:

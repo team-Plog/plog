@@ -264,9 +264,107 @@ async def get_resources_structure_preview(job_name: str) -> Dict[str, Any]:
                 }
             }
         }
-        
+
     except Exception as e:
         logger.error(f"Error getting resources structure for {job_name}: {e}")
         return {
             'error': str(e)
+        }
+
+
+@router.get("/bottleneck-analysis/{test_history_id}")
+async def test_bottleneck_analysis(test_history_id: int) -> Dict[str, Any]:
+    """
+    지정된 테스트 히스토리 ID로 병목지점 분석 과정 테스트 (InfluxDB 사용)
+
+    Args:
+        test_history_id: 분석할 테스트 히스토리 ID
+
+    Returns:
+        Dict containing bottleneck analysis process details
+    """
+    try:
+        from app.services.analysis.performance_bottleneck_detector import get_performance_bottleneck_detector
+        from app.services.monitoring.influxdb_service import InfluxDBService
+        from app.services.testing.test_history_service import get_test_history_by_id
+        from app.models.sqlite.database import SessionLocal
+
+        logger.info(f"Starting bottleneck analysis for test_history_id: {test_history_id}")
+
+        # 1. 테스트 히스토리에서 job_name 조회
+        db = SessionLocal()
+        try:
+            test_history = get_test_history_by_id(db, test_history_id)
+            if not test_history:
+                return {
+                    'error': f'Test history not found: {test_history_id}',
+                    'test_history_id': test_history_id
+                }
+
+            job_name = test_history.job_name
+            logger.info(f"Found job_name: {job_name}")
+        finally:
+            db.close()
+
+        # 2. InfluxDB에서 실제 시계열 데이터 조회
+        influxdb_service = InfluxDBService()
+        timeseries_data = influxdb_service.get_test_timeseries_data(job_name)
+
+        if not timeseries_data:
+            return {
+                'error': f'No InfluxDB timeseries data found for job_name: {job_name}',
+                'test_history_id': test_history_id,
+                'job_name': job_name,
+                'data_source': 'InfluxDB'
+            }
+
+        logger.info(f"Retrieved {len(timeseries_data)} data points from InfluxDB")
+
+        # 3. 병목지점 탐지기 실행
+        detector = get_performance_bottleneck_detector()
+        detected_problems = detector.detect_all_performance_problems(timeseries_data)
+
+        # 3. 분석 결과 정리
+        problems_summary = []
+        for problem in detected_problems:
+            problems_summary.append({
+                'type': problem.problem_type.value,
+                'severity': problem.severity_level,
+                'confidence': problem.confidence_score,
+                'duration_seconds': problem.duration_seconds,
+                'started_at': problem.started_at.isoformat(),
+                'ended_at': problem.ended_at.isoformat(),
+                'root_cause': problem.root_cause_description,
+                'performance_impact': problem.performance_impact,
+                'detected_evidence': problem.detected_evidence,
+                'ai_context': problem.ai_prompt_context,
+                'metric_details': problem.metric_details
+            })
+
+        return {
+            'success': True,
+            'test_history_id': test_history_id,
+            'job_name': job_name,
+            'data_source': 'InfluxDB',
+            'data_points_analyzed': len(timeseries_data),
+            'problems_detected': len(detected_problems),
+            'analysis_results': problems_summary,
+            'sample_data_points': timeseries_data[:3] if timeseries_data else [],
+            'process_info': {
+                'detector_initialized': True,
+                'analysis_completed': True,
+                'data_source_used': 'InfluxDB (Real-time k6 metrics)',
+                'minimum_data_points_required': detector.MINIMUM_DATA_POINTS if hasattr(detector, 'MINIMUM_DATA_POINTS') else 'N/A'
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error in bottleneck analysis for test_history_id {test_history_id}: {e}")
+        return {
+            'error': str(e),
+            'test_history_id': test_history_id,
+            'process_info': {
+                'analysis_failed': True,
+                'error_details': str(e)
+            }
         }
