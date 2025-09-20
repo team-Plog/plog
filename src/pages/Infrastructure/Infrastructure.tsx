@@ -9,6 +9,7 @@ import {
   updateInfraResources,
 } from "../../api";
 import {getOpenAPIList} from "../../api";
+import Xarrow from "react-xarrows";
 
 interface InfraItem {
   server_infra_id: number;
@@ -46,14 +47,16 @@ interface InfraGroup {
   connectedOpenAPI?: OpenAPISpec;
 }
 
+interface Connection {
+  apiId: number;
+  groupName: string;
+}
+
 const Infrastructure: React.FC = () => {
   const [infraItems, setInfraItems] = useState<InfraItem[]>([]);
   const [openAPISpecs, setOpenAPISpecs] = useState<OpenAPISpec[]>([]);
   const [infraGroups, setInfraGroups] = useState<InfraGroup[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<InfraGroup | null>(null);
-  const [selectedOpenAPI, setSelectedOpenAPI] = useState<OpenAPISpec | null>(
-    null
-  );
   const [editingResources, setEditingResources] = useState<string | null>(null);
   const [resourceForm, setResourceForm] = useState({
     cpu_request: "",
@@ -61,6 +64,7 @@ const Infrastructure: React.FC = () => {
     memory_request: "",
     memory_limit: "",
   });
+  const [connections, setConnections] = useState<Connection[]>([]);
 
   // 인프라 목록 조회
   useEffect(() => {
@@ -101,38 +105,29 @@ const Infrastructure: React.FC = () => {
   }, [infraItems]);
 
   // OpenAPI ↔ Infra 연결
-  const handleConnectOpenAPI = async () => {
-    if (!selectedGroup || !selectedOpenAPI) return;
-
-    const data = {
-      openapi_spec_id: selectedOpenAPI.id,
-      group_name: selectedGroup.group_name,
-    };
+  const handleConnectOpenAPI = async (openapiId: number, groupName: string) => {
+    const data = {openapi_spec_id: openapiId, group_name: groupName};
 
     try {
-      console.log("🔗 연결 요청:", data);
+      console.log("📤 연결 요청:", data);
       await connectInfraWithOpenAPISpec(data);
 
-      console.log("📤 연결 요청 바디:", JSON.stringify(data, null, 2));
-
-      const res = await connectInfraWithOpenAPISpec(data);
-
-      // ✅ 서버 응답 확인
-      console.log("📥 연결 응답:", res.data);
-
-      // 프론트 state 갱신
+      // 연결된 API 정보를 state에 반영
       setInfraGroups((prev) =>
         prev.map((g) =>
-          g.group_name === selectedGroup.group_name
-            ? {...g, connectedOpenAPI: selectedOpenAPI}
+          g.group_name === groupName
+            ? {
+                ...g,
+                connectedOpenAPI: openAPISpecs.find((s) => s.id === openapiId),
+              }
             : g
         )
       );
 
-      alert("연결 완료!");
+      // 연결선 저장
+      setConnections((prev) => [...prev, {apiId: openapiId, groupName}]);
 
-      setSelectedGroup(null);
-      setSelectedOpenAPI(null);
+      // alert("연결 완료!"); ❌ 제거
     } catch (err: any) {
       console.error("❌ 연결 실패:", err.response?.data || err.message);
       alert("연결 실패");
@@ -160,14 +155,13 @@ const Infrastructure: React.FC = () => {
     }
   };
 
-  // 리소스 저장 (group 단위)
+  // 리소스 저장
   const handleSaveResources = async () => {
     if (!editingResources) return;
 
     try {
       const data: any = {group_name: editingResources};
 
-      // CPU 자동 m 단위
       if (resourceForm.cpu_request) {
         data.cpu_request_millicores = resourceForm.cpu_request.endsWith("m")
           ? resourceForm.cpu_request
@@ -178,25 +172,22 @@ const Infrastructure: React.FC = () => {
           ? resourceForm.cpu_limit
           : `${resourceForm.cpu_limit}m`;
       }
-
-      // Memory 자동 Mi/Gi
       if (resourceForm.memory_request) {
-        if (/[0-9]+(Mi|Gi)$/.test(resourceForm.memory_request)) {
-          data.memory_request_millicores = resourceForm.memory_request;
-        } else {
-          data.memory_request_millicores = `${resourceForm.memory_request}Mi`;
-        }
+        data.memory_request_millicores = /[0-9]+(Mi|Gi)$/.test(
+          resourceForm.memory_request
+        )
+          ? resourceForm.memory_request
+          : `${resourceForm.memory_request}Mi`;
       }
       if (resourceForm.memory_limit) {
-        if (/[0-9]+(Mi|Gi)$/.test(resourceForm.memory_limit)) {
-          data.memory_limit_millicores = resourceForm.memory_limit;
-        } else {
-          data.memory_limit_millicores = `${resourceForm.memory_limit}Mi`;
-        }
+        data.memory_limit_millicores = /[0-9]+(Mi|Gi)$/.test(
+          resourceForm.memory_limit
+        )
+          ? resourceForm.memory_limit
+          : `${resourceForm.memory_limit}Mi`;
       }
 
       await updateInfraResources(data);
-
       alert("리소스 설정이 저장되었습니다.");
       setEditingResources(null);
 
@@ -221,26 +212,19 @@ const Infrastructure: React.FC = () => {
       <Header />
       <div className={styles.content}>
         <main className={styles.main}>
-          {/* 공통 연결 버튼 영역 */}
-          <div className={styles.connectFooter}>
-            <Button
-              variant="primaryGradient"
-              onClick={handleConnectOpenAPI}
-              disabled={!selectedGroup || !selectedOpenAPI}>
-              선택한 OpenAPI ↔ Infra 그룹 연결하기
-            </Button>
-          </div>
           <div className={styles.groupRow}>
             {/* OpenAPI 그룹 */}
             <div className={styles.groupBox}>
               <h2 className="TitleL">API 그룹</h2>
               {openAPISpecs.map((spec) => (
                 <div
+                  id={`api-${spec.id}`}
                   key={spec.id}
-                  className={`${styles.card} ${
-                    selectedOpenAPI?.id === spec.id ? styles.activeCard : ""
-                  }`}
-                  onClick={() => setSelectedOpenAPI(spec)}>
+                  draggable
+                  onDragStart={(e) =>
+                    e.dataTransfer.setData("openapiId", spec.id.toString())
+                  }
+                  className={styles.card}>
                   <h3 className="TitleS">{spec.title}</h3>
                   <p className="CaptionLight">버전: {spec.version}</p>
                   <p className="CaptionLight">{spec.base_url}</p>
@@ -253,13 +237,21 @@ const Infrastructure: React.FC = () => {
               <h2 className="TitleL">Infra 그룹</h2>
               {infraGroups.map((group) => (
                 <div
+                  id={`infra-${group.group_name}`}
                   key={group.group_name}
                   className={`${styles.card} ${
                     selectedGroup?.group_name === group.group_name
                       ? styles.activeCard
                       : ""
                   }`}
-                  onClick={() => setSelectedGroup(group)}>
+                  onClick={() => setSelectedGroup(group)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    const openapiId = parseInt(
+                      e.dataTransfer.getData("openapiId")
+                    );
+                    handleConnectOpenAPI(openapiId, group.group_name);
+                  }}>
                   <div className={styles.groupHeader}>
                     {getServiceIcon(group.service_type)}
                     <div>
@@ -293,8 +285,14 @@ const Infrastructure: React.FC = () => {
                       {pod.resource_specs.memory_limit_mb}MB
                     </p>
                     <p className="CaptionLight">
-                      Port: {pod.service_info.port.join(", ")} | NodePort:{" "}
-                      {pod.service_info.node_port.join(", ")}
+                      Port:{" "}
+                      {pod.service_info.port.length > 0
+                        ? pod.service_info.port.join(", ")
+                        : "-"}{" "}
+                      | NodePort:{" "}
+                      {pod.service_info.node_port.length > 0
+                        ? pod.service_info.node_port.join(", ")
+                        : "-"}
                     </p>
                     <Button
                       variant="secondary"
@@ -308,6 +306,18 @@ const Infrastructure: React.FC = () => {
               )}
             </div>
           </div>
+
+          {/* 연결선 (react-xarrows) */}
+          {connections.map((c, idx) => (
+            <Xarrow
+              key={idx}
+              start={`api-${c.apiId}`}
+              end={`infra-${c.groupName}`}
+              color="blue"
+              strokeWidth={2}
+              headSize={5}
+            />
+          ))}
         </main>
 
         {/* Resource Edit Modal */}
