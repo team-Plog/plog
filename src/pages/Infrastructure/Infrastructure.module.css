@@ -1,7 +1,7 @@
 .container {
   min-height: 100vh;
   background-color: var(--color-background-secondary);
-  padding-top: 40px;
+  padding-top: var(--spacing-xxl);
   width: 100vw;
 }
 
@@ -20,58 +20,58 @@
 
 .groupRow {
   display: flex;
-  gap: 24px;
+  gap: var(--spacing-xl);
   align-items: flex-start;
 }
 
 .groupBox {
   flex: 1;
-  background: #fff;
-  border-radius: 12px;
-  padding: 16px;
+  background: var(--color-background-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  color: var(--color-black);
 }
 
 .card {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 16px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  background: var(--color-background-primary);
 }
 
 .podList {
-  margin-top: 12px;
+  margin-top: var(--spacing-lg);
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
 .podCard {
-  background: #f9fafb;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 8px;
+  background: var(--color-background-secondary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
 }
 
 .resourceBox {
-  font-size: 12px;
-  color: #374151;
+  color: var(--color-gray-300);
 }
+
 .activeCard {
-  border: 2px solid #3b82f6; /* 선택된 카드 강조 */
-  background: #eff6ff;
+  border: 2px solid var(--color-accent-primary);
+  background: var(--color-gray-100);
 }
 
-
+/* Edit Button */
 .editButton {
   display: flex;
   align-items: center;
   justify-content: center;
   width: var(--spacing-xl);
   height: var(--spacing-xl);
-  border: none;
-  background-color: var(--color-white);
   border: 1px solid var(--color-border-primary);
+  background-color: var(--color-background-primary);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -111,7 +111,7 @@
 }
 
 .modalContent {
-  background: var(--color-white);
+  background: var(--color-background-primary);
   padding: var(--spacing-xl);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-primary);
@@ -148,6 +148,7 @@
   border: 1px solid var(--color-border-primary);
   border-radius: var(--radius-sm);
   color: var(--color-gray-300);
+  background: var(--color-background-primary);
 }
 
 .input:focus {
@@ -190,7 +191,6 @@
   max-width: 400px;
   line-height: 1.5;
 }
-
 
 /* Responsive Design */
 @media (max-width: 768px) {
