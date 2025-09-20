@@ -5,35 +5,35 @@
   --heading-l-font-weight: 700;
   --heading-l-line-height: 48px;
 
-  --heading-s-font-size: 18px;
+  --heading-s-font-size: 20px;
   --heading-s-font-family: Pretendard, sans-serif;
   --heading-s-font-weight: 700;
-  --heading-s-line-height: 27px;
+  --heading-s-line-height: 30px;
 
-  --title-l-font-size: 16px;
+  --title-l-font-size: 17px;
   --title-l-font-family: Pretendard, sans-serif;
-  --title-l-font-weight: 700;
-  --title-l-line-height: 24px;
+  --title-l-font-weight: 600;
+  --title-l-line-height: 25px;
 
-  --title-s-font-size: 14px;
+  --title-s-font-size: 15px;
   --title-s-font-family: Pretendard, sans-serif;
-  --title-s-font-weight: 700;
-  --title-s-line-height: 21px;
+  --title-s-font-weight: 600;
+  --title-s-line-height: 22px;
 
-  --body-font-size: 14px;
+  --body-font-size: 15px;
   --body-font-family: Pretendard, sans-serif;
   --body-font-weight: 500;
-  --body-line-height: 21px;
+  --body-line-height: 22px;
 
-  --caption-bold-font-size: 12px;
+  --caption-bold-font-size: 13px;
   --caption-bold-font-family: Pretendard, sans-serif;
   --caption-bold-font-weight: 600;
-  --caption-bold-line-height: 18px;
+  --caption-bold-line-height: 19px;
 
-  --caption-light-font-size: 12px;
+  --caption-light-font-size: 13px;
   --caption-light-font-family: Pretendard, sans-serif;
   --caption-light-font-weight: 500;
-  --caption-light-line-height: 18px;
+  --caption-light-line-height: 19px;
 
   --button-font-size: 14px;
   --button-font-family: Pretendard, sans-serif;
@@ -48,40 +48,40 @@
   line-height: 48px;
 }
 .HeadingS {
-  font-size: 18px;
+  font-size: 20px;
   font-family: Pretendard, sans-serif;
   font-weight: 700;
-  line-height: 27px;
+  line-height: 30px;
 }
 .TitleL {
-  font-size: 16px;
+  font-size: 17px;
   font-family: Pretendard, sans-serif;
-  font-weight: 700;
-  line-height: 24px;
+  font-weight: 600;
+  line-height: 25px;
 }
 .TitleS {
-  font-size: 14px;
+  font-size: 15px;
   font-family: Pretendard, sans-serif;
-  font-weight: 700;
-  line-height: 21px;
+  font-weight: 600;
+  line-height: 22px;
 }
 .Body {
-  font-size: 14px;
+  font-size: 15px;
   font-family: Pretendard, sans-serif;
   font-weight: 500;
-  line-height: 21px;
+  line-height: 22px;
 }
 .CaptionBold {
-  font-size: 12px;
+  font-size: 13px;
   font-family: Pretendard, sans-serif;
   font-weight: 600; /* undefined → 보통 600 or 700 */
-  line-height: 18px;
+  line-height: 19px;
 }
 .CaptionLight {
-  font-size: 12px;
+  font-size: 13px;
   font-family: Pretendard, sans-serif;
   font-weight: 500;
-  line-height: 18px;
+  line-height: 19px;
 }
 .Button {
   font-size: 14px;
