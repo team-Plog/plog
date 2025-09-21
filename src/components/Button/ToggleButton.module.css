@@ -18,7 +18,6 @@
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.2s ease;
   color: var(--color-gray-200);
   min-width: 0;
   white-space: nowrap;

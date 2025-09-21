@@ -469,7 +469,7 @@ const Test: React.FC = () => {
           {
             key: "p99ResponseTime",
             name: "P99 응답시간",
-            color: "#000000",
+            color: "#ffd364",
             unit: "ms",
             yAxis: "right" as const,
           },
