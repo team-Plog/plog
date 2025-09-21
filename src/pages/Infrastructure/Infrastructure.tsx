@@ -297,17 +297,10 @@ const Infrastructure: React.FC = () => {
                   </div>
                   {group.connectedOpenAPI && (
                     <p className="CaptionLight">
-                      연결된 API: {group.connectedOpenAPI.title} (
-                      {
-                        connections.find(
-                          (c) =>
-                            c.groupName === group.group_name &&
-                            c.apiId === group.connectedOpenAPI?.id
-                        )?.type
-                      }
-                      )
+                      연결된 API: {group.connectedOpenAPI.title}
                     </p>
                   )}
+
                   {group.pods.length > 0 && (
                     <p className="CaptionLight">
                       Port:{" "}
@@ -359,7 +352,7 @@ const Infrastructure: React.FC = () => {
               key={idx}
               start={`api-${c.apiId}`}
               end={`infra-${c.groupName}`}
-              color={c.type === "auto" ? "blue" : "green"} // 🔑 자동=blue, 수동=green
+              color={c.type === "auto" ? "blue" : "green"}
               strokeWidth={2}
               headSize={5}
             />
