@@ -94,3 +94,7 @@
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-error-border, #f5c6cb);
 }
+
+:global([data-theme="dark"]) .imageContainer {
+  background: linear-gradient(180deg, #6287c0 0%, #1a1a1a 100%);
+}
