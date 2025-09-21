@@ -45,12 +45,12 @@
 }
 
 .emptyIconContainer.clickable:focus {
-  outline: 2px solid var(--color-black);
+  outline: 2px solid var(--color-gray-200);
   outline-offset: 2px;
 }
 
 .emptyIconContainer.clickable:hover .emptyIcon {
-  color: var(--color-black);
+  color: var(--color-gray-200);
 }
 
 .emptyIcon {

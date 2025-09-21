@@ -24,6 +24,9 @@ const Header: React.FC<HeaderProps> = ({ testHistoryId }) => {
     const newDarkMode = !isDarkMode;
     setIsDarkMode(newDarkMode);
 
+    // localStorage에 테마 설정 저장
+    localStorage.setItem('theme', newDarkMode ? 'dark' : 'light');
+
     // HTML root element에 data-theme 속성 설정
     if (newDarkMode) {
       document.documentElement.setAttribute('data-theme', 'dark');
@@ -34,9 +37,22 @@ const Header: React.FC<HeaderProps> = ({ testHistoryId }) => {
 
   // 컴포넌트 마운트 시 저장된 테마 설정 불러오기
   useEffect(() => {
-    const savedTheme = document.documentElement.getAttribute('data-theme');
-    if (savedTheme === 'dark') {
+    // localStorage에서 저장된 테마 설정 확인
+    const savedTheme = localStorage.getItem('theme');
+    
+    // 저장된 테마가 없으면 시스템 기본 설정 확인
+    if (!savedTheme) {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const initialTheme = prefersDark ? 'dark' : 'light';
+      localStorage.setItem('theme', initialTheme);
+      
+      if (initialTheme === 'dark') {
+        setIsDarkMode(true);
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    } else if (savedTheme === 'dark') {
       setIsDarkMode(true);
+      document.documentElement.setAttribute('data-theme', 'dark');
     }
   }, []);
 
