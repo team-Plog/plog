@@ -6,7 +6,7 @@ import threading
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.sqlite.database import SessionLocal
+from app.models.sqlite.database import SessionLocal, AsyncSessionLocal
 from app.models.sqlite.models import TestHistoryModel, ScenarioHistoryModel
 from k8s.job_service import JobService
 from app.services.monitoring.metrics_aggregation_service import MetricsAggregationService
@@ -20,8 +20,13 @@ from app.services.testing.test_history_service import (
     mark_test_as_completed,
     save_test_timeseries_metrics,
     save_test_resource_metrics,
-    get_scenario_by_server_infra_id, get_group_pods_names_by_server_infra_id
+    get_scenario_by_server_infra_id,
+    get_group_pods_names_by_server_infra_id,
+    get_test_history_by_id,
+    mark_analysis_as_completed
 )
+from app.services.analysis.ai_analysis_service import AIAnalysisService
+from app.schemas.analysis.analysis_request import AnalysisType
 
 logger = logging.getLogger(__name__)
 
@@ -148,11 +153,14 @@ class K6JobScheduler:
 
                 # 6. test history를 완료 상태로 마킹
                 mark_test_as_completed(db, test_history)
-                
-                # 6. 완료된 job 정리 (설정에 따라)
+
+                # 7. AI 분석 자동 실행
+                self._trigger_ai_analysis(test_history.id)
+
+                # 8. 완료된 job 정리 (설정에 따라)
                 if self.auto_delete_jobs:
                     self.job_service.delete_completed_job(job_name)
-                    
+
                 logger.info(f"Successfully processed completed job: {job_name}")
 
         except Exception as e:
@@ -248,6 +256,78 @@ class K6JobScheduler:
 
         except Exception as e:
             logger.error(f"Error collecting and saving resource metrics for test_history {test_history.id}: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+    def _trigger_ai_analysis(self, test_history_id: int):
+        """AI 분석 자동 실행 (별도 스레드에서 실행)"""
+        try:
+            # 별도 스레드에서 AI 분석 실행하여 스케줄러 블로킹 방지
+            analysis_thread = threading.Thread(
+                target=self._run_ai_analysis,
+                args=(test_history_id,),
+                daemon=True
+            )
+            analysis_thread.start()
+            logger.info(f"Started AI analysis thread for test_history_id: {test_history_id}")
+
+        except Exception as e:
+            logger.error(f"Error triggering AI analysis for test_history_id {test_history_id}: {e}")
+
+    def _run_ai_analysis(self, test_history_id: int):
+        """모든 유형의 AI 분석 수행 (별도 스레드에서 실행)"""
+        try:
+            logger.info(f"Starting comprehensive AI analysis for test_history_id: {test_history_id}")
+
+            # AI 분석 서비스 초기화
+            ai_service = AIAnalysisService()
+            analysis_types = [
+                AnalysisType.TPS,
+                AnalysisType.RESPONSE_TIME,
+                AnalysisType.ERROR_RATE,
+                AnalysisType.RESOURCE_USAGE,
+                AnalysisType.COMPREHENSIVE
+            ]
+
+            # 동기/비동기 DB 세션 생성
+            sync_db = SessionLocal()
+
+            try:
+                # 각 분석 유형별로 순차 실행
+                async def run_analyses():
+                    async_db = AsyncSessionLocal()
+                    try:
+                        for analysis_type in analysis_types:
+                            try:
+                                logger.info(f"Running {analysis_type.value} analysis for test_history_id: {test_history_id}")
+                                await ai_service.perform_single_analysis(
+                                    sync_db, async_db, test_history_id, analysis_type
+                                )
+                                logger.info(f"Completed {analysis_type.value} analysis for test_history_id: {test_history_id}")
+                            except Exception as e:
+                                logger.error(f"Failed {analysis_type.value} analysis for test_history_id {test_history_id}: {e}")
+                                # 개별 분석 실패해도 다른 분석은 계속 진행
+                    finally:
+                        await async_db.close()
+
+                # 비동기 분석 실행
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(run_analyses())
+
+                # 모든 분석 완료 후 상태 업데이트 (기존 패턴과 동일)
+                test_history = get_test_history_by_id(sync_db, test_history_id)
+                if test_history:
+                    mark_analysis_as_completed(sync_db, test_history)
+                    logger.info(f"All AI analyses completed and marked for test_history_id: {test_history_id}")
+                else:
+                    logger.error(f"Test history not found for id: {test_history_id}")
+
+            finally:
+                sync_db.close()
+
+        except Exception as e:
+            logger.error(f"Error in AI analysis for test_history_id {test_history_id}: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
 

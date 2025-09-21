@@ -611,9 +611,27 @@ def mark_test_as_completed(db: Session, test_history: TestHistoryModel) -> bool:
         
         logger.info(f"Marked test as completed for job: {test_history.job_name}")
         return True
-        
+
     except Exception as e:
         logger.error(f"Error marking test as completed: {e}")
+        db.rollback()
+        return False
+
+
+def mark_analysis_as_completed(db: Session, test_history: TestHistoryModel) -> bool:
+    """AI 분석을 완료 상태로 마킹 (기존 패턴과 동일)"""
+    try:
+        test_history.is_analysis_completed = True
+        test_history.analysis_completed_at = datetime.now(kst)
+
+        db.commit()
+        db.refresh(test_history)
+
+        logger.info(f"Marked analysis as completed for job: {test_history.job_name}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error marking analysis as completed: {e}")
         db.rollback()
         return False
 

@@ -48,13 +48,13 @@ def get_test_history_simple_list(
     # job이 없는 경우 - 실행 전
     # job 에러인 경우 - 에러 발생
     for test_history in results:
-        # 테스트 상태 결정
-        if test_history.is_completed:
-            test_status = "테스트 완료"
-        elif not test_history.is_completed:
-            test_status = "실행 중"
+        # 테스트 상태 결정 (AI 분석 단계 포함)
+        if test_history.is_analysis_completed:
+            test_status = "문서 생성 완료"
+        elif test_history.is_completed:
+            test_status = "문서 생성 중"
         else:
-            test_status = "실행 전"
+            test_status = "실행 중"
         
         simple_responses.append(TestHistorySimpleResponse(
             test_history_id=test_history.id,
@@ -120,13 +120,13 @@ def get_test_histories_by_project(
     simple_responses = []
     
     for test_history in test_histories:
-        # 테스트 상태 결정
-        if test_history.is_completed:
-            test_status = "테스트 완료"
-        elif not test_history.is_completed:
-            test_status = "실행 중"
+        # 테스트 상태 결정 (AI 분석 단계 포함)
+        if test_history.is_analysis_completed:
+            test_status = "문서 생성 완료"
+        elif test_history.is_completed:
+            test_status = "문서 생성 중"
         else:
-            test_status = "실행 전"
+            test_status = "실행 중"
         
         simple_responses.append(TestHistorySimpleResponse(
             test_history_id=test_history.id,

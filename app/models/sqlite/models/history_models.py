@@ -26,6 +26,10 @@ class TestHistoryModel(Base):
     is_completed = Column(Boolean, default=False)
     completed_at = Column(DateTime, nullable=True)
 
+    # AI 분석 완료 상태 필드들 (기존 패턴과 동일하게)
+    is_analysis_completed = Column(Boolean, default=False)
+    analysis_completed_at = Column(DateTime, nullable=True)
+
     # 프로젝트 id
     project_id = Column(Integer, ForeignKey("project.id"))
     project = relationship("ProjectModel", back_populates="test_histories")
