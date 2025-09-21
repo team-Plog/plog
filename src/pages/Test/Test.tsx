@@ -300,6 +300,26 @@ const Test: React.FC = () => {
             memoryLimitMb: server.specs?.memory_limit_mb ?? null,
           }));
           setResourceMetas(newMetas);
+
+          // 리소스별로 개별 차트 데이터 업데이트
+          setResourceChartData((prev) => {
+            const next = {...prev};
+            parsedData.resources.forEach((resource: any) => {
+              const key = `${resource.pod_name}:${resource.service_type}`;
+              const point = {
+                time: timestamp,
+                cpuPercent: resource.usage?.cpu_percent ?? 0,
+                memoryPercent: resource.usage?.memory_percent ?? 0,
+                tps: 0,
+                responseTime: 0,
+                errorRate: 0,
+                users: 0,
+              };
+              const arr = next[key] ? [...next[key], point] : [point];
+              next[key] = arr.slice(-20); // 최근 20개 포인트만 유지
+            });
+            return next;
+          });
           const server = parsedData.resources.find(
             (r: any) => r.service_type === "SERVER"
           );
@@ -309,6 +329,7 @@ const Test: React.FC = () => {
           }
         }
 
+        // Overall 메트릭 및 차트 데이터 업데이트 (기존 로직 유지)
         setMetrics({
           tps: overall.tps,
           latency: overall.response_time,
@@ -317,6 +338,7 @@ const Test: React.FC = () => {
           p95: overall.p95_response_time || 0,
           p99: overall.p99_response_time || 0,
         });
+
         setChartData((prev) =>
           [
             ...prev,
@@ -703,19 +725,14 @@ const Test: React.FC = () => {
                   </button>
                 </div>
               </div>
-
               {currentResource && (
                 <>
                   <MetricChart
                     title="리소스 사용률(CPU / Memory)"
                     data={
-                      isCompleted
-                        ? resourceChartData[
-                            `${currentResource.podName}:${currentResource.serviceType}`
-                          ] || []
-                        : currentSlide === OVERALL
-                        ? chartData
-                        : scenarioChartData[currentSlide!] || []
+                      resourceChartData[
+                        `${currentResource.podName}:${currentResource.serviceType}`
+                      ] || []
                     }
                     combinedSeries={[
                       {
