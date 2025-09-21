@@ -44,6 +44,10 @@ const Home: React.FC = () => {
     navigate("/infrastructure");
   };
 
+  const handleCreateProject = () => {
+    setIsModalOpen(true);
+  };
+
   useEffect(() => {
     getProjectList()
       .then((res) => {
@@ -101,7 +105,7 @@ const Home: React.FC = () => {
               </div>
               <Button
                 variant="primaryGradient"
-                onClick={() => setIsModalOpen(true)}
+                onClick={handleCreateProject}
                 icon={<Plus />}>
                 새 프로젝트 추가하기
               </Button>
@@ -136,7 +140,7 @@ const Home: React.FC = () => {
             </div>
           ) : (
             /* Empty State */
-            <EmptyState type="project" />
+            <EmptyState type="project" onAction={handleCreateProject} />
           )}
         </main>
 
