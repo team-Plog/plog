@@ -507,7 +507,39 @@ const Test: React.FC = () => {
     <div className={styles.container}>
       <Header testHistoryId={testHistoryId} />
       <div className={styles.content}>
+        <header className={styles.header}>
+          <div className={styles.headerInner}></div>
+        </header>
         <main className={styles.main}>
+          <div className={styles.title}>
+            <div className={`HeadingS ${styles.projectTitle}`}>
+              {projectTitle || "프로젝트명 없음"}
+            </div>
+            <div className={styles.progress}>
+              <div className={styles.status}>
+                <div className={styles.statusItem}>
+                  <Timer className={styles.icon} />
+                  <div className="Body">
+                    {isCompleted ? "완료됨" : "1분 23초"}
+                  </div>
+                </div>
+                <div className={styles.statusItem}>
+                  <RotateCw className={styles.icon} />
+                  <div className="Body">{isCompleted ? "100%" : "30%"}</div>
+                </div>
+              </div>
+              {!isCompleted && (
+                <div className={styles.progressButton}>
+                  <Button
+                    variant="primaryGradient"
+                    onClick={handleStopTest}
+                    disabled={stopping || !effectiveJobName}>
+                    {stopping ? "중단 요청 중..." : "테스트 중단하기"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
           {/* 시나리오 영역 */}
           {slides.length > 0 && (
             <section className={styles.scenarioSection}>
