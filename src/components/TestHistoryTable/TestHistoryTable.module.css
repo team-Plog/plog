@@ -98,6 +98,7 @@
 }
 
 .pageButton {
+  color: var(--color-black);
   padding: var(--spacing-sm);
   border: none;
   background: transparent;
