@@ -355,6 +355,8 @@ const Infrastructure: React.FC = () => {
               color={c.type === "auto" ? "blue" : "green"}
               strokeWidth={2}
               headSize={5}
+              startAnchor="right"
+              endAnchor="left" 
             />
           ))}
         </main>
