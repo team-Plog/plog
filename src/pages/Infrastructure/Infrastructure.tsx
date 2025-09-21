@@ -30,6 +30,7 @@ interface InfraItem {
     port: number[];
     node_port: number[];
   };
+  openapi_spec_id?: number;
 }
 
 interface OpenAPISpec {
@@ -51,6 +52,7 @@ interface InfraGroup {
 interface Connection {
   apiId: number;
   groupName: string;
+  type: "auto" | "manual"; // 🔑 자동 / 수동 구분
 }
 
 const Infrastructure: React.FC = () => {
@@ -89,8 +91,10 @@ const Infrastructure: React.FC = () => {
       });
   }, []);
 
-  // 인프라 그룹화
+  // 인프라 그룹화 + OpenAPI 자동 매칭
   useEffect(() => {
+    if (infraItems.length === 0 || openAPISpecs.length === 0) return;
+
     const groups: {[key: string]: InfraGroup} = {};
     infraItems.forEach((item) => {
       if (!groups[item.group_name]) {
@@ -102,33 +106,64 @@ const Infrastructure: React.FC = () => {
       }
       groups[item.group_name].pods.push(item);
     });
-    setInfraGroups(Object.values(groups));
-  }, [infraItems]);
 
-  // OpenAPI ↔ Infra 연결
+    const newGroups: InfraGroup[] = [];
+    const newConnections: Connection[] = [];
+
+    Object.values(groups).forEach((group) => {
+      const firstPod = group.pods[0];
+
+      if (firstPod?.openapi_spec_id) {
+        const matchedApi = openAPISpecs.find(
+          (api) => api.id === firstPod.openapi_spec_id
+        );
+        if (matchedApi) {
+          newGroups.push({...group, connectedOpenAPI: matchedApi});
+
+          // 🔑 자동 연결은 blue
+          newConnections.push({
+            apiId: matchedApi.id,
+            groupName: group.group_name,
+            type: "auto",
+          });
+          return;
+        }
+      }
+
+      newGroups.push(group);
+    });
+
+    setInfraGroups(newGroups);
+    setConnections(newConnections);
+  }, [infraItems, openAPISpecs]);
+
+  // OpenAPI ↔ Infra 수동 연결
+  // 수동 연결
   const handleConnectOpenAPI = async (openapiId: number, groupName: string) => {
     const data = {openapi_spec_id: openapiId, group_name: groupName};
 
     try {
-      console.log("📤 연결 요청:", data);
       await connectInfraWithOpenAPISpec(data);
 
-      // 연결된 API 정보를 state에 반영
+      const matchedApi = openAPISpecs.find((s) => s.id === openapiId);
       setInfraGroups((prev) =>
         prev.map((g) =>
-          g.group_name === groupName
-            ? {
-                ...g,
-                connectedOpenAPI: openAPISpecs.find((s) => s.id === openapiId),
-              }
-            : g
+          g.group_name === groupName ? {...g, connectedOpenAPI: matchedApi} : g
         )
       );
 
-      // 연결선 저장
-      setConnections((prev) => [...prev, {apiId: openapiId, groupName}]);
+      setConnections((prev) => [
+        ...prev,
+        {apiId: openapiId, groupName, type: "manual"},
+      ]);
 
-      // alert("연결 완료!"); ❌ 제거
+      setInfraItems((prev) =>
+        prev.map((item) =>
+          item.group_name === groupName
+            ? {...item, openapi_spec_id: openapiId}
+            : item
+        )
+      );
     } catch (err: any) {
       console.error("❌ 연결 실패:", err.response?.data || err.message);
       alert("연결 실패");
@@ -262,7 +297,15 @@ const Infrastructure: React.FC = () => {
                   </div>
                   {group.connectedOpenAPI && (
                     <p className="CaptionLight">
-                      연결된 API: {group.connectedOpenAPI.title}
+                      연결된 API: {group.connectedOpenAPI.title} (
+                      {
+                        connections.find(
+                          (c) =>
+                            c.groupName === group.group_name &&
+                            c.apiId === group.connectedOpenAPI?.id
+                        )?.type
+                      }
+                      )
                     </p>
                   )}
                   {group.pods.length > 0 && (
@@ -316,7 +359,7 @@ const Infrastructure: React.FC = () => {
               key={idx}
               start={`api-${c.apiId}`}
               end={`infra-${c.groupName}`}
-              color="blue"
+              color={c.type === "auto" ? "blue" : "green"} // 🔑 자동=blue, 수동=green
               strokeWidth={2}
               headSize={5}
             />
