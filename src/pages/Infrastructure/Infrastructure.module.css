@@ -29,7 +29,7 @@
   background: var(--color-background-primary);
   border-radius: var(--radius-lg);
   padding: var(--spacing-lg);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-primary);
   color: var(--color-black);
 }
 
@@ -53,6 +53,7 @@
   border: 1px solid var(--color-border-primary);
   border-radius: var(--radius-md);
   padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
 }
 
 .resourceBox {
@@ -108,7 +109,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--color-gray-200);
 }
 
 .modalContent {
@@ -177,6 +178,10 @@
   color: var(--color-gray-300);
   max-width: 400px;
   line-height: 1.5;
+}
+
+.ConnectionColor {
+  --arrow-color: var(--color-accent-primary);
 }
 
 /* Responsive Design */

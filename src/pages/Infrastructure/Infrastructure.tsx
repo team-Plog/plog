@@ -352,7 +352,7 @@ const Infrastructure: React.FC = () => {
               key={idx}
               start={`api-${c.apiId}`}
               end={`infra-${c.groupName}`}
-              color={c.type === "auto" ? "blue" : "green"}
+              color={c.type === "auto" ? "var(--color-accent-primary)" : "blue"}
               strokeWidth={2}
               headSize={5}
               startAnchor="right"
