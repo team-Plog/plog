@@ -336,7 +336,7 @@ const Infrastructure: React.FC = () => {
                     <Button
                       variant="secondary"
                       onClick={() => handleEditResources(pod.group_name)}>
-                      값 수정
+                      수정하기
                     </Button>
                   </div>
                 ))

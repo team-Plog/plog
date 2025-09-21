@@ -2,6 +2,7 @@
   min-height: 100vh;
   background-color: var(--color-background-secondary);
   padding-top: 40px;
+  padding-bottom: 40px;
   width: 100vw;
 }
 
@@ -134,6 +135,14 @@
   color: var(--color-black);
   background-color: transparent;
   cursor: pointer;
+}
+
+.resourceSection {
+  margin-top: var(--spacing-xl);
+}
+
+.scenarioHeader {
+  margin-bottom: var(--spacing-lg);
 }
 
 .resourceSpecs {
