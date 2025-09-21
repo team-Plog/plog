@@ -1,6 +1,7 @@
 import React, {useState, useEffect} from "react";
-import {Server, Database, Settings} from "lucide-react";
+import {Server, Database} from "lucide-react";
 import {Button} from "../../components/Button/Button";
+import InputField from "../../components/Input/InputField";
 import Header from "../../components/Header/Header";
 import styles from "./Infrastructure.module.css";
 import {
@@ -332,62 +333,54 @@ const Infrastructure: React.FC = () => {
               <div className={styles.formGrid}>
                 <div className={styles.formGroup}>
                   <label>CPU Request:</label>
-                  <input
-                    type="text"
+                  <InputField
                     value={resourceForm.cpu_request}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setResourceForm({
                         ...resourceForm,
-                        cpu_request: e.target.value,
+                        cpu_request: value,
                       })
                     }
                     placeholder="예: 300 (자동 m 붙음)"
-                    className={styles.input}
                   />
                 </div>
                 <div className={styles.formGroup}>
                   <label>CPU Limit:</label>
-                  <input
-                    type="text"
+                  <InputField
                     value={resourceForm.cpu_limit}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setResourceForm({
                         ...resourceForm,
-                        cpu_limit: e.target.value,
+                        cpu_limit: value,
                       })
                     }
                     placeholder="예: 1000 (자동 m 붙음)"
-                    className={styles.input}
                   />
                 </div>
                 <div className={styles.formGroup}>
                   <label>Memory Request:</label>
-                  <input
-                    type="text"
+                  <InputField
                     value={resourceForm.memory_request}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setResourceForm({
                         ...resourceForm,
-                        memory_request: e.target.value,
+                        memory_request: value,
                       })
                     }
                     placeholder="예: 512 (Mi 자동), 2Gi"
-                    className={styles.input}
                   />
                 </div>
                 <div className={styles.formGroup}>
                   <label>Memory Limit:</label>
-                  <input
-                    type="text"
+                  <InputField
                     value={resourceForm.memory_limit}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setResourceForm({
                         ...resourceForm,
-                        memory_limit: e.target.value,
+                        memory_limit: value,
                       })
                     }
                     placeholder="예: 2048 (Mi 자동), 2Gi"
-                    className={styles.input}
                   />
                 </div>
               </div>
