@@ -23,7 +23,34 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.04) inset;
+  box-shadow:var(--shadow-primary) inset;
+  transition: all 0.2s ease;
+}
+
+/* 클릭 가능한 상태 */
+.emptyIconContainer.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.emptyIconContainer.clickable:hover {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.06) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.08) inset, 0 4px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.emptyIconContainer.clickable:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-primary) inset;
+}
+
+.emptyIconContainer.clickable:focus {
+  outline: 2px solid var(--color-black);
+  outline-offset: 2px;
+}
+
+.emptyIconContainer.clickable:hover .emptyIcon {
+  color: var(--color-black);
 }
 
 .emptyIcon {
