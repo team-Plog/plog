@@ -1,18 +1,19 @@
-import React, {useEffect, useState} from "react";
-import styles from "./Header.module.css";
-import "../../assets/styles/typography.css";
-import {ChevronLeft, ChevronRight, List, Moon, Sun} from "lucide-react";
-import {useNavigate, useLocation} from "react-router-dom";
-import {getProjectDetail} from "../../api";
+import React, { useEffect, useState } from 'react';
+import styles from './Header.module.css';
+import '../../assets/styles/typography.css';
+import { ChevronLeft, ChevronRight, List, Moon, Sun } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { getProjectDetail } from '../../api';
+import logo from '../../assets/images/logo.svg';
 
 interface HeaderProps {
   testHistoryId?: number | null;
 }
 
-const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
+const Header: React.FC<HeaderProps> = ({ testHistoryId }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [projectTitle, setProjectTitle] = useState<string>("");
+  const [projectTitle, setProjectTitle] = useState<string>('');
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
 
   const goBack = () => window.history.back();
@@ -22,7 +23,7 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
   const toggleDarkMode = () => {
     const newDarkMode = !isDarkMode;
     setIsDarkMode(newDarkMode);
-    
+
     // HTML root element에 data-theme 속성 설정
     if (newDarkMode) {
       document.documentElement.setAttribute('data-theme', 'dark');
@@ -40,9 +41,9 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
   }, []);
 
   // 현재 경로 상태
-  const isProjectPage = location.pathname === "/projectDetail";
-  const isTestPage = location.pathname === "/test";
-  const isReportPage = location.pathname === "/report";
+  const isProjectPage = location.pathname === '/projectDetail';
+  const isTestPage = location.pathname === '/test';
+  const isReportPage = location.pathname === '/report';
   const projectId = location.state?.projectId;
   const testTitle = location.state?.testTitle;
   const stateTestHistoryId = location.state?.testHistoryId ?? null;
@@ -56,42 +57,41 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
           setProjectTitle(res.data.data.title);
         })
         .catch((err) => {
-          console.error("프로젝트 정보 가져오기 실패:", err);
-          setProjectTitle("프로젝트");
+          console.error('프로젝트 정보 가져오기 실패:', err);
+          setProjectTitle('프로젝트');
         });
     } else {
-      setProjectTitle("");
+      setProjectTitle('');
     }
   }, [isProjectPage, isTestPage, isReportPage, projectId]);
 
   const handleNavigateToMain = () => {
-    navigate("/");
+    navigate('/');
   };
 
   const handleNavigateToProjectDetail = () => {
     if (!projectId) return;
-    navigate("/projectDetail", {state: {projectId, projectTitle}});
+    navigate('/projectDetail', { state: { projectId, projectTitle } });
   };
 
   const handleNavigateToTest = () => {
     if (!projectId || !testTitle) return;
-    navigate("/test", {
-      state: {projectId, testTitle, testHistoryId: effectiveTestHistoryId},
+    navigate('/test', {
+      state: { projectId, testTitle, testHistoryId: effectiveTestHistoryId },
     });
   };
 
   const handleNavigateToReport = () => {
-    navigate("/report", {
-      state: {projectId, testHistoryId, testTitle, projectTitle},
+    navigate('/report', {
+      state: { projectId, testHistoryId, testTitle, projectTitle },
     });
   };
 
   return (
     <div className={styles.header}>
       <div className={styles.title}>
-        <div className={styles.filledCircle} />
-        <div className={`HeadingS ${styles.logo}`} onClick={handleNavigateToMain}>
-          PLog
+        <div className={styles.logo} onClick={handleNavigateToMain}>
+          <img src={logo} alt="PLog Logo" className={styles.logoIcon} />
         </div>
         <div className={styles.button}>
           <ChevronLeft onClick={goBack} />
@@ -103,14 +103,16 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
           <div className={styles.navMenu}>
             <button
               className={`${styles.navButton} Body`}
-              onClick={handleNavigateToMain}>
+              onClick={handleNavigateToMain}
+            >
               메인
             </button>
             <div className={`${styles.navButton} Body`}>/</div>
             <button
               className={`${styles.navButton} Body`}
-              onClick={handleNavigateToProjectDetail}>
-              {projectTitle || "프로젝트 타이틀"}
+              onClick={handleNavigateToProjectDetail}
+            >
+              {projectTitle || '프로젝트 타이틀'}
             </button>
 
             {/* 테스트 페이지 또는 리포트 페이지일 때 시나리오명 추가 */}
@@ -119,8 +121,9 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
                 <div className={`${styles.navButton} Body`}>/</div>
                 <button
                   className={`${styles.navButton} Body`}
-                  onClick={handleNavigateToTest}>
-                  {testTitle || "시나리오명"}
+                  onClick={handleNavigateToTest}
+                >
+                  {testTitle || '시나리오명'}
                 </button>
               </>
             )}
@@ -132,7 +135,8 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
                   <div className={`${styles.navButton} Body`}>/</div>
                   <button
                     className={`${styles.navButton} Body`}
-                    onClick={handleNavigateToReport}>
+                    onClick={handleNavigateToReport}
+                  >
                     보고서
                   </button>
                 </>
@@ -145,13 +149,14 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
           <div
             className={styles.icon}
             onClick={() =>
-              navigate("/testList", {
+              navigate('/testList', {
                 state: {
                   projectId,
                   projectTitle,
                 },
               })
-            }>
+            }
+          >
             <List />
           </div>
         )}

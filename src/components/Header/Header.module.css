@@ -26,6 +26,13 @@
   transition: color 0.2s ease;
 }
 
+.logoIcon {
+  width: 50px;
+  height: auto;
+  cursor: pointer;
+  display: block;
+}
+
 .filledCircle {
   width: var(--icon-size-md);
   height: var(--icon-size-md);
