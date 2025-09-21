@@ -43,7 +43,9 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
     switch (status) {
       case "실행 중":
         return "running";
-      case "테스트 완료":
+      case "문서 생성 중":
+        return "analyzing";
+      case "문서 생성 완료":
         return "completed";
       case "실패":
         return "failed";

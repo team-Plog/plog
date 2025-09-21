@@ -1,6 +1,6 @@
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS' | 'TRACE' | 'CONNECT';
 
-export type TestStatus = 'before' | 'completed' | 'failed' | 'running';
+export type TestStatus = 'before' | 'completed' | 'failed' | 'running' | 'analyzing';
 
 export interface HttpMethodTagProps {
   method: HttpMethod;
