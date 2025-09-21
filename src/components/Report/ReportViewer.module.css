@@ -60,7 +60,6 @@
 }
 
 .sectionTitle {
-  width: 200px;
   flex-shrink: 0;
   color: var(--color-accent-primary);
   padding-bottom: var(--spacing-lg);

@@ -3,7 +3,11 @@ import styles from "./ReportViewer.module.css";
 import {Sparkle} from "lucide-react";
 import type {TestData, ReportConfig} from "../../pages/Report/Report";
 import MetricChart from "../MetricChart/MetricChart";
-import {getTestHistoryTimeseries, getTestHistoryResourceSummary} from "../../api";
+import {
+  getTestHistoryTimeseries,
+  getTestHistoryResourceSummary,
+  getAnalysisHistory,
+} from "../../api";
 import {InputField} from "../Input";
 
 interface ReportViewerProps {
@@ -60,6 +64,8 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
   const [timeseriesLoading, setTimeseriesLoading] = useState<boolean>(false);
   const [resourceData, setResourceData] = useState<any[] | null>(null);
   const [resourceLoading, setResourceLoading] = useState<boolean>(false);
+  const [analysisData, setAnalysisData] = useState<any[] | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState<boolean>(false);
 
   // 시계열 데이터 가져오기
   useEffect(() => {
@@ -98,6 +104,73 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
 
     fetchResourceData();
   }, [reportData.test_history_id]);
+
+useEffect(() => {
+  const fetchAnalysisData = async () => {
+    console.log("=== fetchAnalysisData 시작 ===");
+    console.log("reportData:", reportData);
+    console.log("test_history_id:", reportData.test_history_id);
+    
+    if (!reportData.test_history_id) {
+      console.log("test_history_id가 없어서 리턴");
+      return;
+    }
+
+    setAnalysisLoading(true);
+    try {
+      console.log("=== getAnalysisHistory 호출 시작 ===");
+      const res = await getAnalysisHistory(reportData.test_history_id);
+      
+      console.log("=== getAnalysisHistory API 응답 전체 ===");
+      console.log("typeof res:", typeof res);
+      console.log("res:", res);
+      
+      console.log("=== res.data 확인 ===");
+      console.log("res.data:", res.data);
+      console.log("typeof res.data:", typeof res.data);
+      
+      if (res.data) {
+        console.log("=== res.data 상세 구조 ===");
+        console.log("res.data.test_history_id:", res.data.test_history_id);
+        console.log("res.data.total_count:", res.data.total_count);
+        console.log("res.data.analyses:", res.data.analyses);
+        console.log("typeof res.data.analyses:", typeof res.data.analyses);
+        console.log("Array.isArray(res.data.analyses):", Array.isArray(res.data.analyses));
+        
+        if (res.data.analyses && res.data.analyses.length > 0) {
+          console.log("=== analyses 배열 길이:", res.data.analyses.length);
+          res.data.analyses.forEach((analysis, index) => {
+            console.log(`=== 분석 ${index + 1} ===`);
+            console.log("전체 객체:", analysis);
+            console.log("ID:", analysis?.id);
+            console.log("분석 타입:", analysis?.analysis_type);
+            console.log("모델명:", analysis?.model_name);
+            console.log("분석 시간:", analysis?.analyzed_at);
+            console.log("요약 내용:", analysis?.summary);
+            console.log("---");
+          });
+        } else {
+          console.log("analyses 배열이 비어있거나 없음");
+        }
+      } else {
+        console.log("res.data가 없음");
+      }
+      
+      setAnalysisData(res.data?.analyses || null);
+    } catch (error) {
+      console.error("분석 데이터 조회 실패:");
+      console.error("에러 타입:", typeof error);
+      console.error("에러 객체:", error);
+      console.error("에러 메시지:", error?.message);
+      console.error("에러 스택:", error?.stack);
+    } finally {
+      setAnalysisLoading(false);
+    }
+  };
+
+  fetchAnalysisData();
+}, [reportData.test_history_id]);
+
 
   const formatDateOnly = (dateString: string) => {
     return new Date(dateString)
@@ -206,6 +279,12 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
 
       return result;
     });
+  };
+
+  const getAnalysisSummary = (analysisType: string) => {
+    if (!analysisData) return null;
+    const analysis = analysisData.find(item => item.analysis_type === analysisType);
+    return analysis?.summary || null;
   };
 
   // 그룹 1: TPS, Error Rate, VUS 차트 시리즈 생성
@@ -559,6 +638,21 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                 </table>
               </div>
 
+              {/* 종합분석 요약 */}
+              {getAnalysisSummary('comprehensive') && (
+              <div className={styles.summaryBox}>
+                <div className={`${styles.summaryHeader} Body`}>
+                  <Sparkle className={styles.icon} />
+                  <span>요약</span>
+                </div>
+                {renderEditableBlock({
+                  keyName: "comprehensiveAnalysis",
+                  defaultText: getAnalysisSummary('comprehensive'),
+                  className: `${styles.contentText} Body`,
+                })}
+              </div>
+            )}
+
               {/* 전체 그래프 추가 - 그룹 1: TPS, Error Rate, VUS */}
               {reportConfig.includeCharts &&
                 timeseriesData?.overall?.data &&
@@ -781,7 +875,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                 </div>
                 {renderEditableBlock({
                   keyName: "responseTimeSummary",
-                  defaultText:
+                  defaultText: getAnalysisSummary('response_time') || 
                     "최소, 평균 응답 시간은 목표를 달성하였으나, P95의 경우 약간 못 미치는 결과 발생하였음. 약 92% 사용자에게 원활한 서비스 제공 가능할 것으로 예상.",
                   className: `${styles.contentText} Body`,
                 })}
@@ -869,8 +963,8 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                   <span>요약</span>
                 </div>
                 {renderEditableBlock({
-                  keyName: "tpsSummary",
-                  defaultText:
+                  keyName: "tpsSummary", 
+                  defaultText: getAnalysisSummary('tps') ||
                     "테스트 시나리오별 TPS는 참고값으로만 사용하며, 전체 TPS에 대해서 목표를 비교하였음. 전체 평균 TPS는 목표에 거의 유사하게 근접하였음. (TPS의 경우 테스트 초반 가상 사용자 수가 부족한 경우도 존재. 최소 TPS에 대해서는 참고값으로만 사용하였음.)",
                   className: `${styles.contentText} Body`,
                 })}
@@ -988,7 +1082,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                 </div>
                 {renderEditableBlock({
                   keyName: "errorRateSummary",
-                  defaultText:
+                  defaultText: getAnalysisSummary('error_rate') ||
                     "대부분의 경우 목표 에러율보다 안정적이었으나, 최대 에러율의 경우 목표치보다 높은 것으로 추정. 요청 수가 많아질 때 시스템 위험성을 고려해야 함.",
                   className: `${styles.contentText} Body`,
                 })}
@@ -1107,7 +1201,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
               </div>
               {renderEditableBlock({
                 keyName: "resourceSummary",
-                defaultText:
+                defaultText: getAnalysisSummary('resource_usage') ||
                   "테스트 결과 백엔드 서버의 CPU 사용량이 최대 100%에 도달하며 높은 부하를 보였으나, DB 서버의 CPU 및 메모리 사용량은 여유가 있었습니다. 이는 서비스 병목 현상이 백엔드 서버의 CPU에 있음을 나타냅니다. 따라서 백엔드 서버의 스케일 아웃을 통해 성능 향상 및 안정성을 확보할 필요가 있습니다.",
                 className: `${styles.contentText} Body`,
               })}
