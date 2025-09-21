@@ -4,7 +4,7 @@ import '../../assets/styles/typography.css';
 import { ChevronLeft, ChevronRight, List, Moon, Sun } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getProjectDetail } from '../../api';
-import logo from '../../assets/images/logo.svg';
+import Logo from '../../assets/images/logo.svg?react';
 
 interface HeaderProps {
   testHistoryId?: number | null;
@@ -91,7 +91,7 @@ const Header: React.FC<HeaderProps> = ({ testHistoryId }) => {
     <div className={styles.header}>
       <div className={styles.title}>
         <div className={styles.logo} onClick={handleNavigateToMain}>
-          <img src={logo} alt="PLog Logo" className={styles.logoIcon} />
+          <Logo className={styles.logoIcon} />
         </div>
         <div className={styles.button}>
           <ChevronLeft onClick={goBack} />
