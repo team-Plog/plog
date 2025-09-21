@@ -9,13 +9,15 @@ interface EmptyStateProps {
   title?: string;
   description?: string;
   icon?: React.ReactNode;
+  onAction?: () => void;
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({
   type = "custom",
   title,
   description,
-  icon
+  icon,
+  onAction
 }) => {
   // 타입별 기본 설정
   const getDefaultContent = () => {
@@ -48,11 +50,23 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   };
 
   const defaultContent = getDefaultContent();
+  const shouldShowAction = onAction && (type === "project" || type === "test");
 
   return (
     <div className={`${styles.emptyState} ${type === 'project' ? styles.projectType : ''}`}>
       {/* Icon Container */}
-      <div className={styles.emptyIconContainer}>
+      <div 
+        className={`${styles.emptyIconContainer} ${shouldShowAction ? styles.clickable : ''}`}
+        onClick={shouldShowAction ? onAction : undefined}
+        role={shouldShowAction ? "button" : undefined}
+        tabIndex={shouldShowAction ? 0 : undefined}
+        onKeyDown={shouldShowAction ? (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onAction();
+          }
+        } : undefined}
+      >
         {icon || defaultContent.icon}
       </div>
 
