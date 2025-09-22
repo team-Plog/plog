@@ -377,27 +377,9 @@ useEffect(() => {
           </div>
         </div>
 
-        {reportConfig.includeExecutiveSummary && (
-          <div className={styles.section}>
-            <div className={`${styles.sectionTitle} HeadingS`}>
-              1. 요약 정보
-            </div>
-            <div className={styles.sectionContent}>
-              {renderEditableBlock({
-                keyName: "executiveSummary",
-                defaultText:
-                  reportConfig.customDescription ||
-                  reportData.description ||
-                  "테스트 설명이 제공되지 않았습니다.",
-                className: `${styles.contentText} Body`,
-              })}
-            </div>
-          </div>
-        )}
-
         <div className={styles.section}>
           <div className={`${styles.sectionTitle} HeadingS`}>
-            2. 테스트 대상 소개
+            1. 테스트 대상 소개
           </div>
           <div className={styles.sectionContent}>
             {renderEditableBlock({
@@ -412,7 +394,7 @@ useEffect(() => {
 
         <div className={styles.section}>
           <div className={`${styles.sectionTitle} HeadingS`}>
-            3. 비 기능 테스트 시나리오
+            2. 비 기능 테스트 시나리오
           </div>
           <div className={styles.sectionContent}>
             <div className={styles.subTitleGroup}>
@@ -531,7 +513,7 @@ useEffect(() => {
 
         <div className={styles.section}>
           <div className={`${styles.sectionTitle} HeadingS`}>
-            4. 비 기능 테스트 수행 결과
+            3. 비 기능 테스트 수행 결과
           </div>
           <div className={styles.sectionContent}>
             <div className={styles.subTitleGroup}>
