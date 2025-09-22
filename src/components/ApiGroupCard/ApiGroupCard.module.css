@@ -79,14 +79,21 @@
   align-items: center;
   gap: var(--spacing-sm);
   flex: 1;
+  min-width: 0;
 }
 
 .endpoint {
   color: var(--color-black);
+  flex-shrink: 0;
 }
 
 .description {
   color: var(--color-gray-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
 }
 
 .addButton {
