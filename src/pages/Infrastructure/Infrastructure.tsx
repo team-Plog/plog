@@ -64,6 +64,7 @@ const Infrastructure: React.FC = () => {
   const [selectedGroup, setSelectedGroup] = useState<InfraGroup | null>(null);
   const [editingResources, setEditingResources] = useState<string | null>(null);
   const [resourceForm, setResourceForm] = useState({
+    replicas: "",
     cpu_request: "",
     cpu_limit: "",
     memory_request: "",
@@ -181,6 +182,7 @@ const Infrastructure: React.FC = () => {
     if (group && group.pods.length > 0) {
       const specs = group.pods[0].resource_specs;
       setResourceForm({
+        replicas: group.replicas ? `${group.replicas}` : "",
         cpu_request: specs.cpu_request_millicores
           ? `${specs.cpu_request_millicores}`
           : "",
@@ -201,6 +203,10 @@ const Infrastructure: React.FC = () => {
 
     try {
       const data: any = {group_name: editingResources};
+
+      if (resourceForm.replicas) {
+        data.replicas = parseInt(resourceForm.replicas, 10);
+      }
 
       if (resourceForm.cpu_request) {
         data.cpu_request_millicores = resourceForm.cpu_request.endsWith("m")
@@ -429,6 +435,19 @@ const Infrastructure: React.FC = () => {
                       })
                     }
                     placeholder="예: 2048 (Mi 자동), 2Gi"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label>인스턴스 수:</label>
+                  <InputField
+                    value={resourceForm.replicas}
+                    onChange={(value) =>
+                      setResourceForm({
+                        ...resourceForm,
+                        replicas: value,
+                      })
+                    }
+                    placeholder="예: 2"
                   />
                 </div>
               </div>
