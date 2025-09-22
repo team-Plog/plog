@@ -24,6 +24,16 @@
   align-items: flex-start;
 }
 
+.groupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.groupHeader p {
+  color: var(--color-accent-primary);
+}
+
 .groupBox {
   flex: 1;
   background: var(--color-background-primary);

@@ -26,6 +26,7 @@ interface InfraItem {
     memory_request_mb: number;
     memory_limit_mb: number;
   };
+  replicas: number;
   service_info: {
     port: number[];
     node_port: number[];
@@ -45,6 +46,7 @@ interface OpenAPISpec {
 interface InfraGroup {
   group_name: string;
   service_type: "SERVER" | "DATABASE";
+  replicas: number;
   pods: InfraItem[];
   connectedOpenAPI?: OpenAPISpec;
 }
@@ -62,6 +64,7 @@ const Infrastructure: React.FC = () => {
   const [selectedGroup, setSelectedGroup] = useState<InfraGroup | null>(null);
   const [editingResources, setEditingResources] = useState<string | null>(null);
   const [resourceForm, setResourceForm] = useState({
+    replicas: "",
     cpu_request: "",
     cpu_limit: "",
     memory_request: "",
@@ -96,12 +99,15 @@ const Infrastructure: React.FC = () => {
     if (infraItems.length === 0 || openAPISpecs.length === 0) return;
 
     const groups: {[key: string]: InfraGroup} = {};
+
     infraItems.forEach((item) => {
       if (!groups[item.group_name]) {
+        // 🔧 수정: 첫 번째 pod의 replicas 값을 사용
         groups[item.group_name] = {
           group_name: item.group_name,
           service_type: item.service_type,
           pods: [],
+          replicas: item.replicas, // 첫 번째 pod의 replicas 값
         };
       }
       groups[item.group_name].pods.push(item);
@@ -138,7 +144,6 @@ const Infrastructure: React.FC = () => {
   }, [infraItems, openAPISpecs]);
 
   // OpenAPI ↔ Infra 수동 연결
-  // 수동 연결
   const handleConnectOpenAPI = async (openapiId: number, groupName: string) => {
     const data = {openapi_spec_id: openapiId, group_name: groupName};
 
@@ -177,6 +182,7 @@ const Infrastructure: React.FC = () => {
     if (group && group.pods.length > 0) {
       const specs = group.pods[0].resource_specs;
       setResourceForm({
+        replicas: group.replicas ? `${group.replicas}` : "",
         cpu_request: specs.cpu_request_millicores
           ? `${specs.cpu_request_millicores}`
           : "",
@@ -197,6 +203,10 @@ const Infrastructure: React.FC = () => {
 
     try {
       const data: any = {group_name: editingResources};
+
+      if (resourceForm.replicas) {
+        data.replicas = parseInt(resourceForm.replicas, 10);
+      }
 
       if (resourceForm.cpu_request) {
         data.cpu_request_millicores = resourceForm.cpu_request.endsWith("m")
@@ -288,8 +298,14 @@ const Infrastructure: React.FC = () => {
                     );
                     handleConnectOpenAPI(openapiId, group.group_name);
                   }}>
-                  <div className={styles.groupHeader}>
-                    {getServiceIcon(group.service_type)}
+                  <div className={styles.infraGroup}>
+                    <div className={styles.groupHeader}>
+                      {getServiceIcon(group.service_type)}
+                      <p className="CaptionBold">
+                        인스턴스 수: {group.replicas}
+                      </p>
+                    </div>
+
                     <div>
                       <h3 className="TitleS">{group.group_name}</h3>
                       <span className="CaptionLight">{group.service_type}</span>
@@ -356,7 +372,7 @@ const Infrastructure: React.FC = () => {
               strokeWidth={2}
               headSize={5}
               startAnchor="right"
-              endAnchor="left" 
+              endAnchor="left"
             />
           ))}
         </main>
@@ -419,6 +435,19 @@ const Infrastructure: React.FC = () => {
                       })
                     }
                     placeholder="예: 2048 (Mi 자동), 2Gi"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label>인스턴스 수:</label>
+                  <InputField
+                    value={resourceForm.replicas}
+                    onChange={(value) =>
+                      setResourceForm({
+                        ...resourceForm,
+                        replicas: value,
+                      })
+                    }
+                    placeholder="예: 2"
                   />
                 </div>
               </div>
