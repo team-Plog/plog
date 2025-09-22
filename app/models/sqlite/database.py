@@ -8,7 +8,12 @@ ASYNC_DATABASE_URL = "sqlite+aiosqlite:///./sqlite-data/metric.db"
 
 # Sync engine (기존)
 engine = create_engine(
-    DATABASE_URL, connect_args={"check_same_thread": False}
+    DATABASE_URL, 
+    connect_args={"check_same_thread": False},
+    pool_size=20,           # 기본 연결 풀 크기
+    max_overflow=30,        # 초과 연결 허용
+    pool_timeout=30,        # 연결 대기 시간
+    pool_recycle=3600       # 연결 재사용 시간
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
