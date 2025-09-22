@@ -26,6 +26,7 @@ interface InfraItem {
     memory_request_mb: number;
     memory_limit_mb: number;
   };
+  replicas: number;
   service_info: {
     port: number[];
     node_port: number[];
@@ -45,6 +46,7 @@ interface OpenAPISpec {
 interface InfraGroup {
   group_name: string;
   service_type: "SERVER" | "DATABASE";
+  replicas: number;
   pods: InfraItem[];
   connectedOpenAPI?: OpenAPISpec;
 }
@@ -96,12 +98,15 @@ const Infrastructure: React.FC = () => {
     if (infraItems.length === 0 || openAPISpecs.length === 0) return;
 
     const groups: {[key: string]: InfraGroup} = {};
+
     infraItems.forEach((item) => {
       if (!groups[item.group_name]) {
+        // 🔧 수정: 첫 번째 pod의 replicas 값을 사용
         groups[item.group_name] = {
           group_name: item.group_name,
           service_type: item.service_type,
           pods: [],
+          replicas: item.replicas, // 첫 번째 pod의 replicas 값
         };
       }
       groups[item.group_name].pods.push(item);
@@ -138,7 +143,6 @@ const Infrastructure: React.FC = () => {
   }, [infraItems, openAPISpecs]);
 
   // OpenAPI ↔ Infra 수동 연결
-  // 수동 연결
   const handleConnectOpenAPI = async (openapiId: number, groupName: string) => {
     const data = {openapi_spec_id: openapiId, group_name: groupName};
 
@@ -288,8 +292,14 @@ const Infrastructure: React.FC = () => {
                     );
                     handleConnectOpenAPI(openapiId, group.group_name);
                   }}>
-                  <div className={styles.groupHeader}>
-                    {getServiceIcon(group.service_type)}
+                  <div className={styles.infraGroup}>
+                    <div className={styles.groupHeader}>
+                      {getServiceIcon(group.service_type)}
+                      <p className="CaptionBold">
+                        인스턴스 수: {group.replicas}
+                      </p>
+                    </div>
+
                     <div>
                       <h3 className="TitleS">{group.group_name}</h3>
                       <span className="CaptionLight">{group.service_type}</span>
@@ -356,7 +366,7 @@ const Infrastructure: React.FC = () => {
               strokeWidth={2}
               headSize={5}
               startAnchor="right"
-              endAnchor="left" 
+              endAnchor="left"
             />
           ))}
         </main>
