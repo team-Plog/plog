@@ -333,6 +333,17 @@ def collect_metrics_data(db, job_name: str, include_resources: bool = True) -> D
         "progress_percentage": round(duration_seconds / total_duration_seconds * 100, 2) if duration_seconds <= total_duration_seconds else 100,
     }
 
+    if get_overall_vus(job_name) == 0:
+        result = {
+            "timestamp": datetime.now(kst).isoformat(),
+            "test_progress": test_progress,
+            "overall": None,
+            "scenarios": None,
+            "is_complete": True
+        }
+
+        return result
+
     scenario_tag_name_map = {
         scenario.scenario_tag: scenario.name
         for scenario in scenarios
@@ -392,7 +403,14 @@ async def event_stream(job_name: str, include_resources: bool = True):
     while True:
         try:
             metrics_data = collect_metrics_data(db, job_name, include_resources)
+
             yield f"data: {json.dumps(metrics_data, ensure_ascii=False)}\n\n"
+
+            # 테스트 완료 시 연결 종료
+            if metrics_data.get("is_complete", False) and metrics_data.get("test_progress", {}).get("progress_percentage") == 100:
+                logger.info(f"Test {job_name} completed (VUS=0), closing SSE connection")
+                break
+
         except Exception as e:
             logger.error(f"Error in event_stream: {e}")
             error_data = {
