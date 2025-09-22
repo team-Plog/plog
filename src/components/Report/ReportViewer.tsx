@@ -9,6 +9,7 @@ import {
   getAnalysisHistory,
 } from "../../api";
 import {InputField} from "../Input";
+import Logo from "../../assets/images/logo.svg?react";
 
 interface ReportViewerProps {
   reportData: TestData;
@@ -370,7 +371,9 @@ useEffect(() => {
             <div className={`${styles.reportDate} Body`}>
               작성일: {formatDateOnly(new Date().toISOString())}
             </div>
-            <div className={`${styles.reportLogo} HeadingS`}>● Plog</div>
+            <div className={styles.reportLogo}>
+              <Logo className={styles.logoIcon} />
+            </div>
           </div>
         </div>
 
@@ -400,7 +403,8 @@ useEffect(() => {
             {renderEditableBlock({
               keyName: "testTarget",
               defaultText:
-                "웹 기반의 CRM 솔루션으로 전신은 Centric-CRM 이며, 공식적으로 데이터베이스는 PostgreSQL 8.x를사용하고, 애플리케이션 서버로는 Apache Tomcat6.0을 사용함",
+                reportData.description ||
+                "테스트 대상에 대한 설명이 제공되지 않았습니다.",
               className: `${styles.contentText} Body`,
             })}
           </div>
