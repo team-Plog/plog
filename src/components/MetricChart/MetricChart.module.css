@@ -19,10 +19,62 @@
   font-weight: var(--body-font-weight) !important;
 }
 
-/* 툴팁 스타일링 */
-.chart :global(.recharts-tooltip-wrapper) {
-  font-size: var(--body-font-size) !important;
+.customTooltip {
+  width: 200px;
+  background-color: var(--color-white);
+  border: 1px solid #e0e0e0;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tooltipLabel {
+  color: var(--color-black);
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.tooltipList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tooltipItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.itemLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.itemColorIndicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.itemName {
+  color: var(--color-gray-300);
   font-family: var(--body-font-family) !important;
+  font-weight: var(--body-font-weight) !important;
+}
+
+.itemValue {
+  color: var(--color-black);
+  font-family: var(--title-s-font-family) !important;
+  font-weight: var(--title-s-font-weight) !important;
 }
 
 .toggleGroup {
