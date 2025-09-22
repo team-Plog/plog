@@ -86,3 +86,7 @@
   gap: var(--spacing-sm);
   margin-top: var(--spacing-sm);
 }
+
+:global([data-theme="dark"]) .imageContainer {
+  background: linear-gradient(180deg, #6287c0 0%, #1a1a1a 100%);
+}

@@ -1,0 +1,234 @@
+.container {
+  min-height: 100vh;
+  background-color: var(--color-background-secondary);
+  padding-top: var(--spacing-xxl);
+  width: 100vw;
+}
+
+.content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-xxl) var(--spacing-lg);
+}
+
+/* Main Content */
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.groupRow {
+  display: flex;
+  gap: var(--spacing-xl);
+  align-items: flex-start;
+}
+
+.groupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.groupHeader p {
+  color: var(--color-accent-primary);
+}
+
+.groupBox {
+  flex: 1;
+  background: var(--color-background-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-primary);
+  color: var(--color-black);
+}
+
+.card {
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  background: var(--color-background-primary);
+  cursor: pointer;
+}
+
+.podList {
+  margin-top: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+.podCard {
+  background: var(--color-background-secondary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.resourceBox {
+  color: var(--color-gray-300);
+}
+
+.activeCard {
+  border: 2px solid var(--color-accent-primary);
+  background: var(--color-gray-100);
+}
+
+/* Edit Button */
+.editButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--spacing-xl);
+  height: var(--spacing-xl);
+  border: 1px solid var(--color-border-primary);
+  background-color: var(--color-background-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.editButton:hover {
+  background-color: var(--color-gray-100);
+  border-color: var(--color-gray-200);
+}
+
+.editIcon {
+  width: var(--spacing-lg);
+  height: var(--spacing-lg);
+  color: var(--color-gray-300);
+}
+
+/* Modal Styles */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modalOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--color-gray-200);
+}
+
+.modalContent {
+  background: var(--color-background-primary);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-primary);
+  width: 100%;
+  max-width: 500px;
+  position: relative;
+  z-index: 1001;
+}
+
+.modalTitle {
+  color: var(--color-black);
+  margin: 0 0 var(--spacing-lg) 0;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.formGroup label {
+  color: var(--color-gray-300);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+}
+
+/* Empty State */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px var(--spacing-xl);
+  text-align: center;
+}
+
+.emptyIcon {
+  width: 64px;
+  height: 64px;
+  color: var(--color-gray-200);
+  margin-bottom: var(--spacing-xl);
+}
+
+.emptyTitle {
+  margin: 0 0 var(--spacing-md) 0;
+  color: var(--color-black);
+}
+
+.emptyDescription {
+  margin: 0;
+  color: var(--color-gray-300);
+  max-width: 400px;
+  line-height: 1.5;
+}
+
+.ConnectionColor {
+  --arrow-color: var(--color-accent-primary);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .content {
+    padding: 0 var(--spacing-lg);
+  }
+
+  .header {
+    margin: 0 calc(-1 * var(--spacing-lg)) var(--spacing-xl) calc(-1 * var(--spacing-lg));
+    padding-left: var(--spacing-lg);
+    padding-right: var(--spacing-lg);
+  }
+
+  .connectionControls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .selectGroup {
+    min-width: unset;
+  }
+
+  .groupsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .modalContent {
+    margin: var(--spacing-lg);
+    max-width: none;
+  }
+
+  .title {
+    font-size: 20px;
+  }
+}

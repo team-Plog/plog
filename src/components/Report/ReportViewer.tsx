@@ -3,7 +3,11 @@ import styles from "./ReportViewer.module.css";
 import {Sparkle} from "lucide-react";
 import type {TestData, ReportConfig} from "../../pages/Report/Report";
 import MetricChart from "../MetricChart/MetricChart";
-import {getTestHistoryTimeseries} from "../../api";
+import {
+  getTestHistoryTimeseries,
+  getTestHistoryResourceSummary,
+  getAnalysisHistory,
+} from "../../api";
 import {InputField} from "../Input";
 
 interface ReportViewerProps {
@@ -58,6 +62,10 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
     null
   );
   const [timeseriesLoading, setTimeseriesLoading] = useState<boolean>(false);
+  const [resourceData, setResourceData] = useState<any[] | null>(null);
+  const [resourceLoading, setResourceLoading] = useState<boolean>(false);
+  const [analysisData, setAnalysisData] = useState<any[] | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState<boolean>(false);
 
   // 시계열 데이터 가져오기
   useEffect(() => {
@@ -77,6 +85,92 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
 
     fetchTimeseriesData();
   }, [reportData.test_history_id]);
+
+  // 리소스 데이터 가져오기
+  useEffect(() => {
+    const fetchResourceData = async () => {
+      if (!reportData.test_history_id) return;
+
+      setResourceLoading(true);
+      try {
+        const res = await getTestHistoryResourceSummary(reportData.test_history_id);
+        setResourceData(res.data.data);
+      } catch (error) {
+        console.error("리소스 데이터 조회 실패:", error);
+      } finally {
+        setResourceLoading(false);
+      }
+    };
+
+    fetchResourceData();
+  }, [reportData.test_history_id]);
+
+useEffect(() => {
+  const fetchAnalysisData = async () => {
+    console.log("=== fetchAnalysisData 시작 ===");
+    console.log("reportData:", reportData);
+    console.log("test_history_id:", reportData.test_history_id);
+    
+    if (!reportData.test_history_id) {
+      console.log("test_history_id가 없어서 리턴");
+      return;
+    }
+
+    setAnalysisLoading(true);
+    try {
+      console.log("=== getAnalysisHistory 호출 시작 ===");
+      const res = await getAnalysisHistory(reportData.test_history_id);
+      
+      console.log("=== getAnalysisHistory API 응답 전체 ===");
+      console.log("typeof res:", typeof res);
+      console.log("res:", res);
+      
+      console.log("=== res.data 확인 ===");
+      console.log("res.data:", res.data);
+      console.log("typeof res.data:", typeof res.data);
+      
+      if (res.data) {
+        console.log("=== res.data 상세 구조 ===");
+        console.log("res.data.test_history_id:", res.data.test_history_id);
+        console.log("res.data.total_count:", res.data.total_count);
+        console.log("res.data.analyses:", res.data.analyses);
+        console.log("typeof res.data.analyses:", typeof res.data.analyses);
+        console.log("Array.isArray(res.data.analyses):", Array.isArray(res.data.analyses));
+        
+        if (res.data.analyses && res.data.analyses.length > 0) {
+          console.log("=== analyses 배열 길이:", res.data.analyses.length);
+          res.data.analyses.forEach((analysis, index) => {
+            console.log(`=== 분석 ${index + 1} ===`);
+            console.log("전체 객체:", analysis);
+            console.log("ID:", analysis?.id);
+            console.log("분석 타입:", analysis?.analysis_type);
+            console.log("모델명:", analysis?.model_name);
+            console.log("분석 시간:", analysis?.analyzed_at);
+            console.log("요약 내용:", analysis?.summary);
+            console.log("---");
+          });
+        } else {
+          console.log("analyses 배열이 비어있거나 없음");
+        }
+      } else {
+        console.log("res.data가 없음");
+      }
+      
+      setAnalysisData(res.data?.analyses || null);
+    } catch (error) {
+      console.error("분석 데이터 조회 실패:");
+      console.error("에러 타입:", typeof error);
+      console.error("에러 객체:", error);
+      console.error("에러 메시지:", error?.message);
+      console.error("에러 스택:", error?.stack);
+    } finally {
+      setAnalysisLoading(false);
+    }
+  };
+
+  fetchAnalysisData();
+}, [reportData.test_history_id]);
+
 
   const formatDateOnly = (dateString: string) => {
     return new Date(dateString)
@@ -185,6 +279,12 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
 
       return result;
     });
+  };
+
+  const getAnalysisSummary = (analysisType: string) => {
+    if (!analysisData) return null;
+    const analysis = analysisData.find(item => item.analysis_type === analysisType);
+    return analysis?.summary || null;
   };
 
   // 그룹 1: TPS, Error Rate, VUS 차트 시리즈 생성
@@ -314,88 +414,29 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
             <div className={styles.subTitleGroup}>
               <div className={`${styles.subTitle} TitleS`}>가. 테스트 조건</div>
               <div className={styles.textGroup}>
-                <div
-                  className={getTextClassName(
-                    `${styles.contentText} Body`,
-                    "testCondition1"
-                  )}
-                  data-editable
-                  onClick={() =>
-                    handleTextClick(
-                      "testCondition1",
-                      `${
-                        reportData.scenarios && reportData.scenarios.length > 0
-                          ? `${reportData.scenarios
-                              .map(
-                                (s) =>
-                                  s.endpoint.summary || s.endpoint.description
-                              )
-                              .join(", ")} 동시 호출 기준으로 테스트`
-                          : "테스트 시나리오 정보를 확인할 수 없습니다."
-                      }`
-                    )
-                  }>
-                  {getEditableText(
-                    "testCondition1",
+                {renderEditableBlock({
+                  keyName: "testCondition",
+                  defaultText: [
                     reportData.scenarios && reportData.scenarios.length > 0
                       ? `${reportData.scenarios
                           .map(
                             (s) => s.endpoint.summary || s.endpoint.description
                           )
                           .join(", ")} 동시 호출 기준으로 테스트`
-                      : "테스트 시나리오 정보를 확인할 수 없습니다."
-                  )}
-                </div>
-                <div
-                  className={getTextClassName(
-                    `${styles.contentText} Body`,
-                    "testCondition2"
-                  )}
-                  data-editable
-                  onClick={() =>
-                    handleTextClick(
-                      "testCondition2",
-                      `가상사용자 : 고정 사용자 수 ${
-                        reportData.overall?.vus?.max
-                          ? `${reportData.overall.vus.max}명`
-                          : "정보 없음"
-                      }에 대해서 테스트`
-                    )
-                  }>
-                  {getEditableText(
-                    "testCondition2",
+                      : "테스트 시나리오 정보를 확인할 수 없습니다.",
                     `가상사용자 : 고정 사용자 수 ${
                       reportData.overall?.vus?.max
                         ? `${reportData.overall.vus.max}명`
                         : "정보 없음"
-                    }에 대해서 테스트`
-                  )}
-                </div>
-                <div
-                  className={getTextClassName(
-                    `${styles.contentText} Body`,
-                    "testCondition3"
-                  )}
-                  data-editable
-                  onClick={() =>
-                    handleTextClick(
-                      "testCondition3",
-                      `지속 시간: ${
-                        reportData.overall?.test_duration
-                          ? `${reportData.overall.test_duration}초`
-                          : "정보 없음"
-                      } 동안 테스트`
-                    )
-                  }>
-                  {getEditableText(
-                    "testCondition3",
+                    }에 대해서 테스트`,
                     `지속 시간: ${
                       reportData.overall?.test_duration
                         ? `${reportData.overall.test_duration}초`
                         : "정보 없음"
-                    } 동안 테스트`
-                  )}
-                </div>
+                    } 동안 테스트`,
+                  ].join("\n"), // ← 점 없이 순수 줄바꿈
+                  className: `${styles.contentText} Body`,
+                })}
               </div>
             </div>
             <div className={styles.subTitleGroup}>
@@ -403,57 +444,15 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                 나. 테스트 결과 분석 절차
               </div>
               <div className={styles.textGroup}>
-                <div
-                  className={getTextClassName(
-                    `${styles.contentText} Body`,
-                    "analysisProc1"
-                  )}
-                  data-editable
-                  onClick={() =>
-                    handleTextClick(
-                      "analysisProc1",
-                      "요청 처리율, 응답 속도, 에러율에 대해서 목표 설정"
-                    )
-                  }>
-                  {getEditableText(
-                    "analysisProc1",
-                    "요청 처리율, 응답 속도, 에러율에 대해서 목표 설정"
-                  )}
-                </div>
-                <div
-                  className={getTextClassName(
-                    `${styles.contentText} Body`,
-                    "analysisProc2"
-                  )}
-                  data-editable
-                  onClick={() =>
-                    handleTextClick(
-                      "analysisProc2",
-                      "테스트 결과와 에러율 비교, 목표 달성 분석"
-                    )
-                  }>
-                  {getEditableText(
-                    "analysisProc2",
-                    "테스트 결과와 에러율 비교, 목표 달성 분석"
-                  )}
-                </div>
-                <div
-                  className={getTextClassName(
-                    `${styles.contentText} Body`,
-                    "analysisProc3"
-                  )}
-                  data-editable
-                  onClick={() =>
-                    handleTextClick(
-                      "analysisProc3",
-                      "테스트 대상 자원 사용량 분석"
-                    )
-                  }>
-                  {getEditableText(
-                    "analysisProc3",
-                    "테스트 대상 자원 사용량 분석"
-                  )}
-                </div>
+                {renderEditableBlock({
+                  keyName: "analysisProc",
+                  defaultText: [
+                    "요청 처리율, 응답 속도, 에러율에 대해서 목표 설정",
+                    "테스트 결과와 에러율 비교, 목표 달성 분석",
+                    "테스트 대상 자원 사용량 분석",
+                  ].join("\n"),
+                  className: `${styles.contentText} Body`,
+                })}
               </div>
             </div>
 
@@ -578,23 +577,12 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
               <div className={`${styles.subTitle} TitleS`}>
                 나. 비 기능 테스트 상세내역
               </div>
-              <div
-                className={getTextClassName(
-                  `${styles.contentText} Body`,
-                  "testDetails"
-                )}
-                data-editable
-                onClick={() =>
-                  handleTextClick(
-                    "testDetails",
-                    "비 기능 테스트의 경우 하드웨어 사양뿐 아니라, OS 및 애플리케이션 구성에 따라 성능 측정 결과가 상이하므로, 실제 운영 환경에서 적용할 경우 테스트 결과가 다를 수 있다."
-                  )
-                }>
-                {getEditableText(
-                  "testDetails",
-                  "비 기능 테스트의 경우 하드웨어 사양뿐 아니라, OS 및 애플리케이션 구성에 따라 성능 측정 결과가 상이하므로, 실제 운영 환경에서 적용할 경우 테스트 결과가 다를 수 있다."
-                )}
-              </div>
+              {renderEditableBlock({
+                keyName: "testDetails",
+                defaultText:
+                  "비 기능 테스트의 경우 하드웨어 사양뿐 아니라, OS 및 애플리케이션 구성에 따라 성능 측정 결과가 상이하므로, 실제 운영 환경에서 적용할 경우 테스트 결과가 다를 수 있다.",
+                className: `${styles.contentText} Body`,
+              })}
             </div>
 
             <div className={styles.subTitleGroup}>
@@ -649,6 +637,21 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                   </tbody>
                 </table>
               </div>
+
+              {/* 종합분석 요약 */}
+              {getAnalysisSummary('comprehensive') && (
+              <div className={styles.summaryBox}>
+                <div className={`${styles.summaryHeader} Body`}>
+                  <Sparkle className={styles.icon} />
+                  <span>요약</span>
+                </div>
+                {renderEditableBlock({
+                  keyName: "comprehensiveAnalysis",
+                  defaultText: getAnalysisSummary('comprehensive'),
+                  className: `${styles.contentText} Body`,
+                })}
+              </div>
+            )}
 
               {/* 전체 그래프 추가 - 그룹 1: TPS, Error Rate, VUS */}
               {reportConfig.includeCharts &&
@@ -785,7 +788,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                           </td>
                           <td>
                             {scenario.response_time_target
-                              ? `${scenario.response_time_target}초`
+                              ? `${formatNumber(scenario.response_time_target / 1000, 3)}초`
                               : "X"}
                           </td>
                         </tr>
@@ -870,23 +873,12 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                   <Sparkle className={styles.icon} />
                   <span>요약</span>
                 </div>
-                <div
-                  className={getTextClassName(
-                    `${styles.summaryContent} Body`,
-                    "responseTimeSummary"
-                  )}
-                  data-editable
-                  onClick={() =>
-                    handleTextClick(
-                      "responseTimeSummary",
-                      "최소, 평균 응답 시간은 목표를 달성하였으나, P95의 경우 약간 못 미치는 결과 발생하였음. 약 92% 사용자에게 원활한 서비스 제공 가능할 것으로 예상."
-                    )
-                  }>
-                  {getEditableText(
-                    "responseTimeSummary",
-                    "최소, 평균 응답 시간은 목표를 달성하였으나, P95의 경우 약간 못 미치는 결과 발생하였음. 약 92% 사용자에게 원활한 서비스 제공 가능할 것으로 예상."
-                  )}
-                </div>
+                {renderEditableBlock({
+                  keyName: "responseTimeSummary",
+                  defaultText: getAnalysisSummary('response_time') || 
+                    "최소, 평균 응답 시간은 목표를 달성하였으나, P95의 경우 약간 못 미치는 결과 발생하였음. 약 92% 사용자에게 원활한 서비스 제공 가능할 것으로 예상.",
+                  className: `${styles.contentText} Body`,
+                })}
               </div>
             </div>
 
@@ -970,26 +962,14 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                   <Sparkle className={styles.icon} />
                   <span>요약</span>
                 </div>
-                <div
-                  className={getTextClassName(
-                    `${styles.summaryContent} Body`,
-                    "tpsSummary"
-                  )}
-                  data-editable
-                  onClick={() =>
-                    handleTextClick(
-                      "tpsSummary",
-                      "테스트 시나리오별 TPS는 참고값으로만 사용하며, 전체 TPS에 대해서 목표를 비교하였음. 전체 평균 TPS는 목표에 거의 유사하게 근접하였음. (TPS의 경우 테스트 초반 가상 사용자 수가 부족한 경우도 존재. 최소 TPS에 대해서는 참고값으로만 사용하였음.)"
-                    )
-                  }>
-                  {getEditableText(
-                    "tpsSummary",
-                    "테스트 시나리오별 TPS는 참고값으로만 사용하며, 전체 TPS에 대해서 목표를 비교하였음. 전체 평균 TPS는 목표에 거의 유사하게 근접하였음. (TPS의 경우 테스트 초반 가상 사용자 수가 부족한 경우도 존재. 최소 TPS에 대해서는 참고값으로만 사용하였음.)"
-                  )}
-                </div>
+                {renderEditableBlock({
+                  keyName: "tpsSummary", 
+                  defaultText: getAnalysisSummary('tps') ||
+                    "테스트 시나리오별 TPS는 참고값으로만 사용하며, 전체 TPS에 대해서 목표를 비교하였음. 전체 평균 TPS는 목표에 거의 유사하게 근접하였음. (TPS의 경우 테스트 초반 가상 사용자 수가 부족한 경우도 존재. 최소 TPS에 대해서는 참고값으로만 사용하였음.)",
+                  className: `${styles.contentText} Body`,
+                })}
               </div>
             </div>
-
             <div className={styles.subTitleGroup}>
               <div className={`${styles.subTitle} TitleS`}>
                 에러율 상세 결과
@@ -1100,28 +1080,18 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                   <Sparkle className={styles.icon} />
                   <span>요약</span>
                 </div>
-                <div
-                  className={getTextClassName(
-                    `${styles.summaryContent} Body`,
-                    "errorRateSummary"
-                  )}
-                  data-editable
-                  onClick={() =>
-                    handleTextClick(
-                      "errorRateSummary",
-                      "대부분의 경우 목표 에러율보다 안정적이었으나, 최대 에러율의 경우 목표치보다 높은 것으로 추정. 요청 수가 많아질 때 시스템 위험성을 고려해야 함."
-                    )
-                  }>
-                  {getEditableText(
-                    "errorRateSummary",
-                    "대부분의 경우 목표 에러율보다 안정적이었으나, 최대 에러율의 경우 목표치보다 높은 것으로 추정. 요청 수가 많아질 때 시스템 위험성을 고려해야 함."
-                  )}
-                </div>
+                {renderEditableBlock({
+                  keyName: "errorRateSummary",
+                  defaultText: getAnalysisSummary('error_rate') ||
+                    "대부분의 경우 목표 에러율보다 안정적이었으나, 최대 에러율의 경우 목표치보다 높은 것으로 추정. 요청 수가 많아질 때 시스템 위험성을 고려해야 함.",
+                  className: `${styles.contentText} Body`,
+                })}
               </div>
             </div>
             <div className={`${styles.subTitle} TitleS`}>
               다. 자원 사용량 분석
             </div>
+            {/* CPU 사용량 테이블 */}
             <div className={styles.tableContainer}>
               <div className={`${styles.tableTitle} CaptionLight`}>
                 표 서버별 CPU 사용량
@@ -1129,28 +1099,51 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th></th>
-                    <th>최소 사용량</th>
-                    <th>평균 사용량</th>
-                    <th>최대 사용량</th>
+                    <th>서버 유형</th>
+                    <th>최소 사용량(%)</th>
+                    <th>평균 사용량(%)</th>
+                    <th>최대 사용량(%)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td>Backend</td>
-                    <td>0.0%</td>
-                    <td>0.0%</td>
-                    <td>0.0%</td>
-                  </tr>
-                  <tr>
-                    <td>DB Server</td>
-                    <td>0.0%</td>
-                    <td>0.0%</td>
-                    <td>0.0%</td>
-                  </tr>
+                  {resourceData && resourceData.length > 0 ? (
+                    resourceData.map((resource, index) => (
+                      <tr key={index}>
+                        <td>
+                          {resource.service_type === 'SERVER' ? 'Backend' : 'DB Server'}
+                        </td>
+                        <td>
+                          {formatNumber(resource.cpu_usage_summary.percent.min, 1)}%
+                        </td>
+                        <td>
+                          {formatNumber(resource.cpu_usage_summary.percent.avg, 1)}%
+                        </td>
+                        <td>
+                          {formatNumber(resource.cpu_usage_summary.percent.max, 1)}%
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <>
+                      <tr>
+                        <td>Backend</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                      </tr>
+                      <tr>
+                        <td>DB Server</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                      </tr>
+                    </>
+                  )}
                 </tbody>
               </table>
             </div>
+            
+            {/* Memory 사용량 테이블 */}
             <div className={styles.tableContainer}>
               <div className={`${styles.tableTitle} CaptionLight`}>
                 표 서버별 Memory 사용량
@@ -1158,25 +1151,46 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th></th>
-                    <th>최소 사용량</th>
-                    <th>평균 사용량</th>
-                    <th>최대 사용량</th>
+                    <th>서버 유형</th>
+                    <th>최소 사용량(%)</th>
+                    <th>평균 사용량(%)</th>
+                    <th>최대 사용량(%)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td>Backend</td>
-                    <td>0.0%</td>
-                    <td>0.0%</td>
-                    <td>0.0%</td>
-                  </tr>
-                  <tr>
-                    <td>DB Server</td>
-                    <td>0.0%</td>
-                    <td>0.0%</td>
-                    <td>0.0%</td>
-                  </tr>
+                  {resourceData && resourceData.length > 0 ? (
+                    resourceData.map((resource, index) => (
+                      <tr key={index}>
+                        <td>
+                          {resource.service_type === 'SERVER' ? 'Backend' : 'DB Server'}
+                        </td>
+                        <td>
+                          {formatNumber(resource.memory_usage_summary.percent.min, 1)}%
+                        </td>
+                        <td>
+                          {formatNumber(resource.memory_usage_summary.percent.avg, 1)}%
+                        </td>
+                        <td>
+                          {formatNumber(resource.memory_usage_summary.percent.max, 1)}%
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <>
+                      <tr>
+                        <td>Backend</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                      </tr>
+                      <tr>
+                        <td>DB Server</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                      </tr>
+                    </>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1185,23 +1199,12 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                 <Sparkle className={styles.icon} />
                 <span>요약</span>
               </div>
-              <div
-                className={getTextClassName(
-                  `${styles.summaryContent} Body`,
-                  "resourceSummary"
-                )}
-                data-editable
-                onClick={() =>
-                  handleTextClick(
-                    "resourceSummary",
-                    "테스트 결과 백엔드 서버의 CPU 사용량이 최대 100%에 도달하며 높은 부하를 보였으나, DB 서버의 CPU 및 메모리 사용량은 여유가 있었습니다. 이는 서비스 병목 현상이 백엔드 서버의 CPU에 있음을 나타냅니다. 따라서 백엔드 서버의 스케일 아웃을 통해 성능 향상 및 안정성을 확보할 필요가 있습니다."
-                  )
-                }>
-                {getEditableText(
-                  "resourceSummary",
-                  "테스트 결과 백엔드 서버의 CPU 사용량이 최대 100%에 도달하며 높은 부하를 보였으나, DB 서버의 CPU 및 메모리 사용량은 여유가 있었습니다. 이는 서비스 병목 현상이 백엔드 서버의 CPU에 있음을 나타냅니다. 따라서 백엔드 서버의 스케일 아웃을 통해 성능 향상 및 안정성을 확보할 필요가 있습니다."
-                )}
-              </div>
+              {renderEditableBlock({
+                keyName: "resourceSummary",
+                defaultText: getAnalysisSummary('resource_usage') ||
+                  "테스트 결과 백엔드 서버의 CPU 사용량이 최대 100%에 도달하며 높은 부하를 보였으나, DB 서버의 CPU 및 메모리 사용량은 여유가 있었습니다. 이는 서비스 병목 현상이 백엔드 서버의 CPU에 있음을 나타냅니다. 따라서 백엔드 서버의 스케일 아웃을 통해 성능 향상 및 안정성을 확보할 필요가 있습니다.",
+                className: `${styles.contentText} Body`,
+              })}
             </div>
           </div>
         </div>

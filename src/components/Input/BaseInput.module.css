@@ -15,7 +15,6 @@
   border: none;
   border-radius: var(--radius-md);
   color: var(--color-black);
-  transition: all 0.2s;
   box-sizing: border-box;
   min-width: 0;
 }

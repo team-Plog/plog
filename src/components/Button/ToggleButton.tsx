@@ -30,7 +30,7 @@ const ToggleButton: React.FC<ToggleButtonProps> = ({
           onClick={() => onChange(option.value)}
         >
           <span className={styles.icon}>{option.icon}</span>
-          <span className={`${styles.label} Bold`}>{option.label}</span>
+          <span className={`${styles.label} Body`}>{option.label}</span>
         </button>
       ))}
     </div>

@@ -44,7 +44,7 @@ const ModeToggleDropdown: React.FC<ModeToggleDropdownProps> = ({
             {currentOption.icon}
           </div>
         )}
-        <span className="HeadingS">
+        <span className={`HeadingS ${styles.toggleText}`}>
           {currentOption.label}
         </span>
         <div className={`${styles.icon} ${styles.chevron}`}>
@@ -65,7 +65,7 @@ const ModeToggleDropdown: React.FC<ModeToggleDropdownProps> = ({
                   {option.icon}
                 </div>
               )}
-              <span className="HeadingS">
+              <span className={`HeadingS ${styles.dropdownText}`}>
                 {option.label}
               </span>
             </button>

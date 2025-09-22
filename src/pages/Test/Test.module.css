@@ -2,6 +2,7 @@
   min-height: 100vh;
   background-color: var(--color-background-secondary);
   padding-top: 40px;
+  padding-bottom: 40px;
   width: 100vw;
 }
 
@@ -15,6 +16,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.projectTitle {
+  color: var(--color-black);
 }
 
 .scenarioName {
@@ -75,7 +80,7 @@
 }
 
 .icon {
-  color: var(--color-gray-200);
+  color: var(--color-gray-300);
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
   flex-shrink: 0;
@@ -99,17 +104,52 @@
   padding-bottom: 32px;
 }
 
+.resourceSpecs {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--system-gray2, #666);
+}
+
 .carouselControls {
   display: flex;
   justify-content: center;
   gap: var(--spacing-md);
 }
 
+.carouselTitle {
+  color: var(--color-black);
+  min-width: 160px;
+  text-align: center;
+}
+
+.carouselCounter {
+  color: var(--color-gray-200);
+  margin-left: 8px;
+}
+
 .arrowButton {
   border: none;
   padding: 0 var(--spacing-lg);
+  color: var(--color-black);
+  background-color: transparent;
   cursor: pointer;
 }
+
+.resourceSection {
+  margin-top: var(--spacing-xl);
+}
+
+.scenarioHeader {
+  margin-bottom: var(--spacing-lg);
+}
+
+.resourceSpecs {
+  display: flex;
+  align-items: center;
+}
+
 
 /* 반응형 디자인 */
 @media (max-width: 768px) {

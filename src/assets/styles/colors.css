@@ -18,6 +18,11 @@
   --color-background-primary: #ffffff;
   --color-background-secondary: #f7f7f7;
 
+  --color-button-bg-top: rgba(0, 0, 0, 0.6);
+  --color-button-bg-bottom: #000000;
+  --color-button-border: #000000;
+  --color-button-text: #ffffff;
+
   /* HTTP Method Colors */
   --color-http-get: #61affe;
   --color-http-post: #49cc90;
@@ -41,7 +46,7 @@
 }
 
 /* 다크 모드 */
-[data-theme="dark"] {
+[data-theme='dark'] {
   /* Base */
   --color-white: #1a1a1a;
   --color-black: #ffffff;
@@ -59,6 +64,11 @@
   --color-border-primary: rgba(255, 255, 255, 0.1);
   --color-background-primary: #1a1a1a;
   --color-background-secondary: #2d2d2d;
+
+  --color-button-bg-top: rgba(255, 255, 255, 0.2);
+  --color-button-bg-bottom: rgba(255, 255, 255, 0.1);
+  --color-button-border: rgba(255, 255, 255, 0.1);
+  --color-button-text: #ffffff;
 
   /* Text Colors
   --color-text-primary: #ffffff;

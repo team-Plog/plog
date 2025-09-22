@@ -23,7 +23,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
         <div className={`${styles.iconWrapper} ${getIconClass()}`}>{icon}</div>
         <div className="Body">{label}</div>
       </div>
-      <div className="HeadingL">{value}</div>
+      <div className={`HeadingL ${styles.value}`}>{value}</div>
     </div>
   );
 };

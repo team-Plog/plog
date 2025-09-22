@@ -4,11 +4,10 @@
   top: 0;
   left: 0;
   z-index: 999;
-
   border-bottom: 1px solid var(--color-border-primary);
   background: var(--color-background-secondary);
   display: flex;
-  padding: var(--spacing-sm) var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-xl);
   justify-content: space-between;
   align-items: center;
   box-sizing: border-box;
@@ -19,6 +18,21 @@
   align-items: center;
   gap: var(--spacing-sm);
   cursor: pointer;
+}
+
+.logo {
+  color: var(--color-black);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.logoIcon {
+  width: 50px;
+  height: auto;
+  cursor: pointer;
+  display: block;
+  margin-top: 2px;
+  color: var(--color-gray-300);
 }
 
 .filledCircle {

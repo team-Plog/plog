@@ -2,6 +2,7 @@ import React, {useState, useRef, useEffect} from "react";
 import {ChevronDown, ChevronRight, Folder, Link, Database} from "lucide-react";
 import styles from "./ApiTree.module.css";
 import ActionMenu from "../ActionMenu/ActionMenu";
+import VersionMenu from "../VersionMenu/VersionMenu";
 
 interface ApiEndpoint {
   id: string;
@@ -19,6 +20,7 @@ interface ApiServer {
   id: string;
   name: string;
   groups: ApiGroup[];
+  openapi_spec_id?: number; // OpenAPI 스펙 ID 추가
 }
 
 interface ApiTreeProps {
@@ -31,6 +33,7 @@ interface ApiTreeProps {
   onDeleteServer?: (serverId: string) => void;
   onDeleteGroup?: (serverId: string, groupId: string, endpointIds: string[]) => void;
   onDeleteEndpoint?: (endpointId: string) => void;
+  onVersionChanged?: () => void; // 버전 변경 완료 콜백
 }
 
 interface ContextMenuState {
@@ -41,6 +44,14 @@ interface ContextMenuState {
   id: number;
   name?: string;
   endpointIds?: string[];
+  openapi_spec_id?: number; // OpenAPI 스펙 ID 추가
+}
+
+interface VersionMenuState {
+  visible: boolean;
+  x: number;
+  y: number;
+  openapi_spec_id: number;
 }
 
 const ApiTree: React.FC<ApiTreeProps> = ({
@@ -48,7 +59,8 @@ const ApiTree: React.FC<ApiTreeProps> = ({
   onEndpointClick,
   onDeleteServer,
   onDeleteGroup,
-  onDeleteEndpoint
+  onDeleteEndpoint,
+  onVersionChanged
 }) => {
   const [expandedServers, setExpandedServers] = useState<Set<string>>(
     new Set()
@@ -60,6 +72,12 @@ const ApiTree: React.FC<ApiTreeProps> = ({
     y: 0,
     type: 'server',
     id: 0
+  });
+  const [versionMenu, setVersionMenu] = useState<VersionMenuState>({
+    visible: false,
+    x: 0,
+    y: 0,
+    openapi_spec_id: 0
   });
   
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -74,9 +92,10 @@ const ApiTree: React.FC<ApiTreeProps> = ({
 
     const handleScroll = () => {
       setContextMenu(prev => ({ ...prev, visible: false }));
+      setVersionMenu(prev => ({ ...prev, visible: false }));
     };
 
-    if (contextMenu.visible) {
+    if (contextMenu.visible || versionMenu.visible) {
       document.addEventListener("mousedown", handleClickOutside);
       document.addEventListener("scroll", handleScroll, true);
       return () => {
@@ -84,7 +103,7 @@ const ApiTree: React.FC<ApiTreeProps> = ({
         document.removeEventListener("scroll", handleScroll, true);
       };
     }
-  }, [contextMenu.visible]);
+  }, [contextMenu.visible, versionMenu.visible]);
 
   const toggleServer = (serverId: string) => {
     const newExpanded = new Set(expandedServers);
@@ -148,7 +167,9 @@ const ApiTree: React.FC<ApiTreeProps> = ({
   };
 
   // 서버 우클릭 핸들러
-  const handleServerContextMenu = (e: React.MouseEvent, serverId: string, serverName: string) => {
+  const handleServerContextMenu = (e: React.MouseEvent, serverId: string, serverName: string, openapi_spec_id?: number) => {
+    console.log('OpenAPI Spec ID:', openapi_spec_id);
+    
     e.preventDefault();
     e.stopPropagation();
     
@@ -158,7 +179,8 @@ const ApiTree: React.FC<ApiTreeProps> = ({
       y: e.clientY,
       type: 'server',
       id: parseInt(serverId),
-      name: serverName
+      name: serverName,
+      openapi_spec_id
     });
   };
 
@@ -198,6 +220,19 @@ const ApiTree: React.FC<ApiTreeProps> = ({
     setContextMenu(prev => ({ ...prev, visible: false }));
   };
 
+  // ActionMenu의 버전 변경 핸들러
+  const handleVersionChange = () => {
+    if (contextMenu.openapi_spec_id) {
+      setVersionMenu({
+        visible: true,
+        x: contextMenu.x,
+        y: contextMenu.y,
+        openapi_spec_id: contextMenu.openapi_spec_id
+      });
+    }
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
   // ActionMenu의 삭제 핸들러
   const handleDelete = () => {
     const { type, id, name, endpointIds } = contextMenu;
@@ -234,6 +269,16 @@ const ApiTree: React.FC<ApiTreeProps> = ({
     setContextMenu(prev => ({ ...prev, visible: false }));
   };
 
+  // 버전 메뉴 닫기 핸들러
+  const handleVersionMenuClose = () => {
+    setVersionMenu(prev => ({ ...prev, visible: false }));
+  };
+
+  // 버전 변경 완료 핸들러
+  const handleVersionChanged = () => {
+    onVersionChanged?.();
+  };
+
   return (
     <div className={styles.apiTree}>
       {servers.map((server) => (
@@ -242,7 +287,7 @@ const ApiTree: React.FC<ApiTreeProps> = ({
           <div
             className={styles.serverHeader}
             onClick={() => toggleServer(server.id)}
-            onContextMenu={(e) => handleServerContextMenu(e, server.id, server.name)}>
+            onContextMenu={(e) => handleServerContextMenu(e, server.id, server.name, server.openapi_spec_id)}>
             <div className={styles.serverContent}>
               <div className={styles.itemWrapper}>
                 <Database className={styles.database} />
@@ -341,11 +386,23 @@ const ApiTree: React.FC<ApiTreeProps> = ({
       {contextMenu.visible && (
         <ActionMenu
           projectId={contextMenu.id}
-          onEdit={handleEdit}
+          onEdit={contextMenu.type === 'server' ? undefined : handleEdit}
           onDelete={handleDelete}
+          onVersionChange={contextMenu.type === 'server' && contextMenu.openapi_spec_id ? handleVersionChange : undefined}
           onClose={handleMenuClose}
-          deleteOnly={true}
+          deleteOnly={contextMenu.type !== 'server'}
+          showVersionChange={contextMenu.type === 'server' && !!contextMenu.openapi_spec_id}
           position={{ x: contextMenu.x, y: contextMenu.y }}
+        />
+      )}
+
+      {/* VersionMenu */}
+      {versionMenu.visible && (
+        <VersionMenu
+          openApiSpecId={versionMenu.openapi_spec_id}
+          onClose={handleVersionMenuClose}
+          position={{ x: versionMenu.x, y: versionMenu.y }}
+          onVersionChanged={handleVersionChanged}
         />
       )}
     </div>

@@ -4,6 +4,7 @@ import "../../assets/styles/typography.css";
 import {ChevronLeft, ChevronRight, List, Moon, Sun} from "lucide-react";
 import {useNavigate, useLocation} from "react-router-dom";
 import {getProjectDetail} from "../../api";
+import Logo from "../../assets/images/logo.svg?react";
 
 interface HeaderProps {
   testHistoryId?: number | null;
@@ -22,20 +23,38 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
   const toggleDarkMode = () => {
     const newDarkMode = !isDarkMode;
     setIsDarkMode(newDarkMode);
-    
+
+    // localStorage에 테마 설정 저장
+    localStorage.setItem("theme", newDarkMode ? "dark" : "light");
+
     // HTML root element에 data-theme 속성 설정
     if (newDarkMode) {
-      document.documentElement.setAttribute('data-theme', 'dark');
+      document.documentElement.setAttribute("data-theme", "dark");
     } else {
-      document.documentElement.removeAttribute('data-theme');
+      document.documentElement.removeAttribute("data-theme");
     }
   };
 
   // 컴포넌트 마운트 시 저장된 테마 설정 불러오기
   useEffect(() => {
-    const savedTheme = document.documentElement.getAttribute('data-theme');
-    if (savedTheme === 'dark') {
+    // localStorage에서 저장된 테마 설정 확인
+    const savedTheme = localStorage.getItem("theme");
+
+    // 저장된 테마가 없으면 시스템 기본 설정 확인
+    if (!savedTheme) {
+      const prefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      ).matches;
+      const initialTheme = prefersDark ? "dark" : "light";
+      localStorage.setItem("theme", initialTheme);
+
+      if (initialTheme === "dark") {
+        setIsDarkMode(true);
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    } else if (savedTheme === "dark") {
       setIsDarkMode(true);
+      document.documentElement.setAttribute("data-theme", "dark");
     }
   }, []);
 
@@ -43,6 +62,8 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
   const isProjectPage = location.pathname === "/projectDetail";
   const isTestPage = location.pathname === "/test";
   const isReportPage = location.pathname === "/report";
+  const isInfraPage = location.pathname === "/infrastructure";
+
   const projectId = location.state?.projectId;
   const testTitle = location.state?.testTitle;
   const stateTestHistoryId = location.state?.testHistoryId ?? null;
@@ -89,9 +110,8 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
   return (
     <div className={styles.header}>
       <div className={styles.title}>
-        <div className={styles.filledCircle} />
-        <div className="HeadingS" onClick={handleNavigateToMain}>
-          PLog
+        <div className={styles.logo} onClick={handleNavigateToMain}>
+          <Logo className={styles.logoIcon} />
         </div>
         <div className={styles.button}>
           <ChevronLeft onClick={goBack} />
@@ -137,6 +157,18 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
                   </button>
                 </>
               )}
+          </div>
+        )}
+
+        {isInfraPage && (
+          <div className={styles.navMenu}>
+            <button
+              className={`${styles.navButton} Body`}
+              onClick={handleNavigateToMain}>
+              메인
+            </button>
+            <div className={`${styles.navButton} Body`}>/</div>
+            <button className={`${styles.navButton} Body`}>인프라 관리</button>
           </div>
         )}
       </div>

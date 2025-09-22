@@ -268,6 +268,7 @@ const ProjectDetail: React.FC = () => {
     return specs.map((spec) => ({
       id: spec.id.toString(),
       name: spec.title,
+      openapi_spec_id: spec.id,
       groups: spec.tags.map((tag) => ({
         id: tag.id.toString(),
         name: tag.name,
@@ -766,6 +767,7 @@ const ProjectDetail: React.FC = () => {
                 onDeleteServer={handleDeleteServer}
                 onDeleteGroup={handleDeleteGroup}
                 onDeleteEndpoint={handleDeleteEndpoint}
+                onVersionChanged={refreshProjectData}
               />
             ) : (
               <div className={styles.noApiData}>

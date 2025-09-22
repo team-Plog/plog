@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
-import {Plus, Menu} from "lucide-react";
+import {Plus, Menu, Settings} from "lucide-react";
 import {SearchBar} from "../../components/Input";
 import {Button} from "../../components/Button/Button";
 import ProjectCard from "../../components/ProjectCard/ProjectCard";
@@ -38,6 +38,14 @@ const Home: React.FC = () => {
 
   const handleProjectClick = (projectId: number) => {
     navigate("/projectDetail", {state: {projectId}});
+  };
+
+  const handleInfraManageClick = () => {
+    navigate("/infrastructure");
+  };
+
+  const handleCreateProject = () => {
+    setIsModalOpen(true);
   };
 
   useEffect(() => {
@@ -86,7 +94,7 @@ const Home: React.FC = () => {
               </button>
               <h1 className={`HeadingS ${styles.title}`}>내 프로젝트</h1>
             </div>
-            {/* Right Group - Search Bar and Button */}
+            {/* Right Group - Search Bar and Buttons */}
             <div className={styles.rightGroup}>
               <div className={styles.searchContainer}>
                 <SearchBar
@@ -97,9 +105,15 @@ const Home: React.FC = () => {
               </div>
               <Button
                 variant="primaryGradient"
-                onClick={() => setIsModalOpen(true)}
+                onClick={handleCreateProject}
                 icon={<Plus />}>
                 새 프로젝트 추가하기
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleInfraManageClick}
+                icon={<Settings />}>
+                인프라 관리
               </Button>
             </div>
           </div>
@@ -126,7 +140,7 @@ const Home: React.FC = () => {
             </div>
           ) : (
             /* Empty State */
-            <EmptyState type="project" />
+            <EmptyState type="project" onAction={handleCreateProject} />
           )}
         </main>
 

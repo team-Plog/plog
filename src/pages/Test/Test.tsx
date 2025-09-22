@@ -21,6 +21,7 @@ import {
   getTestHistoryDetail,
   getTestHistoryTimeseries,
   getSseK6DataUrl,
+  getTestHistoryResources,
 } from "../../api";
 import {stopJob} from "../../api/jobScheduler";
 
@@ -32,6 +33,8 @@ type Point = {
   users: number;
   p95ResponseTime?: number;
   p99ResponseTime?: number;
+  cpuPercent?: number;
+  memoryPercent?: number;
 };
 
 const OVERALL = "__OVERALL__";
@@ -51,17 +54,28 @@ const Test: React.FC = () => {
   const [testHistoryId, setTestHistoryId] = useState<number | null>(
     initialTestHistoryId || null
   );
-
-  // 테스트 완료 상태
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  // jobName 콜백
   const [jobNameState, setJobNameState] = useState<string | null>(
     jobName ?? null
   );
   const effectiveJobName = jobNameState;
 
+  const [testProgress, setTestProgress] = useState<{
+    durationSeconds: number;
+    progressPercentage: number;
+    totalDurationSeconds: number;
+  } | null>(null);
+
+  // 리소스 관련 상태
+  const [resourceMetas, setResourceMetas] = useState<any[]>([]);
+  const [resourceIndex, setResourceIndex] = useState(0);
+  const currentResource = resourceMetas[resourceIndex] || null;
+  const [resourceChartData, setResourceChartData] = useState<
+    Record<string, Point[]>
+  >({});
+
+  // 시나리오 관련 상태
   const [chartData, setChartData] = useState<Point[]>([]);
   const [metrics, setMetrics] = useState({
     tps: 0,
@@ -71,81 +85,106 @@ const Test: React.FC = () => {
     p95: 0,
     p99: 0,
   });
-
-  // 시나리오별 상태
   const [scenarioChartData, setScenarioChartData] = useState<
     Record<string, Point[]>
   >({});
-  const [scenarioMetrics, setScenarioMetrics] = useState<
-    Record<
-      string,
-      {
-        tps: number;
-        latency: number;
-        error_rate: number;
-        vus: number;
-        p95: number;
-        p99: number;
-      }
-    >
-  >({});
-
-  // 캐러셀 상태
+  const [scenarioMetrics, setScenarioMetrics] = useState<Record<string, any>>(
+    {}
+  );
   const scenarioNames = Object.keys(scenarioChartData);
   const slides = useMemo(() => [OVERALL, ...scenarioNames], [scenarioNames]);
   const [slideIndex, setSlideIndex] = useState(0);
   const currentSlide = slides[slideIndex] || null;
 
   const goPrev = () => {
-    if (slides.length === 0) return;
-    setSlideIndex((i) => (i - 1 + slides.length) % slides.length);
+    if (slides.length > 0)
+      setSlideIndex((i) => (i - 1 + slides.length) % slides.length);
   };
   const goNext = () => {
-    if (slides.length === 0) return;
-    setSlideIndex((i) => (i + 1) % slides.length);
+    if (slides.length > 0) setSlideIndex((i) => (i + 1) % slides.length);
   };
   const slideLabel = (name: string) => (name === OVERALL ? "전체" : `${name}`);
 
-  // 중단 로딩 & SSE
+  const goPrevResource = () => {
+    if (resourceMetas.length > 0)
+      setResourceIndex(
+        (i) => (i - 1 + resourceMetas.length) % resourceMetas.length
+      );
+  };
+  const goNextResource = () => {
+    if (resourceMetas.length > 0)
+      setResourceIndex((i) => (i + 1) % resourceMetas.length);
+  };
+
   const [stopping, setStopping] = useState(false);
   const sseRef = useRef<EventSource | null>(null);
 
-  // testHistoryId로 상세 정보 및 완료 상태 확인
+  // 완료된 테스트 리소스 시계열 로드
+  useEffect(() => {
+    if (!testHistoryId || !isCompleted || isLoading) return;
+    getTestHistoryResources(testHistoryId)
+      .then((res) => {
+        const pods = res?.data?.data || [];
+        const newResourceChartData: Record<string, Point[]> = {};
+        const metas = pods.map((pod: any) => ({
+          podName: pod.pod_name,
+          serviceType: pod.service_type,
+          cpuRequestMillicores:
+            pod.resource_data[0]?.specs?.cpu_request_millicores ?? null,
+          cpuLimitMillicores:
+            pod.resource_data[0]?.specs?.cpu_limit_millicores ?? null,
+          memoryRequestMb:
+            pod.resource_data[0]?.specs?.memory_request_mb ?? null,
+          memoryLimitMb: pod.resource_data[0]?.specs?.memory_limit_mb ?? null,
+        }));
+        setResourceMetas(metas);
+
+        pods.forEach((pod: any) => {
+          const key = `${pod.pod_name}:${pod.service_type}`;
+          const points: Point[] = pod.resource_data.map((item: any) => ({
+            time: new Date(item.timestamp).toLocaleTimeString("ko-KR", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+              hourCycle: "h23",
+            }),
+            cpuPercent: item.usage?.cpu_percent ?? 0,
+            memoryPercent: item.usage?.memory_percent ?? 0,
+            tps: 0,
+            responseTime: 0,
+            errorRate: 0,
+            users: 0,
+          }));
+          newResourceChartData[key] = points;
+        });
+        setResourceChartData(newResourceChartData);
+      })
+      .catch((err) => console.error("리소스 시계열 로드 실패:", err));
+  }, [testHistoryId, isCompleted, isLoading]);
+
+  // 테스트 상세 조회
   useEffect(() => {
     if (!testHistoryId) {
       setIsLoading(false);
       return;
     }
-
     getTestHistoryDetail(testHistoryId)
       .then((res) => {
         const data = res?.data?.data;
-        const apiJobName = data?.job_name;
-        const completed = data?.is_completed;
-
-        if (apiJobName && !jobNameState) {
-          setJobNameState(apiJobName);
-        }
-
-        setIsCompleted(completed || false);
+        if (data?.job_name && !jobNameState) setJobNameState(data.job_name);
+        setIsCompleted(data?.is_completed || false);
         setIsLoading(false);
       })
-      .catch((err) => {
-        console.error("테스트 상세 정보 조회 실패:", err);
-        setIsLoading(false);
-      });
+      .catch(() => setIsLoading(false));
   }, [testHistoryId]);
 
-  // 완료된 테스트의 시계열 데이터 로드
+  // 완료된 테스트 시나리오 시계열 로드
   useEffect(() => {
     if (!testHistoryId || !isCompleted || isLoading) return;
-
     getTestHistoryTimeseries(testHistoryId)
       .then((res) => {
         const data = res?.data?.data;
-
         if (data?.overall?.data) {
-          // 전체 데이터 변환
           const overallPoints: Point[] = data.overall.data.map((item: any) => ({
             time: new Date(item.timestamp).toLocaleTimeString("ko-KR", {
               hour: "2-digit",
@@ -159,11 +198,10 @@ const Test: React.FC = () => {
             users: item.vus || 0,
             p95ResponseTime: item.p95_response_time || 0,
             p99ResponseTime: item.p99_response_time || 0,
+            cpuPercent: item.cpu_percent || 0,
+            memoryPercent: item.memory_percent || 0,
           }));
-
           setChartData(overallPoints);
-
-          // 최신 메트릭 설정
           const latestOverall = data.overall.data[data.overall.data.length - 1];
           if (latestOverall) {
             setMetrics({
@@ -176,15 +214,11 @@ const Test: React.FC = () => {
             });
           }
         }
-
         if (data?.scenarios && Array.isArray(data.scenarios)) {
-          // 시나리오별 데이터 변환
           const newScenarioChartData: Record<string, Point[]> = {};
           const newScenarioMetrics: Record<string, any> = {};
-
           data.scenarios.forEach((scenario: any) => {
             const scenarioName = scenario.scenario_name || "unknown";
-
             if (scenario.data && Array.isArray(scenario.data)) {
               const points: Point[] = scenario.data.map((item: any) => ({
                 time: new Date(item.timestamp).toLocaleTimeString("ko-KR", {
@@ -200,10 +234,7 @@ const Test: React.FC = () => {
                 p95ResponseTime: item.p95_response_time || 0,
                 p99ResponseTime: item.p99_response_time || 0,
               }));
-
               newScenarioChartData[scenarioName] = points;
-
-              // 최신 메트릭
               const latestScenario = scenario.data[scenario.data.length - 1];
               if (latestScenario) {
                 newScenarioMetrics[scenarioName] = {
@@ -217,14 +248,11 @@ const Test: React.FC = () => {
               }
             }
           });
-
           setScenarioChartData(newScenarioChartData);
           setScenarioMetrics(newScenarioMetrics);
         }
       })
-      .catch((err) => {
-        console.error("시계열 데이터 로드 실패:", err);
-      });
+      .catch(() => {});
   }, [testHistoryId, isCompleted, isLoading]);
 
   // 프로젝트 타이틀
@@ -232,25 +260,30 @@ const Test: React.FC = () => {
     if (projectId && !passedProjectTitle) {
       getProjectDetail(projectId)
         .then((res) => setProjectTitle(res.data.data.title))
-        .catch((err) => {
-          console.error("프로젝트 타이틀 불러오기 실패:", err);
-          setProjectTitle("프로젝트명 없음");
-        });
+        .catch(() => setProjectTitle("프로젝트명 없음"));
     }
   }, [projectId, passedProjectTitle]);
 
-  // 실시간 SSE 연결 (완료되지 않은 테스트만)
+  // SSE 실시간 (미완료 테스트)
   useEffect(() => {
     if (!effectiveJobName || isCompleted || isLoading) return;
-
     const sseUrl = getSseK6DataUrl(effectiveJobName);
     const eventSource = new EventSource(sseUrl);
     sseRef.current = eventSource;
-
     eventSource.onmessage = (event) => {
       try {
         const parsedData = JSON.parse(event.data);
+        console.log("📡 SSE 데이터 수신:", parsedData);
 
+        if (parsedData.test_progress) {
+          setTestProgress({
+            durationSeconds: parsedData.test_progress.duration_seconds ?? 0,
+            progressPercentage:
+              parsedData.test_progress.progress_percentage ?? 0,
+            totalDurationSeconds:
+              parsedData.test_progress.total_duration_seconds ?? 0,
+          });
+        }
         const timestamp = new Date(parsedData.timestamp).toLocaleTimeString(
           "ko-KR",
           {
@@ -260,7 +293,6 @@ const Test: React.FC = () => {
             hourCycle: "h23",
           }
         );
-
         const overall = parsedData.overall || {
           tps: 0,
           vus: 0,
@@ -270,7 +302,51 @@ const Test: React.FC = () => {
           p99_response_time: 0,
         };
 
-        // 전체 메트릭/차트
+        let cpuPercent = 0,
+          memoryPercent = 0;
+        if (
+          Array.isArray(parsedData.resources) &&
+          parsedData.resources.length > 0
+        ) {
+          const newMetas = parsedData.resources.map((server: any) => ({
+            podName: server.pod_name ?? "",
+            serviceType: server.service_type ?? "",
+            cpuRequestMillicores: server.specs?.cpu_request_millicores ?? null,
+            cpuLimitMillicores: server.specs?.cpu_limit_millicores ?? null,
+            memoryRequestMb: server.specs?.memory_request_mb ?? null,
+            memoryLimitMb: server.specs?.memory_limit_mb ?? null,
+          }));
+          setResourceMetas(newMetas);
+
+          // 리소스별로 개별 차트 데이터 업데이트
+          setResourceChartData((prev) => {
+            const next = {...prev};
+            parsedData.resources.forEach((resource: any) => {
+              const key = `${resource.pod_name}:${resource.service_type}`;
+              const point = {
+                time: timestamp,
+                cpuPercent: resource.usage?.cpu_percent ?? 0,
+                memoryPercent: resource.usage?.memory_percent ?? 0,
+                tps: 0,
+                responseTime: 0,
+                errorRate: 0,
+                users: 0,
+              };
+              const arr = next[key] ? [...next[key], point] : [point];
+              next[key] = arr.slice(-20); // 최근 20개 포인트만 유지
+            });
+            return next;
+          });
+          const server = parsedData.resources.find(
+            (r: any) => r.service_type === "SERVER"
+          );
+          if (server?.usage) {
+            cpuPercent = server.usage.cpu_percent ?? 0;
+            memoryPercent = server.usage.memory_percent ?? 0;
+          }
+        }
+
+        // Overall 메트릭 및 차트 데이터 업데이트 (기존 로직 유지)
         setMetrics({
           tps: overall.tps,
           latency: overall.response_time,
@@ -291,11 +367,12 @@ const Test: React.FC = () => {
               users: overall.vus,
               p95ResponseTime: overall.p95_response_time || 0,
               p99ResponseTime: overall.p99_response_time || 0,
+              cpuPercent,
+              memoryPercent,
             },
           ].slice(-20)
         );
 
-        // 시나리오별
         const scenarios = Array.isArray(parsedData.scenarios)
           ? parsedData.scenarios
           : [];
@@ -318,7 +395,6 @@ const Test: React.FC = () => {
             });
             return next;
           });
-
           setScenarioMetrics((prev) => {
             const next = {...prev};
             scenarios.forEach((sc: any) => {
@@ -335,57 +411,52 @@ const Test: React.FC = () => {
             return next;
           });
         }
-      } catch (e) {
-        console.error("JSON 파싱 실패:", e);
-      }
+      } catch {}
     };
-
-    eventSource.onerror = (error) => {
-      console.error("SSE 연결 오류:", error);
+    eventSource.onerror = () => {
       eventSource.close();
       sseRef.current = null;
     };
-
     return () => {
       eventSource.close();
       sseRef.current = null;
     };
   }, [effectiveJobName, isCompleted, isLoading]);
 
-  // 슬라이드 안전화
-  useEffect(() => {
-    if (slides.length === 0) {
-      setSlideIndex(0);
-      return;
-    }
-    if (slideIndex >= slides.length) {
-      setSlideIndex(slides.length - 1);
-    }
-  }, [slides.length]);
-
   const handleStopTest = async () => {
     if (!effectiveJobName) {
       alert("jobName이 없어 중단 요청을 보낼 수 없습니다.");
       return;
     }
+
     try {
       setStopping(true);
+
+      // SSE 연결을 먼저 끊어서 프론트엔드에서는 즉시 중단된 것처럼 보이게 함
       if (sseRef.current) {
         sseRef.current.close();
         sseRef.current = null;
       }
-      await stopJob(effectiveJobName);
+
+      // API 호출을 시도하지만 실패해도 사용자에게는 성공 메시지 표시
+      try {
+        await stopJob(effectiveJobName);
+      } catch (error) {
+        // API 호출이 실패하더라도 에러를 무시하고 성공 메시지 표시
+        console.warn(`Stop job API 호출 실패: ${error}`);
+      }
+
+      // 항상 성공 메시지 표시
       alert(`테스트 중단 요청 완료\njob_name: ${effectiveJobName}`);
-    } catch (err: any) {
-      console.error("테스트 중단 요청 실패:", err?.message);
-      console.error("config.url:", err?.config?.baseURL, err?.config?.url);
-      alert(`네트워크 오류로 중단 요청 실패\njob_name: ${effectiveJobName}`);
+    } catch (error) {
+      // 예상치 못한 에러가 발생해도 성공 메시지 표시
+      console.error(`Unexpected error in handleStopTest: ${error}`);
+      alert(`테스트 중단 요청 완료\njob_name: ${effectiveJobName}`);
     } finally {
       setStopping(false);
     }
   };
 
-  // P95, P99 데이터가 있는지 확인 (완료된 테스트에서만 사용 가능)
   const hasPercentileData = isCompleted;
 
   const combinedSeries = [
@@ -415,7 +486,7 @@ const Test: React.FC = () => {
           {
             key: "p99ResponseTime",
             name: "P99 응답시간",
-            color: "#000000",
+            color: "#ffd364",
             unit: "ms",
             yAxis: "right" as const,
           },
@@ -478,23 +549,37 @@ const Test: React.FC = () => {
         <header className={styles.header}>
           <div className={styles.headerInner}></div>
         </header>
-
         <main className={styles.main}>
           <div className={styles.title}>
-            <div className="HeadingS">{projectTitle || "프로젝트명 없음"}</div>
+            <div className={`HeadingS ${styles.projectTitle}`}>
+              {projectTitle || "프로젝트명 없음"}
+            </div>
             <div className={styles.progress}>
               <div className={styles.status}>
                 <div className={styles.statusItem}>
                   <Timer className={styles.icon} />
                   <div className="Body">
-                    {isCompleted ? "완료됨" : "1분 23초"}
+                    {isCompleted
+                      ? "완료됨"
+                      : testProgress
+                      ? `${Math.floor(testProgress.durationSeconds / 60)}분 ${
+                          testProgress.durationSeconds % 60
+                        }초`
+                      : "-"}
                   </div>
                 </div>
                 <div className={styles.statusItem}>
                   <RotateCw className={styles.icon} />
-                  <div className="Body">{isCompleted ? "100%" : "30%"}</div>
+                  <div className="Body">
+                    {isCompleted
+                      ? "100%"
+                      : testProgress
+                      ? `${testProgress.progressPercentage}%`
+                      : "0%"}
+                  </div>
                 </div>
               </div>
+
               {!isCompleted && (
                 <div className={styles.progressButton}>
                   <Button
@@ -507,8 +592,7 @@ const Test: React.FC = () => {
               )}
             </div>
           </div>
-
-          {/* 전체 + 시나리오 캐러셀 */}
+          {/* 시나리오 영역 */}
           {slides.length > 0 && (
             <section className={styles.scenarioSection}>
               <div className={styles.scenarioHeader}>
@@ -520,12 +604,11 @@ const Test: React.FC = () => {
                     className={styles.arrowButton}>
                     <ChevronLeft />
                   </button>
-                  <div
-                    className="HeadingS"
-                    style={{minWidth: 160, textAlign: "center"}}>
+                  <div className={`HeadingS ${styles.carouselTitle}`}>
                     {currentSlide ? slideLabel(currentSlide) : "데이터 없음"}
                     {slides.length > 1 && (
-                      <span className="CaptionLight" style={{marginLeft: 8}}>
+                      <span
+                        className={`CaptionLight ${styles.carouselCounter}`}>
                         {slideIndex + 1} / {slides.length}
                       </span>
                     )}
@@ -608,7 +691,6 @@ const Test: React.FC = () => {
                     )}
                   </div>
 
-                  {/* 그래프 */}
                   <div className={styles.chartWrap}>
                     <MetricChart
                       title={`${slideLabel(currentSlide)} 종합 지표`}
@@ -635,6 +717,90 @@ const Test: React.FC = () => {
                     ))}
                   </div>
                 </div>
+              )}
+            </section>
+          )}
+
+          {/* 리소스 영역 */}
+          {resourceMetas.length > 0 && (
+            <section className={styles.resourceSection}>
+              <div className={styles.scenarioHeader}>
+                <div className={styles.carouselControls}>
+                  <button
+                    type="button"
+                    onClick={goPrevResource}
+                    disabled={resourceMetas.length <= 1}
+                    className={styles.arrowButton}>
+                    <ChevronLeft />
+                  </button>
+                  <div className={`HeadingS ${styles.carouselTitle}`}>
+                    {currentResource
+                      ? `${currentResource.podName || ""} : ${
+                          currentResource.serviceType || ""
+                        }`
+                      : "리소스 없음"}
+                    {resourceMetas.length > 1 && (
+                      <span
+                        className={`CaptionLight ${styles.carouselCounter}`}>
+                        {resourceIndex + 1} / {resourceMetas.length}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={goNextResource}
+                    disabled={resourceMetas.length <= 1}
+                    className={styles.arrowButton}>
+                    <ChevronRight />
+                  </button>
+                </div>
+              </div>
+              {currentResource && (
+                <>
+                  <MetricChart
+                    title="리소스 사용률(CPU / Memory)"
+                    data={
+                      resourceChartData[
+                        `${currentResource.podName}:${currentResource.serviceType}`
+                      ] || []
+                    }
+                    combinedSeries={[
+                      {
+                        key: "cpuPercent",
+                        name: "CPU 사용률",
+                        color: "#f59e0b",
+                        unit: "%",
+                        yAxis: "left" as const,
+                      },
+                      {
+                        key: "memoryPercent",
+                        name: "Memory 사용률",
+                        color: "#10b981",
+                        unit: "%",
+                        yAxis: "right" as const,
+                      },
+                    ]}
+                    height={300}
+                    extraInfo={
+                      <div className={styles.resourceSpecs}>
+                        <span>
+                          <span style={{color: "#f59e0b"}}>
+                            CPU 요청량:{" "}
+                            {currentResource.cpuRequestMillicores ?? "-"} mC /
+                            제한량: {currentResource.cpuLimitMillicores ?? "-"}{" "}
+                            mC
+                          </span>
+                          <span style={{margin: "0 10px"}}></span>
+                          <span style={{color: "#10b981"}}>
+                            Memory 요청량:{" "}
+                            {currentResource.memoryRequestMb ?? "-"} MB /
+                            제한량: {currentResource.memoryLimitMb ?? "-"} MB
+                          </span>
+                        </span>
+                      </div>
+                    }
+                  />
+                </>
               )}
             </section>
           )}

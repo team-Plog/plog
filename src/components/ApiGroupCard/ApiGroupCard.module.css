@@ -29,7 +29,7 @@
 }
 
 .groupName {
-  color: var(--color-text-primary);
+  color: var(--color-black);
 }
 
 .baseUrl {
@@ -83,7 +83,6 @@
 
 .endpoint {
   color: var(--color-black);
-  font-weight: 500;
 }
 
 .description {

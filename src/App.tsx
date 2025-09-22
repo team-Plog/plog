@@ -5,6 +5,7 @@ import ProjectDetail from "./pages/ProjectDetail/ProjectDetail";
 import Test from "./pages/Test/Test";
 import TestList from "./pages/TestList/TestList";
 import Report from "./pages/Report/Report";
+import Infrastructure from "./pages/Infrastructure/Infrastructure";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <Route path="/test" element={<Test />} />
         <Route path="/testList" element={<TestList />} />
         <Route path="/report" element={<Report />} />
+        <Route path="/infrastructure" element={<Infrastructure />} />
       </Routes>
     </Router>
   );
