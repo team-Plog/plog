@@ -61,6 +61,12 @@ const Test: React.FC = () => {
   );
   const effectiveJobName = jobNameState;
 
+  const [testProgress, setTestProgress] = useState<{
+    durationSeconds: number;
+    progressPercentage: number;
+    totalDurationSeconds: number;
+  } | null>(null);
+
   // 리소스 관련 상태
   const [resourceMetas, setResourceMetas] = useState<any[]>([]);
   const [resourceIndex, setResourceIndex] = useState(0);
@@ -267,6 +273,17 @@ const Test: React.FC = () => {
     eventSource.onmessage = (event) => {
       try {
         const parsedData = JSON.parse(event.data);
+        console.log("📡 SSE 데이터 수신:", parsedData);
+
+        if (parsedData.test_progress) {
+          setTestProgress({
+            durationSeconds: parsedData.test_progress.duration_seconds ?? 0,
+            progressPercentage:
+              parsedData.test_progress.progress_percentage ?? 0,
+            totalDurationSeconds:
+              parsedData.test_progress.total_duration_seconds ?? 0,
+          });
+        }
         const timestamp = new Date(parsedData.timestamp).toLocaleTimeString(
           "ko-KR",
           {
@@ -542,14 +559,27 @@ const Test: React.FC = () => {
                 <div className={styles.statusItem}>
                   <Timer className={styles.icon} />
                   <div className="Body">
-                    {isCompleted ? "완료됨" : "1분 23초"}
+                    {isCompleted
+                      ? "완료됨"
+                      : testProgress
+                      ? `${Math.floor(testProgress.durationSeconds / 60)}분 ${
+                          testProgress.durationSeconds % 60
+                        }초`
+                      : "-"}
                   </div>
                 </div>
                 <div className={styles.statusItem}>
                   <RotateCw className={styles.icon} />
-                  <div className="Body">{isCompleted ? "100%" : "30%"}</div>
+                  <div className="Body">
+                    {isCompleted
+                      ? "100%"
+                      : testProgress
+                      ? `${testProgress.progressPercentage}%`
+                      : "0%"}
+                  </div>
                 </div>
               </div>
+
               {!isCompleted && (
                 <div className={styles.progressButton}>
                   <Button
