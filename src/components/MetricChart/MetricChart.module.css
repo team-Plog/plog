@@ -1,14 +1,15 @@
 .chart {
   width: 100%;
   background-color: var(--color-white);
-  padding: var(--spacing-lg);
+  padding: 32px;
+  padding-bottom: 36px;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-primary);
 }
 
 .chart h3 {
   color: var(--color-black);
-  margin: 0 0 16px 0;
+  margin: 0 0 24px 0;
 }
 
 /* Recharts 축 텍스트 스타일링 */
@@ -40,7 +41,7 @@
   color: var(--color-gray-300);
 }
 
-.toggleSwitch input[type="checkbox"] {
+.toggleSwitch input[type='checkbox'] {
   display: none;
 }
 

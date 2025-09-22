@@ -1,8 +1,8 @@
-import React, {useEffect, useState, useRef, useMemo} from "react";
-import Header from "../../components/Header/Header";
-import styles from "./Test.module.css";
-import "../../assets/styles/typography.css";
-import {Button} from "../../components/Button/Button";
+import React, { useEffect, useState, useRef, useMemo } from 'react';
+import Header from '../../components/Header/Header';
+import styles from './Test.module.css';
+import '../../assets/styles/typography.css';
+import { Button } from '../../components/Button/Button';
 import {
   Activity,
   CircleAlert,
@@ -12,18 +12,18 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
-} from "lucide-react";
-import MetricCard from "../../components/MetricCard/MetricCard";
-import MetricChart from "../../components/MetricChart/MetricChart";
-import {useLocation} from "react-router-dom";
+} from 'lucide-react';
+import MetricCard from '../../components/MetricCard/MetricCard';
+import MetricChart from '../../components/MetricChart/MetricChart';
+import { useLocation } from 'react-router-dom';
 import {
   getProjectDetail,
   getTestHistoryDetail,
   getTestHistoryTimeseries,
   getSseK6DataUrl,
   getTestHistoryResources,
-} from "../../api";
-import {stopJob} from "../../api/jobScheduler";
+} from '../../api';
+import { stopJob } from '../../api/jobScheduler';
 
 type Point = {
   time: string;
@@ -37,7 +37,7 @@ type Point = {
   memoryPercent?: number;
 };
 
-const OVERALL = "__OVERALL__";
+const OVERALL = '__OVERALL__';
 
 const Test: React.FC = () => {
   const location = useLocation();
@@ -49,7 +49,7 @@ const Test: React.FC = () => {
   } = location.state || {};
 
   const [projectTitle, setProjectTitle] = useState<string>(
-    passedProjectTitle || ""
+    passedProjectTitle || ''
   );
   const [testHistoryId, setTestHistoryId] = useState<number | null>(
     initialTestHistoryId || null
@@ -103,7 +103,7 @@ const Test: React.FC = () => {
   const goNext = () => {
     if (slides.length > 0) setSlideIndex((i) => (i + 1) % slides.length);
   };
-  const slideLabel = (name: string) => (name === OVERALL ? "전체" : `${name}`);
+  const slideLabel = (name: string) => (name === OVERALL ? '전체' : `${name}`);
 
   const goPrevResource = () => {
     if (resourceMetas.length > 0)
@@ -142,11 +142,11 @@ const Test: React.FC = () => {
         pods.forEach((pod: any) => {
           const key = `${pod.pod_name}:${pod.service_type}`;
           const points: Point[] = pod.resource_data.map((item: any) => ({
-            time: new Date(item.timestamp).toLocaleTimeString("ko-KR", {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-              hourCycle: "h23",
+            time: new Date(item.timestamp).toLocaleTimeString('ko-KR', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hourCycle: 'h23',
             }),
             cpuPercent: item.usage?.cpu_percent ?? 0,
             memoryPercent: item.usage?.memory_percent ?? 0,
@@ -159,7 +159,7 @@ const Test: React.FC = () => {
         });
         setResourceChartData(newResourceChartData);
       })
-      .catch((err) => console.error("리소스 시계열 로드 실패:", err));
+      .catch((err) => console.error('리소스 시계열 로드 실패:', err));
   }, [testHistoryId, isCompleted, isLoading]);
 
   // 테스트 상세 조회
@@ -186,11 +186,11 @@ const Test: React.FC = () => {
         const data = res?.data?.data;
         if (data?.overall?.data) {
           const overallPoints: Point[] = data.overall.data.map((item: any) => ({
-            time: new Date(item.timestamp).toLocaleTimeString("ko-KR", {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-              hourCycle: "h23",
+            time: new Date(item.timestamp).toLocaleTimeString('ko-KR', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hourCycle: 'h23',
             }),
             tps: item.tps || 0,
             responseTime: item.avg_response_time || 0,
@@ -218,14 +218,14 @@ const Test: React.FC = () => {
           const newScenarioChartData: Record<string, Point[]> = {};
           const newScenarioMetrics: Record<string, any> = {};
           data.scenarios.forEach((scenario: any) => {
-            const scenarioName = scenario.scenario_name || "unknown";
+            const scenarioName = scenario.scenario_name || 'unknown';
             if (scenario.data && Array.isArray(scenario.data)) {
               const points: Point[] = scenario.data.map((item: any) => ({
-                time: new Date(item.timestamp).toLocaleTimeString("ko-KR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  second: "2-digit",
-                  hourCycle: "h23",
+                time: new Date(item.timestamp).toLocaleTimeString('ko-KR', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hourCycle: 'h23',
                 }),
                 tps: item.tps || 0,
                 responseTime: item.avg_response_time || 0,
@@ -260,7 +260,7 @@ const Test: React.FC = () => {
     if (projectId && !passedProjectTitle) {
       getProjectDetail(projectId)
         .then((res) => setProjectTitle(res.data.data.title))
-        .catch(() => setProjectTitle("프로젝트명 없음"));
+        .catch(() => setProjectTitle('프로젝트명 없음'));
     }
   }, [projectId, passedProjectTitle]);
 
@@ -273,7 +273,7 @@ const Test: React.FC = () => {
     eventSource.onmessage = (event) => {
       try {
         const parsedData = JSON.parse(event.data);
-        console.log("📡 SSE 데이터 수신:", parsedData);
+        console.log('📡 SSE 데이터 수신:', parsedData);
 
         if (parsedData.test_progress) {
           setTestProgress({
@@ -285,12 +285,12 @@ const Test: React.FC = () => {
           });
         }
         const timestamp = new Date(parsedData.timestamp).toLocaleTimeString(
-          "ko-KR",
+          'ko-KR',
           {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hourCycle: "h23",
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hourCycle: 'h23',
           }
         );
         const overall = parsedData.overall || {
@@ -309,8 +309,8 @@ const Test: React.FC = () => {
           parsedData.resources.length > 0
         ) {
           const newMetas = parsedData.resources.map((server: any) => ({
-            podName: server.pod_name ?? "",
-            serviceType: server.service_type ?? "",
+            podName: server.pod_name ?? '',
+            serviceType: server.service_type ?? '',
             cpuRequestMillicores: server.specs?.cpu_request_millicores ?? null,
             cpuLimitMillicores: server.specs?.cpu_limit_millicores ?? null,
             memoryRequestMb: server.specs?.memory_request_mb ?? null,
@@ -320,7 +320,7 @@ const Test: React.FC = () => {
 
           // 리소스별로 개별 차트 데이터 업데이트
           setResourceChartData((prev) => {
-            const next = {...prev};
+            const next = { ...prev };
             parsedData.resources.forEach((resource: any) => {
               const key = `${resource.pod_name}:${resource.service_type}`;
               const point = {
@@ -338,7 +338,7 @@ const Test: React.FC = () => {
             return next;
           });
           const server = parsedData.resources.find(
-            (r: any) => r.service_type === "SERVER"
+            (r: any) => r.service_type === 'SERVER'
           );
           if (server?.usage) {
             cpuPercent = server.usage.cpu_percent ?? 0;
@@ -378,9 +378,9 @@ const Test: React.FC = () => {
           : [];
         if (scenarios.length > 0) {
           setScenarioChartData((prev) => {
-            const next: Record<string, Point[]> = {...prev};
+            const next: Record<string, Point[]> = { ...prev };
             scenarios.forEach((sc: any) => {
-              const name = sc?.name ?? "unknown";
+              const name = sc?.name ?? 'unknown';
               const point: Point = {
                 time: timestamp,
                 tps: sc?.tps ?? 0,
@@ -396,9 +396,9 @@ const Test: React.FC = () => {
             return next;
           });
           setScenarioMetrics((prev) => {
-            const next = {...prev};
+            const next = { ...prev };
             scenarios.forEach((sc: any) => {
-              const name = sc?.name ?? "unknown";
+              const name = sc?.name ?? 'unknown';
               next[name] = {
                 tps: sc?.tps ?? 0,
                 latency: sc?.response_time ?? 0,
@@ -425,7 +425,7 @@ const Test: React.FC = () => {
 
   const handleStopTest = async () => {
     if (!effectiveJobName) {
-      alert("jobName이 없어 중단 요청을 보낼 수 없습니다.");
+      alert('jobName이 없어 중단 요청을 보낼 수 없습니다.');
       return;
     }
 
@@ -461,72 +461,72 @@ const Test: React.FC = () => {
 
   const combinedSeries = [
     {
-      key: "tps",
-      name: "현재 TPS",
-      color: "#60a5fa",
-      unit: "",
-      yAxis: "left" as const,
+      key: 'tps',
+      name: '현재 TPS',
+      color: '#60a5fa',
+      unit: '',
+      yAxis: 'left' as const,
     },
     {
-      key: "responseTime",
-      name: "평균 응답시간",
-      color: "#82ca9d",
-      unit: "ms",
-      yAxis: "right" as const,
+      key: 'responseTime',
+      name: '평균 응답시간',
+      color: '#82ca9d',
+      unit: 'ms',
+      yAxis: 'right' as const,
     },
     ...(hasPercentileData
       ? [
           {
-            key: "p95ResponseTime",
-            name: "P95 응답시간",
-            color: "#fb8e8e",
-            unit: "ms",
-            yAxis: "right" as const,
+            key: 'p95ResponseTime',
+            name: 'P95 응답시간',
+            color: '#fb8e8e',
+            unit: 'ms',
+            yAxis: 'right' as const,
           },
           {
-            key: "p99ResponseTime",
-            name: "P99 응답시간",
-            color: "#ffd364",
-            unit: "ms",
-            yAxis: "right" as const,
+            key: 'p99ResponseTime',
+            name: 'P99 응답시간',
+            color: '#ffd364',
+            unit: 'ms',
+            yAxis: 'right' as const,
           },
         ]
       : []),
     {
-      key: "errorRate",
-      name: "에러율",
-      color: "#f87171",
-      unit: "%",
-      yAxis: "right" as const,
+      key: 'errorRate',
+      name: '에러율',
+      color: '#f87171',
+      unit: '%',
+      yAxis: 'right' as const,
     },
     {
-      key: "users",
-      name: "활성 사용자",
-      color: "#8884d8",
-      unit: "",
-      yAxis: "left" as const,
+      key: 'users',
+      name: '활성 사용자',
+      color: '#8884d8',
+      unit: '',
+      yAxis: 'left' as const,
     },
   ];
 
   const chartConfigs = [
-    {title: "TPS 변화 추이", dataKey: "tps", color: "#60a5fa"},
-    {title: "평균 응답시간(ms)", dataKey: "responseTime", color: "#82ca9d"},
+    { title: 'TPS 변화 추이', dataKey: 'tps', color: '#60a5fa' },
+    { title: '평균 응답시간(ms)', dataKey: 'responseTime', color: '#82ca9d' },
     ...(hasPercentileData
       ? [
           {
-            title: "P95 응답시간(ms)",
-            dataKey: "p95ResponseTime",
-            color: "#fbbf24",
+            title: 'P95 응답시간(ms)',
+            dataKey: 'p95ResponseTime',
+            color: '#fbbf24',
           },
           {
-            title: "P99 응답시간(ms)",
-            dataKey: "p99ResponseTime",
-            color: "#f97316",
+            title: 'P99 응답시간(ms)',
+            dataKey: 'p99ResponseTime',
+            color: '#f97316',
           },
         ]
       : []),
-    {title: "에러율(%)", dataKey: "errorRate", color: "#f87171"},
-    {title: "활성 사용자 수", dataKey: "users", color: "#8884d8"},
+    { title: '에러율(%)', dataKey: 'errorRate', color: '#f87171' },
+    { title: '활성 사용자 수', dataKey: 'users', color: '#8884d8' },
   ];
 
   if (isLoading) {
@@ -552,7 +552,7 @@ const Test: React.FC = () => {
         <main className={styles.main}>
           <div className={styles.title}>
             <div className={`HeadingS ${styles.projectTitle}`}>
-              {projectTitle || "프로젝트명 없음"}
+              {projectTitle || '프로젝트명 없음'}
             </div>
             <div className={styles.progress}>
               <div className={styles.status}>
@@ -560,22 +560,22 @@ const Test: React.FC = () => {
                   <Timer className={styles.icon} />
                   <div className="Body">
                     {isCompleted
-                      ? "완료됨"
+                      ? '완료됨'
                       : testProgress
                       ? `${Math.floor(testProgress.durationSeconds / 60)}분 ${
                           testProgress.durationSeconds % 60
                         }초`
-                      : "-"}
+                      : '-'}
                   </div>
                 </div>
                 <div className={styles.statusItem}>
                   <RotateCw className={styles.icon} />
                   <div className="Body">
                     {isCompleted
-                      ? "100%"
+                      ? '100%'
                       : testProgress
                       ? `${testProgress.progressPercentage}%`
-                      : "0%"}
+                      : '0%'}
                   </div>
                 </div>
               </div>
@@ -585,8 +585,9 @@ const Test: React.FC = () => {
                   <Button
                     variant="primaryGradient"
                     onClick={handleStopTest}
-                    disabled={stopping || !effectiveJobName}>
-                    {stopping ? "중단 요청 중..." : "테스트 중단하기"}
+                    disabled={stopping || !effectiveJobName}
+                  >
+                    {stopping ? '중단 요청 중...' : '테스트 중단하기'}
                   </Button>
                 </div>
               )}
@@ -601,14 +602,16 @@ const Test: React.FC = () => {
                     type="button"
                     onClick={goPrev}
                     disabled={slides.length <= 1}
-                    className={styles.arrowButton}>
+                    className={styles.arrowButton}
+                  >
                     <ChevronLeft />
                   </button>
                   <div className={`HeadingS ${styles.carouselTitle}`}>
-                    {currentSlide ? slideLabel(currentSlide) : "데이터 없음"}
+                    {currentSlide ? slideLabel(currentSlide) : '데이터 없음'}
                     {slides.length > 1 && (
                       <span
-                        className={`CaptionLight ${styles.carouselCounter}`}>
+                        className={`CaptionLight ${styles.carouselCounter}`}
+                      >
                         {slideIndex + 1} / {slides.length}
                       </span>
                     )}
@@ -617,7 +620,8 @@ const Test: React.FC = () => {
                     type="button"
                     onClick={goNext}
                     disabled={slides.length <= 1}
-                    className={styles.arrowButton}>
+                    className={styles.arrowButton}
+                  >
                     <ChevronRight />
                   </button>
                 </div>
@@ -630,22 +634,22 @@ const Test: React.FC = () => {
                       <>
                         <MetricCard
                           label="현재 TPS"
-                          value={metrics.tps?.toLocaleString() || "0"}
+                          value={metrics.tps?.toLocaleString() || '0'}
                           icon={<Activity />}
                         />
                         <MetricCard
                           label="평균 응답시간"
-                          value={`${metrics.latency?.toFixed(0) || "0"}ms`}
+                          value={`${metrics.latency?.toFixed(0) || '0'}ms`}
                           icon={<Clock />}
                         />
                         <MetricCard
                           label="에러율"
-                          value={`${metrics.error_rate?.toFixed(1) || "0.0"}%`}
+                          value={`${metrics.error_rate?.toFixed(1) || '0.0'}%`}
                           icon={<CircleAlert />}
                         />
                         <MetricCard
                           label="활성 사용자"
-                          value={metrics.vus?.toLocaleString() || "0"}
+                          value={metrics.vus?.toLocaleString() || '0'}
                           icon={<Users />}
                         />
                       </>
@@ -656,7 +660,7 @@ const Test: React.FC = () => {
                           value={
                             scenarioMetrics[
                               currentSlide
-                            ]?.tps?.toLocaleString() || "0"
+                            ]?.tps?.toLocaleString() || '0'
                           }
                           icon={<Activity />}
                         />
@@ -665,7 +669,7 @@ const Test: React.FC = () => {
                           value={`${
                             scenarioMetrics[currentSlide]?.latency?.toFixed(
                               0
-                            ) || "0"
+                            ) || '0'
                           }ms`}
                           icon={<Clock />}
                         />
@@ -674,7 +678,7 @@ const Test: React.FC = () => {
                           value={`${
                             scenarioMetrics[currentSlide]?.error_rate?.toFixed(
                               1
-                            ) || "0.0"
+                            ) || '0.0'
                           }%`}
                           icon={<CircleAlert />}
                         />
@@ -683,7 +687,7 @@ const Test: React.FC = () => {
                           value={
                             scenarioMetrics[
                               currentSlide
-                            ]?.vus?.toLocaleString() || "0"
+                            ]?.vus?.toLocaleString() || '0'
                           }
                           icon={<Users />}
                         />
@@ -700,7 +704,7 @@ const Test: React.FC = () => {
                           : scenarioChartData[currentSlide] || []
                       }
                       combinedSeries={combinedSeries}
-                      height={300}
+                      height={400}
                     />
                     {chartConfigs.map((config, idx) => (
                       <MetricChart
@@ -730,18 +734,20 @@ const Test: React.FC = () => {
                     type="button"
                     onClick={goPrevResource}
                     disabled={resourceMetas.length <= 1}
-                    className={styles.arrowButton}>
+                    className={styles.arrowButton}
+                  >
                     <ChevronLeft />
                   </button>
                   <div className={`HeadingS ${styles.carouselTitle}`}>
                     {currentResource
-                      ? `${currentResource.podName || ""} : ${
-                          currentResource.serviceType || ""
+                      ? `${currentResource.podName || ''} : ${
+                          currentResource.serviceType || ''
                         }`
-                      : "리소스 없음"}
+                      : '리소스 없음'}
                     {resourceMetas.length > 1 && (
                       <span
-                        className={`CaptionLight ${styles.carouselCounter}`}>
+                        className={`CaptionLight ${styles.carouselCounter}`}
+                      >
                         {resourceIndex + 1} / {resourceMetas.length}
                       </span>
                     )}
@@ -750,7 +756,8 @@ const Test: React.FC = () => {
                     type="button"
                     onClick={goNextResource}
                     disabled={resourceMetas.length <= 1}
-                    className={styles.arrowButton}>
+                    className={styles.arrowButton}
+                  >
                     <ChevronRight />
                   </button>
                 </div>
@@ -766,35 +773,35 @@ const Test: React.FC = () => {
                     }
                     combinedSeries={[
                       {
-                        key: "cpuPercent",
-                        name: "CPU 사용률",
-                        color: "#f59e0b",
-                        unit: "%",
-                        yAxis: "left" as const,
+                        key: 'cpuPercent',
+                        name: 'CPU 사용률',
+                        color: '#f59e0b',
+                        unit: '%',
+                        yAxis: 'left' as const,
                       },
                       {
-                        key: "memoryPercent",
-                        name: "Memory 사용률",
-                        color: "#10b981",
-                        unit: "%",
-                        yAxis: "right" as const,
+                        key: 'memoryPercent',
+                        name: 'Memory 사용률',
+                        color: '#10b981',
+                        unit: '%',
+                        yAxis: 'right' as const,
                       },
                     ]}
                     height={300}
                     extraInfo={
                       <div className={styles.resourceSpecs}>
                         <span>
-                          <span style={{color: "#f59e0b"}}>
-                            CPU 요청량:{" "}
-                            {currentResource.cpuRequestMillicores ?? "-"} mC /
-                            제한량: {currentResource.cpuLimitMillicores ?? "-"}{" "}
+                          <span style={{ color: '#f59e0b' }}>
+                            CPU 요청량:{' '}
+                            {currentResource.cpuRequestMillicores ?? '-'} mC /
+                            제한량: {currentResource.cpuLimitMillicores ?? '-'}{' '}
                             mC
                           </span>
-                          <span style={{margin: "0 10px"}}></span>
-                          <span style={{color: "#10b981"}}>
-                            Memory 요청량:{" "}
-                            {currentResource.memoryRequestMb ?? "-"} MB /
-                            제한량: {currentResource.memoryLimitMb ?? "-"} MB
+                          <span style={{ margin: '0 10px' }}></span>
+                          <span style={{ color: '#10b981' }}>
+                            Memory 요청량:{' '}
+                            {currentResource.memoryRequestMb ?? '-'} MB /
+                            제한량: {currentResource.memoryLimitMb ?? '-'} MB
                           </span>
                         </span>
                       </div>

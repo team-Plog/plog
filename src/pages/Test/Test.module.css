@@ -7,7 +7,7 @@
 }
 
 .content {
-  max-width: 1200px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 64px 20px 0 20px;
 }
@@ -87,11 +87,15 @@
 }
 
 .card {
-  display: flex;
+  display: grid;
   gap: var(--spacing-lg);
-  margin-top: var(--spacing-lg);
-  flex-wrap: wrap;
-  justify-content: center;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (min-width: 960px) {
+  .card {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 .chartWrap {
@@ -149,7 +153,6 @@
   display: flex;
   align-items: center;
 }
-
 
 /* 반응형 디자인 */
 @media (max-width: 768px) {
