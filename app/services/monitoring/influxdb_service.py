@@ -795,7 +795,7 @@ class InfluxDBService:
             start_str = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
             end_str = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
             
-            # CPU 사용량 쿼리 (millicores 단위)
+            # CPU 사용량 쿼리 (millicores 단위) mean vs last
             cpu_query = f'''
                 SELECT non_negative_derivative(mean("container_cpu_usage_seconds_total"), 1s) * 1000 as cpu_millicores 
                 FROM "cadvisor_metrics" 

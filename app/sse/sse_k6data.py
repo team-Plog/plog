@@ -11,6 +11,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
 
+from app.models.sqlite.models import TestHistoryModel, StageHistoryModel, ScenarioHistoryModel
 from app.services.infrastructure.server_infra_service import get_job_pods_with_service_types
 from app.services.testing.test_history_service import get_test_history_by_job_name
 from app.sse.pod_spec_cache import get_pod_spec_cache
@@ -323,6 +324,15 @@ def collect_metrics_data(db, job_name: str, include_resources: bool = True) -> D
 
     logger.info(f"scenarios length: {len(scenarios)}, scenario tags length: {len(scenario_tags)}")
 
+    duration_seconds = get_duration_seconds(test_history.tested_at)
+    total_duration_seconds = get_total_duration_seconds(test_history)
+
+    test_progress = {
+        "duration_seconds": duration_seconds,
+        "total_duration_seconds": total_duration_seconds,
+        "progress_percentage": round(duration_seconds / total_duration_seconds * 100, 2) if duration_seconds <= total_duration_seconds else 100,
+    }
+
     scenario_tag_name_map = {
         scenario.scenario_tag: scenario.name
         for scenario in scenarios
@@ -349,6 +359,7 @@ def collect_metrics_data(db, job_name: str, include_resources: bool = True) -> D
     # 2. 기본 응답 구조
     result = {
         "timestamp": datetime.now(kst).isoformat(),
+        "test_progress": test_progress,
         "overall": overall_metrics,
         "scenarios": scenario_list
     }
@@ -471,6 +482,11 @@ async def sse_k6data(
     ```json
     {
         "timestamp": "2025-09-08T12:34:56.789+09:00",
+        "test_progress": {
+            "duration_seconds": 145,
+            "total_duration_seconds": 300,
+            "progress_percentage": 48.3
+        },
         "overall": {
             "tps": 125.6,
             "vus": 50,
@@ -855,3 +871,80 @@ def cleanup_job_metrics_buffers(job_name: str) -> int:
         return pod_count
     
     return 0
+
+def parse_duration_to_seconds(duration_str: str) -> int:
+    """
+    k6 duration 문자열을 초 단위로 변환
+
+    Args:
+        duration_str: "60s", "120s", "1m", "2h", "30m" 등
+
+    Returns:
+        int: 초 단위 시간
+
+    Examples:
+        parse_duration_to_seconds("60s") -> 60
+        parse_duration_to_seconds("2m") -> 120
+        parse_duration_to_seconds("1h") -> 3600
+    """
+    if not duration_str or not isinstance(duration_str, str):
+        return 0
+
+    duration_str = duration_str.strip()
+    if not duration_str:
+        return 0
+
+    # 숫자와 단위 분리
+    import re
+    match = re.match(r'^(\d+)([smh]?)$', duration_str.lower())
+
+    if not match:
+        logger.warning(f"Invalid duration format: {duration_str}")
+        return 0
+
+    value = int(match.group(1))
+    unit = match.group(2) or 's'  # 단위가 없으면 초로 간주
+
+    # 단위별 변환
+    unit_multipliers = {
+        's': 1,      # seconds
+        'm': 60,     # minutes
+        'h': 3600    # hours
+    }
+
+    return value * unit_multipliers.get(unit, 1)
+
+
+def get_duration_seconds(tested_at: datetime) -> int :
+    now = datetime.now()
+    diff = now - tested_at
+    return int(diff.total_seconds())
+
+def get_total_duration_seconds(test_history: TestHistoryModel) -> int:
+    """
+    테스트 히스토리의 모든 시나리오 중 가장 긴 총 실행 시간을 초 단위로 계산
+
+    Args:
+        test_history: 테스트 히스토리 모델
+
+    Returns:
+        int: 최대 시나리오 실행 시간 (초)
+    """
+    scenarios: List[ScenarioHistoryModel] = test_history.scenarios
+    max_duration = 0
+
+    for scenario in scenarios:
+        stages = scenario.stages
+        total_duration = 0
+
+        # 각 시나리오의 모든 스테이지 duration 합계 계산
+        for stage in stages:
+            stage_duration = parse_duration_to_seconds(stage.duration)
+            total_duration += stage_duration
+
+        # 가장 긴 시나리오의 duration을 max_duration으로 설정
+        if total_duration > max_duration:
+            max_duration = total_duration
+
+    logger.debug(f"Calculated max scenario duration: {max_duration}s from {len(scenarios)} scenarios")
+    return max_duration
