@@ -961,9 +961,9 @@ class InfluxDBService:
         try:
             # SmartMetricsBuffer 초기화
             if metric_type == 'cpu':
-                buffer = SmartMetricsBuffer(f"{pod_name}_cpu_storage", "absolute", max_value=10000.0)
+                buffer = SmartMetricsBuffer(f"{pod_name}_cpu_storage", "percentage", max_value=100.0)
             else:  # memory
-                buffer = SmartMetricsBuffer(f"{pod_name}_memory_storage", "absolute", max_value=100000.0)
+                buffer = SmartMetricsBuffer(f"{pod_name}_memory_storage", "percentage", max_value=100.0)
             
             corrected_metrics = []
             original_count = len(metrics)

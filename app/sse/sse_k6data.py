@@ -738,8 +738,8 @@ def get_pod_resource_usage_percentage(job_name: str, pod_name: str, service_type
         
         if pod_name not in resource_metrics_buffers[job_name]:
             resource_metrics_buffers[job_name][pod_name] = {
-                'cpu': SmartMetricsBuffer(f"{pod_name}_cpu", "percentage"),
-                'memory': SmartMetricsBuffer(f"{pod_name}_memory", "percentage")
+                'cpu': SmartMetricsBuffer(f"{pod_name}_cpu", "percentage", max_value=100.0),
+                'memory': SmartMetricsBuffer(f"{pod_name}_memory", "percentage", max_value=100.0)
             }
         
         buffers = resource_metrics_buffers[job_name][pod_name]
