@@ -141,7 +141,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
         <ResponsiveContainer width="100%" height={height}>
           <AreaChart
             data={data}
-            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
           >
             <defs>
               {activeSeries.map((s) => (
