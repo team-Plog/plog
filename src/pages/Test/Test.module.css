@@ -90,6 +90,7 @@
 .resourceSection {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: center;
   width: 100%;
 }
@@ -164,6 +165,7 @@
   margin-top: 8px;
   display: flex;
   align-items: center;
+  justify-content: center;
   color: var(--system-gray2, #666);
 }
 
