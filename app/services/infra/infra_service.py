@@ -1,6 +1,7 @@
 import logging
 from typing import Dict, Any
 
+from kubernetes.client import V1Deployment
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, contains_eager
@@ -13,6 +14,7 @@ from app.models.sqlite.models import ServerInfraModel, OpenAPISpecModel, OpenAPI
 from app.schemas.infra import ConnectOpenAPIInfraRequest, UpdateServerInfraResourceUsageRequest
 from app.schemas.openapi_spec.plog_deploy_request import PlogConfigDTO
 from app.services.openapi.openapi_service import convertOpenAPISpecModelToDto, process_helm_chart
+from k8s.deploy_service import DeployService
 from k8s.pod_service import PodService
 from k8s.resource_service import ResourceService
 from k8s.service_service import ServiceService
@@ -25,6 +27,7 @@ async def build_response_get_pods_info_list(
     resource_service = ResourceService()
     pod_service = PodService()
     service_service = ServiceService()
+
 
     responses = []
     stmt = select(ServerInfraModel)
@@ -103,6 +106,7 @@ async def process_updated_server_infra_resource_usage(
         db: AsyncSession,
         request: UpdateServerInfraResourceUsageRequest
 ):
+    deploy_service = DeployService()
     resource_service = ResourceService()
     logger.info(f"Request recived {request.model_dump()}")
 
@@ -146,8 +150,28 @@ async def process_updated_server_infra_resource_usage(
     openapi_spec_version = openapi_spec.openapi_spec_versions[0]
     version_detail: OpenAPISpecVersionDetailModel = openapi_spec_version.version_detail
 
+    # Git hooks 없이 배포된 경우 version detail 자동 생성
     if not version_detail:
-        raise ApiException(FailureCode.BAD_REQUEST, "Git hooks로 배포가 되지 않은 infra에 대해 설정 기능이 제공되지 않습니다.")
+        logger.warning(f"Version detail not found for {request.group_name}, creating default detail from deployment")
+
+        try:
+            # ServerInfra의 name을 deployment 이름으로 사용
+            pod_name = first_server_infra.name
+            namespace = first_server_infra.namespace or "test"
+
+            # DeployService를 통해 version detail 생성 및 저장
+            version_detail = await create_and_save_version_detail(
+                db=db,
+                openapi_spec_version_id=openapi_spec_version.id,
+                pod_name=pod_name,
+                namespace=namespace
+            )
+
+            logger.info(f"Successfully created version detail for {request.group_name}")
+
+        except Exception as e:
+            logger.error(f"Failed to create version detail for {request.group_name}: {e}")
+            raise ApiException(FailureCode.INTERNAL_SERVER_ERROR, f"Version detail 생성에 실패했습니다: {str(e)}")
 
     # version_detail 현재 값 조회 및 변경
     current_replicas = version_detail.replicas
@@ -179,11 +203,11 @@ async def process_updated_server_infra_resource_usage(
             "replicas": current_replicas,
             "resource_usage": {
                 "cpu": {
-                    "request": current_resource_info["request"]["cpu"],
+                    "request": current_resource_info["requests"]["cpu"],
                     "limit": current_resource_info["limits"]["cpu"],
                 },
                 "memory": {
-                    "request": current_resource_info["request"]["memory"],
+                    "request": current_resource_info["requests"]["memory"],
                     "limit": current_resource_info["limits"]["memory"],
                 }
             }
@@ -192,11 +216,11 @@ async def process_updated_server_infra_resource_usage(
             "replicas": request.replicas,
             "resource_usage": {
                 "cpu": {
-                    "request": updated_resource_info["request"]["cpu"],
+                    "request": updated_resource_info["requests"]["cpu"],
                     "limit": updated_resource_info["limits"]["cpu"],
                 },
                 "memory": {
-                    "request": updated_resource_info["request"]["memory"],
+                    "request": updated_resource_info["requests"]["memory"],
                     "limit": updated_resource_info["limits"]["memory"],
                 }
             }
@@ -224,14 +248,14 @@ def update_resource_info(
     """
 
     if update_resource_info.cpu_request_millicores is None:
-        current_resource_info["request"]["cpu"] = "null"
+        current_resource_info["requests"]["cpu"] = "null"
     else:
-        current_resource_info["request"]["cpu"] = update_resource_info.cpu_request_millicores
+        current_resource_info["requests"]["cpu"] = update_resource_info.cpu_request_millicores
 
     if update_resource_info.memory_request_millicores is None:
-        current_resource_info["request"]["memory"] = "null"
+        current_resource_info["requests"]["memory"] = "null"
     else:
-        current_resource_info["request"]["memory"] = update_resource_info.memory_request_millicores
+        current_resource_info["requests"]["memory"] = update_resource_info.memory_request_millicores
 
     if update_resource_info.cpu_limit_millicores is None:
         current_resource_info["limits"]["cpu"] = "null"
@@ -244,3 +268,83 @@ def update_resource_info(
         current_resource_info["limits"]["memory"] = update_resource_info.memory_limit_millicores
 
     return current_resource_info
+
+async def create_and_save_version_detail(
+             db,
+             openapi_spec_version_id: int,
+             pod_name: str,
+             namespace: str = "test"
+):
+    """
+    Pod 이름으로부터 Deployment를 찾아서 OpenAPISpecVersionDetail을 생성하고 DB에 저장
+
+    Args:
+        db: 데이터베이스 세션
+        openapi_spec_version_id (int): OpenAPI Spec Version ID
+        pod_name (str): Pod 이름
+        namespace (str): 네임스페이스
+
+    Returns:
+        OpenAPISpecVersionDetailModel: 생성된 version detail 객체
+    """
+    deploy_service = DeployService()
+    service_service = ServiceService()
+    from app.models.sqlite.models import OpenAPISpecVersionDetailModel
+
+    # Pod에서 Deployment 이름 찾기
+    deployment_name = deploy_service.find_deployment_name_from_pod(pod_name, namespace)
+
+    if not deployment_name:
+        raise Exception(f"Could not find deployment for pod: {pod_name}")
+
+    # Deployment 정보로부터 detail 추출
+    deployment: V1Deployment = deploy_service.get_deployment_details(deployment_name, namespace)
+    deploy_dict = deployment.to_dict()
+
+    logger.info(f"Deployment dict keys: {deploy_dict.keys()}")
+    logger.info(f"Spec keys: {deploy_dict.get('spec', {}).keys()}")
+    logger.info(f"Selector: {deploy_dict.get('spec', {}).get('selector', {})}")
+
+    image_url = deploy_dict["spec"]["template"]["spec"]["containers"][0]["image"]
+    logger.info(f"Image URL: {image_url}")
+
+    repo_part, image_tag = image_url.rsplit(":", 1)
+    registry, repository = repo_part.split("/", 1)
+
+
+    # match_labels 키 확인 후 접근
+    selector = deploy_dict.get("spec", {}).get("selector", {})
+    labels = selector.get("match_labels") or selector.get("matchLabels", {})
+
+    logger.info(f"Extracted labels: {labels}")
+
+    services = service_service.get_service_by_labels(labels)
+    service = services[0]
+
+    # app_name 추출 (metadata에서)
+    app_name = deploy_dict.get("metadata", {}).get("labels", {}).get("app", deployment_name)
+
+    # replicas 추출
+    replicas = deploy_dict.get("spec", {}).get("replicas", 1)
+
+    # OpenAPISpecVersionDetail 객체 생성 (namespace 제거)
+    version_detail = OpenAPISpecVersionDetailModel(
+        openapi_spec_version_id=openapi_spec_version_id,
+        image_registry_url=registry,
+        app_name=app_name,
+        replicas=replicas,
+        node_port=service["ports"][0].get("node_port"),
+        port=service["ports"][0]["port"],
+        image_tag=image_tag,
+        git_info=None,
+        resources=deployment.spec.template.spec.containers[0].resources.to_dict() if deployment.spec.template.spec.containers[0].resources else {},
+        volumes={},  # PlogConfigDTO는 dict를 기대
+        env={env.name: env.value for env in (deployment.spec.template.spec.containers[0].env or [])},  # dict 형태로 변환
+    )
+
+    db.add(version_detail)
+    await db.commit()
+    await db.refresh(version_detail)
+
+    logger.info(f"Created version detail for deployment: {deployment_name}, version_id: {openapi_spec_version_id}")
+    return version_detail
