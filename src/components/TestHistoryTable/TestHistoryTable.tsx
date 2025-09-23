@@ -1,9 +1,10 @@
 import React, {useState} from "react";
-import {History} from "lucide-react";
+import {History, Trash2} from "lucide-react";
 import {useNavigate} from "react-router-dom";
 import {StatusBadge, type TestStatus} from "../Tag";
 import EmptyState from "../EmptyState/EmptyState";
 import styles from "./TestHistoryTable.module.css";
+import {deleteTestHistory} from "../../api";
 
 interface TestHistoryItem {
   test_history_id: number;
@@ -21,6 +22,7 @@ interface TestHistoryTableProps {
   titleText?: string;
   hideProjectTitleColumn?: boolean;
   hideEmptyState?: boolean;
+  onDeleteSuccess?: (id: number) => void;
 }
 
 const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
@@ -29,6 +31,7 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
   titleText = "최근 실행",
   hideProjectTitleColumn = false,
   hideEmptyState = false,
+  onDeleteSuccess,
 }) => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
@@ -66,10 +69,25 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
     });
   };
 
+  const handleDelete = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    if (!window.confirm("정말 삭제하시겠습니까?")) return;
+
+    try {
+      await deleteTestHistory(id);
+      alert("삭제되었습니다.");
+      window.location.reload();
+    } catch (err) {
+      console.error("삭제 실패:", err);
+      alert("삭제에 실패했습니다.");
+    }
+  };
+
   return (
     <div className={styles.recentRunning}>
       {/* 테스트 이력이 없고 hideEmptyState가 true인 경우 아무것도 표시하지 않음 */}
-      {testHistory.length === 0 && hideEmptyState ? null : testHistory.length === 0 ? (
+      {testHistory.length === 0 &&
+      hideEmptyState ? null : testHistory.length === 0 ? (
         <div className={styles.emptyStateContainer}>
           <EmptyState type="test" />
         </div>
@@ -103,7 +121,9 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
                   status={mapTestStatusToStatusBadge(item.test_status)}
                 />
               </div>
-              <div className={`Body ${styles.tableCell}`}>{item.test_title}</div>
+              <div className={`Body ${styles.tableCell}`}>
+                {item.test_title}
+              </div>
               {!hideProjectTitleColumn && (
                 <div className={`Body ${styles.tableCell}`}>
                   {item.project_title}
@@ -119,6 +139,13 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
                   second: "2-digit",
                   hour12: false,
                 })}
+              </div>
+              <div className={`Body ${styles.tableCell}`}>
+                <button
+                  className={styles.deleteButton}
+                  onClick={(e) => handleDelete(e, item.test_history_id)}>
+                  <Trash2 size={16} />
+                </button>
               </div>
             </div>
           ))}

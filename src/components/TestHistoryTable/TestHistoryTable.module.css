@@ -45,7 +45,7 @@
 /* 테이블 레이아웃 */
 .tableHeader {
   display: grid;
-  grid-template-columns: 120px 1fr 1fr 200px;
+  grid-template-columns: 120px 1fr 1fr 200px 60px;
   gap: var(--spacing-md);
   margin-top: var(--spacing-lg);
   padding: var(--spacing-md);
@@ -61,7 +61,7 @@
 
 .tableRow {
   display: grid;
-  grid-template-columns: 120px 1fr 1fr 200px;
+  grid-template-columns: 120px 1fr 1fr 200px 60px;
   gap: var(--spacing-md);
   padding: var(--spacing-md);
   border-bottom: 1px solid var(--color-border-primary);
@@ -114,6 +114,12 @@
 .active {
   background-color: var(--color-primary);
   font-weight: bold;
+}
+
+.deleteButton {
+  border: none;
+  background-color: transparent;
+  color: var(--color-black);
 }
 
 /* 반응형 디자인 - TestHistoryTable 전용 */
