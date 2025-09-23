@@ -111,8 +111,8 @@ async def process_updated_server_infra_resource_usage(
         select(ServerInfraModel)
         .join(ServerInfraModel.openapi_spec)
         .join(OpenAPISpecModel.openapi_spec_versions)
-        .join(OpenAPISpecVersionModel.version_detail)
-        .filter(OpenAPISpecVersionModel.is_activate == 1)
+        .outerjoin(OpenAPISpecVersionModel.version_detail)
+        .filter(OpenAPISpecVersionModel.is_activate == True)
         .options(
             contains_eager(ServerInfraModel.openapi_spec)
             .contains_eager(OpenAPISpecModel.openapi_spec_versions)
@@ -124,14 +124,30 @@ async def process_updated_server_infra_resource_usage(
     result = await db.execute(stmt)
     server_infras = result.scalars()
 
-    if not server_infras:
-        raise ApiException(FailureCode.NOT_FOUND_DATA, "Not Found Server Infra")
-
     first_server_infra = server_infras.first()
+    logger.info(f"first_server_infra: {first_server_infra}")
+
+    if not first_server_infra:
+        # JOIN 쿼리 실패시 단순 조회로 fallback
+        logger.warning(f"JOIN query failed for group_name: {request.group_name}, trying simple query")
+        simple_stmt = select(ServerInfraModel).where(ServerInfraModel.group_name == request.group_name)
+        simple_result = await db.execute(simple_stmt)
+        simple_infras = simple_result.scalars().all()
+        logger.info(f"Simple query result count: {len(simple_infras)}")
+        if simple_infras:
+            logger.info(f"Simple query first item openapi_spec_id: {simple_infras[0].openapi_spec_id}")
+
+        raise ApiException(FailureCode.NOT_FOUND_DATA, f"Not Found Server Infra with active OpenAPI spec for group: {request.group_name}")
+
+    if not first_server_infra.openapi_spec:
+        raise ApiException(FailureCode.NOT_FOUND_DATA, f"OpenAPI Spec not connected to server infra group: {request.group_name}")
 
     openapi_spec = first_server_infra.openapi_spec
     openapi_spec_version = openapi_spec.openapi_spec_versions[0]
     version_detail: OpenAPISpecVersionDetailModel = openapi_spec_version.version_detail
+
+    if not version_detail:
+        raise ApiException(FailureCode.BAD_REQUEST, "Git hooks로 배포가 되지 않은 infra에 대해 설정 기능이 제공되지 않습니다.")
 
     # version_detail 현재 값 조회 및 변경
     current_replicas = version_detail.replicas
