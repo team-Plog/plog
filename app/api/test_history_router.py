@@ -13,7 +13,7 @@ from app.services.testing.test_history_service import (
     get_test_histories_by_project_id,
     build_test_history_detail_response,
     build_test_history_timeseries_response,
-    build_test_history_resources_summary_response, build_test_history_timeseries_resources_response
+    build_test_history_resources_summary_response, build_test_history_timeseries_resources_response, delete_test_history
 )
 from app.schemas.test_history.test_history_response import TestHistoryResponse
 from app.schemas.test_history.test_history_simple_response import TestHistorySimpleResponse
@@ -425,6 +425,21 @@ async def get_test_history_resources(
         raise HTTPException(status_code=404, detail="Timeseries data not found")
 
     return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, response_data)
+
+
+@router.delete(
+    path="/{test_history_id}",
+    summary="테스트 기록 삭제 API",
+    description="입력한 test_history_id와 일치하는 TestHistory를 제거한다."
+)
+async def delete_test_history_resources(
+        test_history_id: int,
+        db: AsyncSession = Depends(get_async_db)
+):
+    await delete_test_history(db, test_history_id)
+
+    return ResponseTemplate.success(SuccessCode.SUCCESS_CODE, None)
+
 
 @router.get(
     path="/{test_history_id}/resource/summary",

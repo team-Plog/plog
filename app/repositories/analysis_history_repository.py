@@ -55,7 +55,6 @@ class AnalysisHistoryRepository(BaseRepository[AnalysisHistoryModel, Dict[str, A
 
         analysis_record = AnalysisHistoryModel(
             primary_test_id=current_test_id,
-            comparison_test_id=previous_test_id,
             analysis_category="comparison",
             analysis_type="comparison",
             analysis_result={
@@ -87,8 +86,7 @@ class AnalysisHistoryRepository(BaseRepository[AnalysisHistoryModel, Dict[str, A
         """테스트의 모든 분석 이력 조회 (주 테스트 + 비교 대상으로 사용된 것들)"""
 
         stmt = select(AnalysisHistoryModel).where(
-            (AnalysisHistoryModel.primary_test_id == test_history_id) |
-            (AnalysisHistoryModel.comparison_test_id == test_history_id)
+            (AnalysisHistoryModel.primary_test_id == test_history_id)
         ).order_by(desc(AnalysisHistoryModel.analyzed_at)).limit(limit)
 
         result = await db.execute(stmt)
