@@ -202,9 +202,16 @@ useEffect(() => {
   };
 
   const getEditableText = (key: string, defaultText: string) => {
-    return (
-      reportConfig.editableTexts?.[key] || editableTexts?.[key] || defaultText
-    );
+  // reportConfig.editableTexts에 키가 존재하는지 먼저 확인
+    if (reportConfig.editableTexts && key in reportConfig.editableTexts) {
+      return reportConfig.editableTexts[key];
+    }
+    // editableTexts에 키가 존재하는지 확인
+    if (editableTexts && key in editableTexts) {
+      return editableTexts[key];
+    }
+    // 둘 다 없으면 기본값 반환
+    return defaultText;
   };
 
   const renderEditableBlock = (opts: {
@@ -224,13 +231,26 @@ useEffect(() => {
           placeholder="내용을 입력하세요"
           multiline
           showClearButton={true}
+          onClear={() => {
+            // 빈 문자열로 명시적 설정
+            onEditText?.(keyName, "");
+          }}
           className={className}
         />
       );
     }
 
+    // 편집 모드일 때 클릭 가능한 텍스트에 적절한 스타일 적용
+    const editableClassName = isEditing 
+      ? `${className} ${styles.editableText}` 
+      : className;
+
     return (
-      <div className={className} onClick={() => onTextSelect?.(keyName, value)}>
+      <div 
+        className={editableClassName} 
+        onClick={() => handleTextClick(keyName, value)}
+        style={{ cursor: isEditing ? 'pointer' : 'default' }}
+      >
         {value}
       </div>
     );
