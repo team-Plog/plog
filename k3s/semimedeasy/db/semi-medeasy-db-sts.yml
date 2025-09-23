@@ -5,6 +5,7 @@ metadata:
   name: semi-medeasy-db-sts
   namespace: test
 
+# statuefulset의 경우 테스트 서버와 동시 실행 주의 - 자원 사용량 정보 중복 저장 문제 발생
 spec:
   serviceName: "semi-medeasy-db-svc-headless"
   selector:
