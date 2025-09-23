@@ -4,9 +4,12 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 
 from fastapi import HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, joinedload
 
+from app.common.exception.api_exception import ApiException
+from app.common.response.code import FailureCode
 from app.dependencies import (get_scenario_history_repository,
                               get_test_resource_timeseries_repository,
                               get_test_history_repository, get_resource_response_builder)
@@ -1011,3 +1014,16 @@ async def build_test_history_resources_summary_response(
     response_builder = get_resource_response_builder("summary")
     response = await response_builder.build_response(db, test_history_id)
     return response
+
+async def delete_test_history(
+        db: AsyncSession,
+        test_history_id: int
+):
+    stmt = select(TestHistoryModel).where(TestHistoryModel.id == test_history_id)
+    test_history = await db.scalar(stmt)
+
+    if not test_history:
+        raise ApiException(FailureCode.NOT_FOUND_DATA, "not found test history for delete")
+
+    await db.delete(test_history)
+    await db.commit()
