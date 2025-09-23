@@ -298,6 +298,32 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
+  const buildDefaultParameters = (endpoint: any) => {
+    if (!endpoint?.parameters) return [];
+
+    return endpoint.parameters.map((p: any) => {
+      let defaultValue = "";
+
+      if (p.param_type === "requestBody") {
+        defaultValue = getDefaultRequestBodyFromEndpoint(endpoint);
+      } else {
+        if (p.example !== undefined && p.example !== null) {
+          defaultValue = Array.isArray(p.example)
+            ? JSON.stringify(p.example)
+            : String(p.example);
+        } else if (p.value !== null) {
+          defaultValue = String(p.value);
+        }
+      }
+
+      return {
+        name: p.name,
+        param_type: p.param_type,
+        value: defaultValue,
+      };
+    });
+  };
+
   const buildDefaultFromSchema = (schema: any): any => {
     if (!schema) return null;
 
@@ -496,9 +522,7 @@ const ProjectDetail: React.FC = () => {
       think_time: 1,
       executor: "constant-vus",
       stages: [{duration: "10s", target: 10}],
-      parameters: needsBody
-        ? [{name: "requestBody", param_type: "requestBody", value: defaultBody}]
-        : [],
+      parameters: buildDefaultParameters(endpointObj),
       headers: [{header_key: "", header_value: ""}],
     };
     setApiTestConfigs((prev) => [...prev, newConfig]);
@@ -602,9 +626,7 @@ const ProjectDetail: React.FC = () => {
       think_time: 1,
       executor: "constant-vus",
       stages: [{duration: "10s", target: 10}],
-      parameters: needsBody
-        ? [{name: "requestBody", param_type: "requestBody", value: defaultBody}]
-        : [],
+      parameters: buildDefaultParameters(endpointObj),
       headers: [{header_key: "", header_value: ""}],
     };
     setApiTestConfigs((prev) => [...prev, newConfig]);
