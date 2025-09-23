@@ -86,10 +86,35 @@
   flex-shrink: 0;
 }
 
+.scenarioSection,
+.resourceSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.resourceSection {
+  margin-top: var(--spacing-xl);
+}
+
+.scenarioHeader {
+  margin-bottom: var(--spacing-lg);
+}
+
+.scenarioBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
 .card {
   display: grid;
   gap: var(--spacing-lg);
   grid-template-columns: repeat(2, 1fr);
+  width: 100%;
+  max-width: 960px; 
 }
 
 @media (min-width: 960px) {
@@ -106,14 +131,8 @@
   margin-top: 32px;
   padding-top: 32px;
   padding-bottom: 32px;
-}
-
-.resourceSpecs {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  color: var(--system-gray2, #666);
+  width: 100%;
+  max-width: 960px;
 }
 
 .carouselControls {
@@ -141,17 +160,11 @@
   cursor: pointer;
 }
 
-.resourceSection {
-  margin-top: var(--spacing-xl);
-}
-
-.scenarioHeader {
-  margin-bottom: var(--spacing-lg);
-}
-
 .resourceSpecs {
+  margin-top: 8px;
   display: flex;
   align-items: center;
+  color: var(--system-gray2, #666);
 }
 
 /* 반응형 디자인 */
@@ -159,10 +172,15 @@
   .content {
     padding: 32px 16px 0 16px;
   }
-
+  
   .headerInner {
     flex-direction: column;
     gap: 16px;
     align-items: stretch;
+  }
+  
+  .card,
+  .chartWrap {
+    max-width: 100%;
   }
 }
