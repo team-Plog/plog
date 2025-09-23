@@ -61,6 +61,7 @@ class TestHistoryModel(Base):
 
     scenarios = relationship("ScenarioHistoryModel", back_populates="test_history", cascade="all, delete-orphan")
     test_metrics = relationship("TestMetricsTimeseriesModel", back_populates="test_history", cascade="all, delete-orphan")
+    analysis_histories = relationship("AnalysisHistoryModel", back_populates="primary_test", cascade="all, delete-orphan")
 
 
 class ScenarioHistoryModel(Base):
@@ -207,9 +208,6 @@ class AnalysisHistoryModel(Base):
     analysis_category = Column(String(50), nullable=False)  # 'single', 'comparison', 'comprehensive'
     analysis_type = Column(String(50), nullable=False)  # 'tps', 'response_time', 'resource_usage', etc.
 
-    # 비교 분석용 (comparison일 때만 사용)
-    comparison_test_id = Column(Integer, ForeignKey("test_history.id"), nullable=True)
-
     # 분석 결과 (JSON으로 유연하게 저장)
     analysis_result = Column(JSON, nullable=False)
 
@@ -221,6 +219,5 @@ class AnalysisHistoryModel(Base):
     analyzed_at = Column(DateTime, default=now_kst, nullable=False)
     created_at = Column(DateTime, default=now_kst, nullable=False)
 
-    # 관계 설정
-    primary_test = relationship("TestHistoryModel", foreign_keys=[primary_test_id], backref="primary_analyses")
-    comparison_test = relationship("TestHistoryModel", foreign_keys=[comparison_test_id], backref="comparison_analyses")
+    # 관계 설정 (many-to-one에서는 cascade delete-orphan 제거)
+    primary_test = relationship("TestHistoryModel", foreign_keys=[primary_test_id], back_populates="analysis_histories")
