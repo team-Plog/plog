@@ -9,6 +9,7 @@ import {
   getAnalysisHistory,
 } from "../../api";
 import {InputField} from "../Input";
+import Logo from "../../assets/images/logo.svg?react";
 
 interface ReportViewerProps {
   reportData: TestData;
@@ -201,9 +202,16 @@ useEffect(() => {
   };
 
   const getEditableText = (key: string, defaultText: string) => {
-    return (
-      reportConfig.editableTexts?.[key] || editableTexts?.[key] || defaultText
-    );
+  // reportConfig.editableTexts에 키가 존재하는지 먼저 확인
+    if (reportConfig.editableTexts && key in reportConfig.editableTexts) {
+      return reportConfig.editableTexts[key];
+    }
+    // editableTexts에 키가 존재하는지 확인
+    if (editableTexts && key in editableTexts) {
+      return editableTexts[key];
+    }
+    // 둘 다 없으면 기본값 반환
+    return defaultText;
   };
 
   const renderEditableBlock = (opts: {
@@ -223,13 +231,26 @@ useEffect(() => {
           placeholder="내용을 입력하세요"
           multiline
           showClearButton={true}
+          onClear={() => {
+            // 빈 문자열로 명시적 설정
+            onEditText?.(keyName, "");
+          }}
           className={className}
         />
       );
     }
 
+    // 편집 모드일 때 클릭 가능한 텍스트에 적절한 스타일 적용
+    const editableClassName = isEditing 
+      ? `${className} ${styles.editableText}` 
+      : className;
+
     return (
-      <div className={className} onClick={() => onTextSelect?.(keyName, value)}>
+      <div 
+        className={editableClassName} 
+        onClick={() => handleTextClick(keyName, value)}
+        style={{ cursor: isEditing ? 'pointer' : 'default' }}
+      >
         {value}
       </div>
     );
@@ -370,37 +391,22 @@ useEffect(() => {
             <div className={`${styles.reportDate} Body`}>
               작성일: {formatDateOnly(new Date().toISOString())}
             </div>
-            <div className={`${styles.reportLogo} HeadingS`}>● Plog</div>
+            <div className={styles.reportLogo}>
+              <Logo className={styles.logoIcon} />
+            </div>
           </div>
         </div>
 
-        {reportConfig.includeExecutiveSummary && (
-          <div className={styles.section}>
-            <div className={`${styles.sectionTitle} HeadingS`}>
-              1. 요약 정보
-            </div>
-            <div className={styles.sectionContent}>
-              {renderEditableBlock({
-                keyName: "executiveSummary",
-                defaultText:
-                  reportConfig.customDescription ||
-                  reportData.description ||
-                  "테스트 설명이 제공되지 않았습니다.",
-                className: `${styles.contentText} Body`,
-              })}
-            </div>
-          </div>
-        )}
-
         <div className={styles.section}>
           <div className={`${styles.sectionTitle} HeadingS`}>
-            2. 테스트 대상 소개
+            1. 테스트 대상 소개
           </div>
           <div className={styles.sectionContent}>
             {renderEditableBlock({
               keyName: "testTarget",
               defaultText:
-                "웹 기반의 CRM 솔루션으로 전신은 Centric-CRM 이며, 공식적으로 데이터베이스는 PostgreSQL 8.x를사용하고, 애플리케이션 서버로는 Apache Tomcat6.0을 사용함",
+                reportData.description ||
+                "테스트 대상에 대한 설명이 제공되지 않았습니다.",
               className: `${styles.contentText} Body`,
             })}
           </div>
@@ -408,7 +414,7 @@ useEffect(() => {
 
         <div className={styles.section}>
           <div className={`${styles.sectionTitle} HeadingS`}>
-            3. 비 기능 테스트 시나리오
+            2. 비 기능 테스트 시나리오
           </div>
           <div className={styles.sectionContent}>
             <div className={styles.subTitleGroup}>
@@ -424,7 +430,7 @@ useEffect(() => {
                           )
                           .join(", ")} 동시 호출 기준으로 테스트`
                       : "테스트 시나리오 정보를 확인할 수 없습니다.",
-                    `가상사용자 : 고정 사용자 수 ${
+                    `가상사용자 : 사용자 수 ${
                       reportData.overall?.vus?.max
                         ? `${reportData.overall.vus.max}명`
                         : "정보 없음"
@@ -458,39 +464,7 @@ useEffect(() => {
 
             <div className={styles.tableContainer}>
               <div className={`${styles.tableTitle} CaptionLight`}>
-                표 3-1. 비기능 테스트 시나리오
-              </div>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>테스트 시나리오</th>
-                    <th>결과</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.scenarios && reportData.scenarios.length > 0 ? (
-                    reportData.scenarios.map((scenario, index) => (
-                      <tr key={index}>
-                        <td>{scenario.name}</td>
-                        <td>
-                          {scenario.endpoint.description ||
-                            scenario.endpoint.summary}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td>데이터 없음</td>
-                      <td>정보 없음</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className={styles.tableContainer}>
-              <div className={`${styles.tableTitle} CaptionLight`}>
-                표 3-2. 비기능 테스트 목표
+                표 3-1. 비기능 테스트 목표
               </div>
               <table className={styles.table}>
                 <thead>
@@ -527,7 +501,7 @@ useEffect(() => {
 
         <div className={styles.section}>
           <div className={`${styles.sectionTitle} HeadingS`}>
-            4. 비 기능 테스트 수행 결과
+            3. 비 기능 테스트 수행 결과
           </div>
           <div className={styles.sectionContent}>
             <div className={styles.subTitleGroup}>

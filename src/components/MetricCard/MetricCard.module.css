@@ -7,7 +7,6 @@
   border-radius: var(--radius-md);
   cursor: pointer;
   width: 100%;
-  max-width: 213px;
   box-sizing: border-box;
 }
 

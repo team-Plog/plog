@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from "react";
+import React, { useMemo, useState } from 'react';
 import {
   AreaChart,
   Area,
@@ -8,16 +8,17 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
-} from "recharts";
-import styles from "./MetricChart.module.css";
-import "../../assets/styles/typography.css";
+} from 'recharts';
+import styles from './MetricChart.module.css';
+import '../../assets/styles/typography.css';
+import CustomTooltip from './CustomTooltip';
 
 interface CombinedSeries {
   key: string;
   name: string;
   color: string;
   unit?: string;
-  yAxis?: "left" | "right";
+  yAxis?: 'left' | 'right';
 }
 
 interface MetricChartProps {
@@ -36,7 +37,7 @@ interface MetricChartProps {
 // Y축 값 포맷팅 함수
 const formatYAxisValue = (value: number): string => {
   // 값이 0이면 그대로 반환
-  if (value === 0) return "0";
+  if (value === 0) return '0';
 
   // 절대값이 1000 이상이면 정수로 표시
   if (Math.abs(value) >= 1000) {
@@ -62,7 +63,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
   hideTitle = false,
   hideControls = false,
   showLegend = true,
-  extraInfo
+  extraInfo,
 }) => {
   const multiMode = !!(combinedSeries && combinedSeries.length > 0);
 
@@ -73,13 +74,13 @@ const MetricChart: React.FC<MetricChartProps> = ({
   const hasRightAxis = useMemo(
     () =>
       (combinedSeries ?? []).some(
-        (s) => (s.yAxis ?? "left") === "right" && visible[s.key]
+        (s) => (s.yAxis ?? 'left') === 'right' && visible[s.key]
       ),
     [combinedSeries, visible]
   );
 
   const toggle = (key: string) =>
-    setVisible((prev) => ({...prev, [key]: !prev[key]}));
+    setVisible((prev) => ({ ...prev, [key]: !prev[key] }));
 
   if (multiMode) {
     const activeSeries = (combinedSeries ?? []).filter((s) => visible[s.key]);
@@ -87,17 +88,17 @@ const MetricChart: React.FC<MetricChartProps> = ({
     // Y축 색상을 동적으로 찾기
     const yAxisColors = useMemo(() => {
       const leftActive = activeSeries.find(
-        (s) => (s.yAxis ?? "left") === "left"
+        (s) => (s.yAxis ?? 'left') === 'left'
       )?.color;
-      const rightActive = activeSeries.find((s) => s.yAxis === "right")?.color;
+      const rightActive = activeSeries.find((s) => s.yAxis === 'right')?.color;
 
       // 활성 시리즈가 없을 때를 위한 폴백(전체 정의 중 첫 번째)
       const leftFallback =
-        (combinedSeries ?? []).find((s) => (s.yAxis ?? "left") === "left")
-          ?.color || "#8884d8";
+        (combinedSeries ?? []).find((s) => (s.yAxis ?? 'left') === 'left')
+          ?.color || '#8884d8';
       const rightFallback =
-        (combinedSeries ?? []).find((s) => s.yAxis === "right")?.color ||
-        "#82ca9d";
+        (combinedSeries ?? []).find((s) => s.yAxis === 'right')?.color ||
+        '#82ca9d';
 
       return {
         left: leftActive ?? leftFallback,
@@ -117,7 +118,8 @@ const MetricChart: React.FC<MetricChartProps> = ({
                 <label
                   key={s.key}
                   className={`${styles.toggleSwitch} CaptionLight`}
-                  title={isOn ? "숨기기" : "보이기"}>
+                  title={isOn ? '숨기기' : '보이기'}
+                >
                   <input
                     type="checkbox"
                     checked={isOn}
@@ -125,7 +127,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
                   />
                   <span
                     className={styles.slider}
-                    style={{backgroundColor: isOn ? s.color : "#ccc"}}
+                    style={{ backgroundColor: isOn ? s.color : '#ccc' }}
                   />
                   <span className={`${styles.toggleLabel} CaptionLight`}>
                     {s.name}
@@ -139,7 +141,8 @@ const MetricChart: React.FC<MetricChartProps> = ({
         <ResponsiveContainer width="100%" height={height}>
           <AreaChart
             data={data}
-            margin={{top: 5, right: 30, left: 20, bottom: 5}}>
+            margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
+          >
             <defs>
               {activeSeries.map((s) => (
                 <linearGradient
@@ -148,7 +151,8 @@ const MetricChart: React.FC<MetricChartProps> = ({
                   x1="0"
                   y1="0"
                   x2="0"
-                  y2="1">
+                  y2="1"
+                >
                   <stop offset="0%" stopColor={s.color} stopOpacity={0.8} />
                   <stop offset="100%" stopColor={s.color} stopOpacity={0.1} />
                 </linearGradient>
@@ -160,7 +164,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
             <YAxis
               yAxisId="left"
               stroke={yAxisColors.left}
-              tick={{fill: yAxisColors.left, fontSize: 12}}
+              tick={{ fill: yAxisColors.left, fontSize: 12 }}
               domain={[0, (dataMax: number) => dataMax * 1.2]}
               tickFormatter={formatYAxisValue}
             />
@@ -169,20 +173,21 @@ const MetricChart: React.FC<MetricChartProps> = ({
                 yAxisId="right"
                 orientation="right"
                 stroke={yAxisColors.right}
-                tick={{fill: yAxisColors.right, fontSize: 12}}
+                tick={{ fill: yAxisColors.right, fontSize: 12 }}
                 domain={[0, (dataMax: number) => dataMax * 1.2]}
                 tickFormatter={formatYAxisValue}
               />
             )}
 
             <Tooltip
+              content={<CustomTooltip />}
               formatter={(value: any, name: any, props: any) => {
                 const ser = (combinedSeries ?? []).find(
                   (s) => s.key === props.dataKey
                 );
-                const unit = ser?.unit ? ` ${ser.unit}` : "";
+                const unit = ser?.unit ? ` ${ser.unit}` : '';
                 const v =
-                  typeof value === "number" ? value.toLocaleString() : value;
+                  typeof value === 'number' ? value.toLocaleString() : value;
                 return [`${v}${unit}`, ser?.name ?? name];
               }}
             />
@@ -192,7 +197,10 @@ const MetricChart: React.FC<MetricChartProps> = ({
                 content={() => (
                   <div className={styles.legend}>
                     {combinedSeries?.map((s) => (
-                      <span key={s.key} style={{color: s.color, fontSize: 12}}>
+                      <span
+                        key={s.key}
+                        style={{ color: s.color, fontSize: 12 }}
+                      >
                         ■ {s.name}
                       </span>
                     ))}
@@ -207,7 +215,7 @@ const MetricChart: React.FC<MetricChartProps> = ({
                 type="monotone"
                 dataKey={s.key}
                 name={s.name}
-                yAxisId={s.yAxis ?? "left"}
+                yAxisId={s.yAxis ?? 'left'}
                 stroke={s.color}
                 strokeWidth={2}
                 fill={`url(#gradient-${s.key})`}
@@ -224,7 +232,9 @@ const MetricChart: React.FC<MetricChartProps> = ({
           </div>
         )}
 
-        {extraInfo && <div className={`${styles.extraInfo} Body`}>{extraInfo}</div>}
+        {extraInfo && (
+          <div className={`${styles.extraInfo} Body`}>{extraInfo}</div>
+        )}
       </div>
     );
   }

@@ -20,7 +20,7 @@ import {InputWithIcon, InputField} from "../../components/Input";
 import ToggleButton from "../../components/Button/ToggleButton";
 import HttpMethodTag from "../../components/Tag/HttpMethodTag";
 import SelectDropdown from "../../components/Dropdown/SelectDropdown";
-import { type HttpMethod } from "../../components/Tag/types";
+import {type HttpMethod} from "../../components/Tag/types";
 import styles from "./ApiTestConfigCard.module.css";
 
 interface Stage {
@@ -71,19 +71,19 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
 
   // 헤더 키 옵션들
   const headerKeyOptions = [
-    { value: "Authorization", label: "Authorization" },
-    { value: "Content-Type", label: "Content-Type" },
-    { value: "Accept", label: "Accept" },
-    { value: "User-Agent", label: "User-Agent" },
-    { value: "Host", label: "Host" },
-    { value: "Cache-Control", label: "Cache-Control" },
-    { value: "Connection", label: "Connection" },
-    { value: "X-Request-Id", label: "X-Request-Id" },
-    { value: "X-Correlation-Id", label: "X-Correlation-Id" },
-    { value: "X-API-Key", label: "X-API-Key" },
-    { value: "X-Forwarded-For", label: "X-Forwarded-For" },
-    { value: "X-Forwarded-Proto", label: "X-Forwarded-Proto" },
-    { value: "X-Real-IP", label: "X-Real-IP" },
+    {value: "Authorization", label: "Authorization"},
+    {value: "Content-Type", label: "Content-Type"},
+    {value: "Accept", label: "Accept"},
+    {value: "User-Agent", label: "User-Agent"},
+    {value: "Host", label: "Host"},
+    {value: "Cache-Control", label: "Cache-Control"},
+    {value: "Connection", label: "Connection"},
+    {value: "X-Request-Id", label: "X-Request-Id"},
+    {value: "X-Correlation-Id", label: "X-Correlation-Id"},
+    {value: "X-API-Key", label: "X-API-Key"},
+    {value: "X-Forwarded-For", label: "X-Forwarded-For"},
+    {value: "X-Forwarded-Proto", label: "X-Forwarded-Proto"},
+    {value: "X-Real-IP", label: "X-Real-IP"},
   ];
 
   // 초기 데이터 설정 - 메서드별 필요한 필드들 초기화
@@ -94,10 +94,40 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
     let shouldUpdate = false;
     const updates: Partial<ApiTestConfig> = {};
 
-    // 헤더 초기화 - 모든 메서드에 기본 헤더 하나 추가
+    // 헤더 초기화 - 시연용 기본값 설정 (Authorization: Bearer 12345)
     const headers = config.headers || [];
     if (headers.length === 0) {
-      updates.headers = [{header_key: "", header_value: ""}];
+      updates.headers = [{header_key: "Authorization", header_value: "Bearer 12345"}];
+      shouldUpdate = true;
+    }
+
+    // 시연용 기본값 설정
+    if (config.think_time === 0 || config.think_time === undefined) {
+      updates.think_time = 1;
+      shouldUpdate = true;
+    }
+
+    if (!config.response_time_target) {
+      updates.response_time_target = 1000;
+      shouldUpdate = true;
+    }
+
+    if (config.error_rate_target === undefined) {
+      updates.error_rate_target = 0;
+      shouldUpdate = true;
+    }
+
+    if (!config.executor) {
+      updates.executor = "constant-vus";
+      shouldUpdate = true;
+    }
+
+    if (!config.stages || config.stages.length === 0) {
+      updates.stages = [{duration: "60s", target: 400}];
+      shouldUpdate = true;
+    } else if (config.stages.length === 1 && (config.stages[0].duration === "10s" && config.stages[0].target === 10)) {
+      // 기존 기본값을 시연용 값으로 교체
+      updates.stages = [{duration: "60s", target: 400}];
       shouldUpdate = true;
     }
 
@@ -166,7 +196,7 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
   };
 
   const addStage = () => {
-    const newStages = [...config.stages, {duration: "10s", target: 10}];
+    const newStages = [...config.stages, {duration: "60s", target: 400}];
     updateConfig({stages: newStages});
   };
 
@@ -242,10 +272,7 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
               type="button"
               onClick={() =>
                 updateConfig({
-                  headers: [
-                    ...headers,
-                    {header_key: "", header_value: ""},
-                  ],
+                  headers: [...headers, {header_key: "", header_value: ""}],
                 })
               }
               className={styles.addButton}>
@@ -332,39 +359,28 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
               <span className={`${styles.configLabel} CaptionBold`}>
                 쿼리 파라미터
               </span>
-              <div className={styles.parameterRow}>
-                <InputWithIcon
-                  icon={<Key />}
-                  value={
-                    parameters.find((p) => p.param_type === "query")?.name || ""
-                  }
-                  onChange={(value) => {
-                    const index = parameters.findIndex(
-                      (p) => p.param_type === "query"
-                    );
-                    if (index >= 0) {
-                      updateParameter(index, "name", value);
-                    }
-                  }}
-                  placeholder="Param"
-                />
-                <InputWithIcon
-                  icon={<ChartColumn />}
-                  value={
-                    parameters.find((p) => p.param_type === "query")?.value ||
-                    ""
-                  }
-                  onChange={(value) => {
-                    const index = parameters.findIndex(
-                      (p) => p.param_type === "query"
-                    );
-                    if (index >= 0) {
-                      updateParameter(index, "value", value);
-                    }
-                  }}
-                  placeholder="Value"
-                />
-              </div>
+              {parameters
+                .filter((p) => p.param_type === "query")
+                .map((param, index) => (
+                  <div key={index} className={styles.parameterRow}>
+                    <InputWithIcon
+                      icon={<Key />}
+                      value={param.name}
+                      onChange={(value) =>
+                        updateParameter(index, "name", value)
+                      }
+                      placeholder="Param"
+                    />
+                    <InputWithIcon
+                      icon={<ChartColumn />}
+                      value={param.value}
+                      onChange={(value) =>
+                        updateParameter(index, "value", value)
+                      }
+                      placeholder="Value"
+                    />
+                  </div>
+                ))}
             </div>
           </>
         )}
@@ -628,7 +644,9 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
           type="button">
           <div className={styles.toggleLeft}>
             <Play className={styles.toggleIcon} />
-            <span className={`${styles.toggleTitle} TitleS`}>실행 파라미터</span>
+            <span className={`${styles.toggleTitle} TitleS`}>
+              실행 파라미터
+            </span>
           </div>
           {isExecutionConfigOpen ? (
             <ChevronUp className={styles.chevronIcon} />

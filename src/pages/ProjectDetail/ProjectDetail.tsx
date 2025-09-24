@@ -65,9 +65,10 @@ const ProjectDetail: React.FC = () => {
   const projectId = location.state?.projectId;
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [openApiSpecs, setOpenApiSpecs] = useState<OpenApiSpec[]>([]);
-  const [scenarioTitle, setScenarioTitle] = useState("");
-  const [scenarioDescription, setScenarioDescription] = useState("");
-  const [targetTps, setTargetTps] = useState("");
+  // 시연용 기본값 설정
+  const [scenarioTitle, setScenarioTitle] = useState("복약 관리 애플리케이션 medeasy api 테스트");
+  const [scenarioDescription, setScenarioDescription] = useState("복약 관리 애플리케이션 medeasy의 api 서버 성능을 테스트한다.");
+  const [targetTps, setTargetTps] = useState("500");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [apiTestConfigs, setApiTestConfigs] = useState<ApiTestConfig[]>([]);
@@ -101,9 +102,9 @@ const ProjectDetail: React.FC = () => {
       const savedData = localStorage.getItem(key);
       if (savedData) {
         const parsedData: TempSaveData = JSON.parse(savedData);
-        setScenarioTitle(parsedData.scenarioTitle || "");
-        setScenarioDescription(parsedData.scenarioDescription || "");
-        setTargetTps(parsedData.targetTps || "");
+        setScenarioTitle(parsedData.scenarioTitle || "복약 관리 애플리케이션 medeasy api 테스트");
+        setScenarioDescription(parsedData.scenarioDescription || "복약 관리 애플리케이션 medeasy의 api 서버 성능을 테스트한다.");
+        setTargetTps(parsedData.targetTps || "500");
         setApiTestConfigs(parsedData.apiTestConfigs || []);
         console.log("✅ 임시 저장된 데이터 복원 완료:", parsedData);
         return true;
@@ -298,6 +299,32 @@ const ProjectDetail: React.FC = () => {
     }
   };
 
+  const buildDefaultParameters = (endpoint: any) => {
+    if (!endpoint?.parameters) return [];
+
+    return endpoint.parameters.map((p: any) => {
+      let defaultValue = "";
+
+      if (p.param_type === "requestBody") {
+        defaultValue = getDefaultRequestBodyFromEndpoint(endpoint);
+      } else {
+        if (p.example !== undefined && p.example !== null) {
+          defaultValue = Array.isArray(p.example)
+            ? JSON.stringify(p.example)
+            : String(p.example);
+        } else if (p.value !== null) {
+          defaultValue = String(p.value);
+        }
+      }
+
+      return {
+        name: p.name,
+        param_type: p.param_type,
+        value: defaultValue,
+      };
+    });
+  };
+
   const buildDefaultFromSchema = (schema: any): any => {
     if (!schema) return null;
 
@@ -485,21 +512,23 @@ const ProjectDetail: React.FC = () => {
       ? getDefaultRequestBodyFromEndpoint(endpointObj)
       : "";
 
+    // 시나리오 이름 생성 (summary 우선, 없으면 기본 형식)
+    const scenarioName = endpointObj.summary || 
+      `${groupName}_${endpoint.method}_${endpoint.path.split("/").pop()}`;
+
     const newConfig: ApiTestConfig = {
       id: Date.now().toString(),
       endpoint_id: endpointId,
       endpoint_path: endpoint.path,
       method,
-      scenario_name: `${groupName}_${endpoint.method}_${endpoint.path
-        .split("/")
-        .pop()}`,
+      scenario_name: scenarioName,
       think_time: 1,
       executor: "constant-vus",
-      stages: [{duration: "10s", target: 10}],
-      parameters: needsBody
-        ? [{name: "requestBody", param_type: "requestBody", value: defaultBody}]
-        : [],
-      headers: [{header_key: "", header_value: ""}],
+      response_time_target: 1000,
+      error_rate_target: 0,
+      stages: [{duration: "60s", target: 400}],
+      parameters: buildDefaultParameters(endpointObj),
+      headers: [{header_key: "Authorization", header_value: "Bearer 12345"}],
     };
     setApiTestConfigs((prev) => [...prev, newConfig]);
   };
@@ -593,19 +622,22 @@ const ProjectDetail: React.FC = () => {
       ? getDefaultRequestBodyFromEndpoint(endpointObj)
       : "";
 
+    // 시나리오 이름 생성 (summary 우선, 없으면 기본 형식)
+    const scenarioName = endpointObj.summary || `scenario_${Date.now()}`;
+
     const newConfig: ApiTestConfig = {
       id: Date.now().toString(),
       endpoint_id: endpointId,
       endpoint_path: endpointPath,
       method, // 그대로
-      scenario_name: `scenario_${Date.now()}`,
+      scenario_name: scenarioName,
       think_time: 1,
       executor: "constant-vus",
-      stages: [{duration: "10s", target: 10}],
-      parameters: needsBody
-        ? [{name: "requestBody", param_type: "requestBody", value: defaultBody}]
-        : [],
-      headers: [{header_key: "", header_value: ""}],
+      response_time_target: 1000,
+      error_rate_target: 0,
+      stages: [{duration: "60s", target: 400}],
+      parameters: buildDefaultParameters(endpointObj),
+      headers: [{header_key: "Authorization", header_value: "Bearer 12345"}],
     };
     setApiTestConfigs((prev) => [...prev, newConfig]);
   };
