@@ -197,7 +197,14 @@ const Report: React.FC = () => {
     try {
       const element = reportViewerRef.current;
 
-      // 1. 캡처 전 최적화
+      // 1. CSS 변수에서 실제 배경색 값 가져오기
+      const computedStyle = getComputedStyle(element);
+      const whiteColor = computedStyle.getPropertyValue('--color-white').trim();
+      const backgroundColor = whiteColor || '#ffffff';
+      
+      console.log('CSS 변수 --color-white 값:', backgroundColor);
+
+      // 2. 캡처 전 최적화
       const originalStyles = {
         maxHeight: element.style.maxHeight,
         overflow: element.style.overflow,
@@ -210,77 +217,80 @@ const Report: React.FC = () => {
       element.style.height = "auto";
       element.style.position = "static";
 
-      // 2. 모든 보호 대상 요소들 식별
+      // 3. 보호 대상 요소들 식별 (모든 요소 보호)
       const protectedSelectors = [
+        ".documentHeader", // 문서 헤더
         ".section", // 섹션 전체
         ".tableContainer", // 표 컨테이너
+        ".table", // 표 자체
+        "table", // 일반 표 태그
+        "tr", // 테이블 행
+        "tbody", // 테이블 본문
+        "thead", // 테이블 헤더
+        "tfoot", // 테이블 푸터
         ".summaryBox", // 요약 박스
         ".subTitleGroup", // 서브타이틀 그룹
         ".contentGroup", // 콘텐츠 그룹
         ".textGroup", // 텍스트 그룹
+        
+        // 차트 관련 선택자 강화
+        "[class*='chart']", // 차트 관련 클래스 (기존)
+        ".chart", // MetricChart의 메인 컨테이너
+        ".recharts-wrapper", // Recharts 래퍼
+        ".recharts-surface", // Recharts SVG 표면
+        ".recharts-responsive-container", // Recharts 반응형 컨테이너
+        "canvas", // 캔버스 요소
+        "svg", // SVG 요소
+        
         "h1, h2, h3, h4, h5, h6", // 모든 제목
         "p", // 문단
-        "table", // 표 자체
-        ".documentHeader", // 문서 헤더
+        ".HeadingL, .HeadingS, .TitleS", // 타이포그래피 클래스
+        ".Body", // Body 클래스
       ];
 
       const protectedElements: Array<{
         top: number;
         height: number;
+        bottom: number;
         type: string;
         element: Element;
-        priority: number;
       }> = [];
 
-      // 각 선택자별로 요소 수집 및 우선순위 설정
-      protectedSelectors.forEach((selector, index) => {
+      // 모든 보호 대상 요소 수집 (우선순위 없음)
+      protectedSelectors.forEach((selector) => {
         const elements = element.querySelectorAll(selector);
         elements.forEach((el) => {
           const rect = el.getBoundingClientRect();
           const containerRect = element.getBoundingClientRect();
-
-          // 우선순위 설정 (낮을수록 높은 우선순위)
-          let priority = index;
-          if (selector.includes("table")) priority = 0; // 표가 최우선
-          else if (selector.includes("summaryBox")) priority = 1; // 요약박스
-          else if (selector.includes("section")) priority = 2; // 섹션
-          else if (selector.includes("Group")) priority = 3; // 그룹들
-          else if (selector.includes("h1,h2,h3")) priority = 4; // 제목들
+          const top = rect.top - containerRect.top;
+          const height = rect.height;
 
           protectedElements.push({
-            top: rect.top - containerRect.top,
-            height: rect.height,
+            top: top,
+            height: height,
+            bottom: top + height,
             type: selector.replace(".", ""),
             element: el,
-            priority: priority,
           });
         });
       });
 
-      // 위치순 정렬 후 중복 제거 (부모-자식 관계 요소 중 우선순위 높은 것만 유지)
+      // 위치순으로만 정렬 (중복 제거 안 함 - 모든 요소 보호)
       protectedElements.sort((a, b) => a.top - b.top);
 
-      // 중복되는 영역의 요소들 중 우선순위가 높은 것만 유지
-      const uniqueElements = protectedElements.filter((current, index) => {
-        return !protectedElements.some((other, otherIndex) => {
-          if (index === otherIndex) return false;
+      console.log(`총 ${protectedElements.length}개 요소가 보호 대상으로 설정됨:`, 
+        protectedElements.map(el => ({ 
+          type: el.type, 
+          top: Math.round(el.top), 
+          height: Math.round(el.height) 
+        })));
 
-          // 다른 요소 안에 완전히 포함되는지 확인
-          const isContained =
-            current.top >= other.top &&
-            current.top + current.height <= other.top + other.height;
-
-          // 포함되면서 우선순위가 낮으면 제거
-          return isContained && current.priority > other.priority;
-        });
-      });
-
-      // 3. 고해상도 전체 캡처
+      // 4. 고해상도 전체 캡처
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: "#ffffff",
+        backgroundColor: backgroundColor,
         logging: false,
         scrollX: 0,
         scrollY: 0,
@@ -299,23 +309,22 @@ const Report: React.FC = () => {
         },
       });
 
-      // 4. 원본 스타일 복원
+      // 5. 원본 스타일 복원
       Object.assign(element.style, originalStyles);
 
-      // 5. PDF 설정
+      // 6. PDF 설정
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
 
-      const margin = 15; // 15mm 여백
+      const margin = 8;
       const contentWidth = pdfWidth - margin * 2;
       const contentHeight = pdfHeight - margin * 2;
 
-      // 6. 스마트 페이지 분할
+      // 7. 스마트 페이지 분할 (모든 보호 요소 고려)
       let canvasCurrentY = 0;
       let pageNumber = 0;
 
-      // 캔버스 픽셀을 PDF mm로 변환하는 비율
       const pxToMm = 0.264583;
       const canvasWidthMm = canvas.width * pxToMm;
       const scale = contentWidth / canvasWidthMm;
@@ -325,79 +334,79 @@ const Report: React.FC = () => {
           pdf.addPage();
         }
 
-        // 이번 페이지에 들어갈 수 있는 최대 캔버스 높이 계산
         const maxCanvasHeightForPage = contentHeight / (pxToMm * scale);
         let nextCanvasY = Math.min(
           canvasCurrentY + maxCanvasHeightForPage,
           canvas.height
         );
 
-        // 보호 대상 요소들이 잘리는지 확인
-        for (const protectedEl of uniqueElements) {
-          const elementTop = protectedEl.top;
-          const elementBottom = protectedEl.top + protectedEl.height;
+        console.log(`페이지 ${pageNumber + 1} 시작: Y=${Math.round(canvasCurrentY)}, 최대높이=${Math.round(maxCanvasHeightForPage)}`);
 
-          // 요소가 페이지 경계에서 잘리는 경우
-          if (elementTop < nextCanvasY && elementBottom > nextCanvasY) {
-            const elementHeight = protectedEl.height;
-            const availableSpace = nextCanvasY - canvasCurrentY;
-            const requiredSpace = elementBottom - canvasCurrentY;
-
-            // 요소 전체가 현재 페이지에 들어갈 수 있는지 확인
-            if (
-              requiredSpace <= maxCanvasHeightForPage &&
-              elementTop >= canvasCurrentY
-            ) {
-              // 들어갈 수 있으면 현재 페이지에 포함
-              nextCanvasY = elementBottom;
+        // 모든 보호 대상 요소들이 잘리는지 확인
+        let foundSplitElement = false;
+        
+        for (const protectedEl of protectedElements) {
+          // 이 요소가 현재 페이지 범위에 있는지 확인
+          if (protectedEl.top < nextCanvasY && protectedEl.bottom > nextCanvasY) {
+            console.log(`요소 ${protectedEl.type} (${Math.round(protectedEl.top)}-${Math.round(protectedEl.bottom)})가 페이지 경계 ${Math.round(nextCanvasY)}에서 잘림`);
+            
+            const elementFitsInCurrentPage = 
+              protectedEl.bottom - canvasCurrentY <= maxCanvasHeightForPage;
+            const elementStartsInCurrentPage = protectedEl.top >= canvasCurrentY;
+            
+            if (elementFitsInCurrentPage && elementStartsInCurrentPage) {
+              // 요소가 현재 페이지에 완전히 들어갈 수 있음
+              nextCanvasY = protectedEl.bottom;
+              console.log(`→ 요소를 현재 페이지에 완전 포함: ${Math.round(nextCanvasY)}`);
             } else {
-              // 안 들어가면 다음 페이지로 미룸 (단, 현재 페이지에 충분한 내용이 있을 때만)
-              const currentPageUsage =
-                (elementTop - canvasCurrentY) / maxCanvasHeightForPage;
-
-              if (currentPageUsage > 0.3) {
-                // 현재 페이지를 30% 이상 사용했다면
-                nextCanvasY = elementTop;
+              // 요소가 너무 크거나 이미 페이지 중간에서 시작
+              const currentPageUsage = (protectedEl.top - canvasCurrentY) / maxCanvasHeightForPage;
+              
+              if (currentPageUsage > 0.2) { // 20% 이상 사용했다면 다음 페이지로
+                nextCanvasY = protectedEl.top;
+                console.log(`→ 다음 페이지로 미루기 (현재 사용률: ${(currentPageUsage * 100).toFixed(1)}%): ${Math.round(nextCanvasY)}`);
+                foundSplitElement = true;
                 break;
+              } else if (protectedEl.height > maxCanvasHeightForPage * 0.8) {
+                // 너무 큰 요소는 어쩔 수 없이 분할
+                console.log(`→ 큰 요소 분할 허용 (높이: ${Math.round(protectedEl.height)})`);
+                nextCanvasY = canvasCurrentY + maxCanvasHeightForPage;
               } else {
-                // 페이지 시작 부분이면 강제로 포함 (너무 큰 요소 처리)
-                const maxAllowedHeight = maxCanvasHeightForPage * 0.9; // 페이지의 90%까지 허용
-                if (elementHeight > maxAllowedHeight) {
-                  // 너무 큰 요소는 여러 페이지에 걸쳐 분할
-                  nextCanvasY = canvasCurrentY + maxCanvasHeightForPage;
-                } else {
-                  nextCanvasY = elementBottom;
-                }
+                // 작은 요소는 현재 페이지에 강제 포함
+                nextCanvasY = protectedEl.bottom;
+                console.log(`→ 작은 요소 강제 포함: ${Math.round(nextCanvasY)}`);
               }
             }
+            
+            break; // 첫 번째 충돌 요소만 처리
           }
         }
 
-        // 실제 페이지에 포함될 높이
+        // 최소 페이지 사용률 보장
         const actualCanvasHeight = nextCanvasY - canvasCurrentY;
-
-        // 최소 페이지 높이 보장 (너무 작은 조각 방지)
         if (
-          actualCanvasHeight < maxCanvasHeightForPage * 0.1 &&
-          canvasCurrentY + maxCanvasHeightForPage < canvas.height
+          actualCanvasHeight < maxCanvasHeightForPage * 0.25 &&
+          canvasCurrentY + maxCanvasHeightForPage < canvas.height &&
+          !foundSplitElement
         ) {
           nextCanvasY = canvasCurrentY + maxCanvasHeightForPage;
+          console.log(`최소 사용률 보장으로 조정: ${Math.round(nextCanvasY)}`);
         }
 
         const finalCanvasHeight = nextCanvasY - canvasCurrentY;
+        console.log(`페이지 ${pageNumber + 1} 완료: ${Math.round(canvasCurrentY)} → ${Math.round(nextCanvasY)} (높이: ${Math.round(finalCanvasHeight)})`);
 
-        // 7. 페이지 캔버스 생성 및 이미지 추출
+        // 8. 페이지 캔버스 생성
         const pageCanvas = document.createElement("canvas");
         pageCanvas.width = canvas.width;
         pageCanvas.height = finalCanvasHeight;
 
         const pageCtx = pageCanvas.getContext("2d");
         if (pageCtx) {
-          // 흰색 배경
-          pageCtx.fillStyle = "#ffffff";
+          // 배경색 채우기
+          pageCtx.fillStyle = backgroundColor;
           pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
 
-          // 이미지 복사
           pageCtx.drawImage(
             canvas,
             0,
@@ -412,18 +421,25 @@ const Report: React.FC = () => {
 
           const pageImgData = pageCanvas.toDataURL("image/png", 1.0);
 
-          // 8. PDF에 중앙 정렬로 추가
+          // 9. PDF에 배경색 적용 후 이미지 추가
+          if (backgroundColor.startsWith('#')) {
+            pdf.setFillColor(backgroundColor);
+          } else if (backgroundColor.startsWith('rgb')) {
+            const rgbMatch = backgroundColor.match(/\d+/g);
+            if (rgbMatch && rgbMatch.length >= 3) {
+              pdf.setFillColor(parseInt(rgbMatch[0]), parseInt(rgbMatch[1]), parseInt(rgbMatch[2]));
+            }
+          }
+          pdf.rect(0, 0, pdfWidth, pdfHeight, 'F');
+
           const imgWidthMm = contentWidth;
           const imgHeightMm = finalCanvasHeight * pxToMm * scale;
-
-          const xPosition = margin;
-          const yPosition = margin;
 
           pdf.addImage(
             pageImgData,
             "PNG",
-            xPosition,
-            yPosition,
+            margin,
+            margin,
             imgWidthMm,
             Math.min(imgHeightMm, contentHeight)
           );
@@ -432,14 +448,14 @@ const Report: React.FC = () => {
         canvasCurrentY = nextCanvasY;
         pageNumber++;
 
-        // 안전장치
         if (pageNumber > 50) {
           console.warn("페이지 수 제한 도달");
           break;
         }
       }
 
-      // 9. 파일명 생성 및 저장
+      console.log(`총 ${pageNumber}페이지 PDF 생성 완료`);
+
       const timestamp = new Date().toISOString().split("T")[0];
       const fileName = `${
         reportConfig.customTitle || "성능테스트리포트"
