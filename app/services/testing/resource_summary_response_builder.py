@@ -28,6 +28,13 @@ class SummaryResourcesResponseBuilder(TestHistoryResourcesResponseBuilder):
         pod_info_list = context.pod_info_list
         resource_timeseries = context.resource_timeseries
 
+        logger.info(f"pod_info_list count: {len(pod_info_list)}")
+        logger.info(f"resource_timeseries count: {len(resource_timeseries)}")
+
+        # Pod 정보 로깅
+        for pod_info in pod_info_list:
+            logger.info(f"Pod info: {pod_info['pod_name']} ({pod_info['service_type']})")
+
         # Pod별로 리소스 데이터 그룹화
         pod_resource_map = {}
 
@@ -38,6 +45,9 @@ class SummaryResourcesResponseBuilder(TestHistoryResourcesResponseBuilder):
                 if pod_name not in pod_resource_map:
                     pod_resource_map[pod_name] = []
                 pod_resource_map[pod_name].append(resource)
+
+        # 리소스 데이터가 있는 Pod들 로깅
+        logger.info(f"Pods with resource data: {list(pod_resource_map.keys())}")
 
         # pod_info_list와 매칭하여 최종 응답 구성
         result = []
@@ -50,6 +60,7 @@ class SummaryResourcesResponseBuilder(TestHistoryResourcesResponseBuilder):
             pod_resources = pod_resource_map.get(pod_name, [])
 
             if not pod_resources:
+                logger.warning(f"No resource data found for pod: {pod_name} (service_type: {service_type})")
                 continue
 
             # MetricsCalculator를 사용하여 통계 계산
