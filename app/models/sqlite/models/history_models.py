@@ -205,7 +205,7 @@ class AnalysisHistoryModel(Base):
 
     # 기본 분석 정보
     primary_test_id = Column(Integer, ForeignKey("test_history.id"), nullable=False)
-    analysis_category = Column(String(50), nullable=False)  # 'single', 'comparison', 'comprehensive'
+    analysis_category = Column(String(50), nullable=False)  # 'single', 'comprehensive'
     analysis_type = Column(String(50), nullable=False)  # 'tps', 'response_time', 'resource_usage', etc.
 
     # 분석 결과 (JSON으로 유연하게 저장)
@@ -213,7 +213,6 @@ class AnalysisHistoryModel(Base):
 
     # 메타데이터
     model_name = Column(String(100), nullable=False)
-    analysis_duration_ms = Column(Integer, nullable=True)
 
     # 타임스탬프
     analyzed_at = Column(DateTime, default=now_kst, nullable=False)

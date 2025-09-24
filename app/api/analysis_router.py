@@ -1,27 +1,23 @@
+import logging
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import Optional, Any
+from app.schemas.analysis.analysis_request import AnalysisType
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 
-from app.models import get_db, get_async_db
-from app.services.analysis.ai_analysis_service import AIAnalysisService
-from app.services.analysis.model_manager import get_model_manager
+from app.models import get_async_db
 from app.schemas.analysis import (
-    AnalysisType, SingleAnalysisResponse, ComprehensiveAnalysisResponse,
-    ComparisonAnalysisResponse, ModelInfoResponse, AnalysisStatusResponse,
-    HealthCheckResponse, SingleAnalysisRequest, ComprehensiveAnalysisRequest,
-    ComparisonAnalysisRequest, AnalysisHistoryResponse
+    HealthCheckResponse,
+    AnalysisHistoryResponse
 )
-from app.services.testing.test_history_service import get_test_history_by_id
+from app.common.response.response_template import ResponseTemplate
 
 
 router = APIRouter(prefix="/analysis", tags=["AI Analysis"])
 
+logger = logging.getLogger(__name__)
 
-# 백그라운드 작업 상태 저장소 (향후 Redis로 대체)
-analysis_status_store: Dict[str, Dict[str, Any]] = {}
 
 # AI 분석은 k6 Job 완료 시 자동으로 실행
 # 분석 결과는 GET /history/{test_history_id} 엔드포인트에서 조회
@@ -31,7 +27,7 @@ analysis_status_store: Dict[str, Dict[str, Any]] = {}
 async def get_analysis_history(
     test_history_id: int,
     limit: int = Query(50, description="조회할 이력 개수 (최대 100개)"),
-    analysis_type: Optional[str] = Query(None, description="특정 분석 유형 필터링"),
+    analysis_type: Optional[AnalysisType] = Query(None, description="특정 분석 유형 필터링"),
     db: AsyncSession = Depends(get_async_db)
 ):
     """
@@ -73,7 +69,7 @@ async def get_analysis_history(
 
         if analysis_type:
             # 특정 분석 유형 필터링
-            analyses = await history_repo.get_analyses_by_type(db, test_history_id, analysis_type, limit)
+            analyses = await history_repo.get_analyses_by_type(db, test_history_id, analysis_type.value, limit)
         else:
             # 모든 분석 이력 조회
             analyses = await history_repo.get_test_analysis_history(db, test_history_id, limit)
@@ -82,16 +78,10 @@ async def get_analysis_history(
         analysis_items = []
         for analysis in analyses:
             # analysis_type을 AnalysisType enum으로 변환
-            analysis_type_enum = None
             try:
-                from app.schemas.analysis.analysis_request import AnalysisType
-                if analysis.analysis_type in [at.value for at in AnalysisType]:
-                    analysis_type_enum = AnalysisType(analysis.analysis_type)
-                else:
-                    # comparison 등 enum에 없는 경우 기본값 사용
-                    analysis_type_enum = AnalysisType.comprehensive
-            except:
-                analysis_type_enum = AnalysisType.comprehensive
+                analysis_type_enum = AnalysisType(analysis.analysis_type)
+            except Exception:
+                analysis_type_enum = AnalysisType.COMPREHENSIVE
 
             item = {
                 "id": analysis.id,
@@ -109,21 +99,60 @@ async def get_analysis_history(
             analyses=analysis_items
         )
 
+    except ValueError as e:
+        logger.error(f"Invalid parameter for analysis history: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid parameter: {str(e)}"
+        )
     except Exception as e:
+        logger.error(f"Unexpected error retrieving analysis history: {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to retrieve analysis history: {str(e)}"
+            detail="Failed to retrieve analysis history due to internal server error"
         )
 
 
-def _extract_summary_from_result(analysis_result: dict) -> str:
-    """분석 결과에서 요약 텍스트 추출"""
-    if "summary" in analysis_result:
-        return analysis_result["summary"]
-    elif "comparison_summary" in analysis_result:
-        return analysis_result["comparison_summary"]
-    else:
-        return "분석 요약 정보 없음"
+def _extract_summary_from_result(analysis_result: Any) -> str:
+    """분석 결과에서 요약 텍스트 추출 (견고한 처리)"""
+    default_summary = "분석 요약 정보 없음"
+
+    if not analysis_result:
+        return default_summary
+
+    try:
+        # dict 타입인 경우
+        if isinstance(analysis_result, dict):
+            summary = analysis_result.get("detailed_analysis", "").strip()
+            return summary if summary else default_summary
+
+        # string 타입인 경우 (JSON일 가능성)
+        if isinstance(analysis_result, str):
+            analysis_result = analysis_result.strip()
+            if not analysis_result:
+                return default_summary
+
+            try:
+                import json
+                parsed_obj = json.loads(analysis_result)
+                if isinstance(parsed_obj, dict):
+                    summary = parsed_obj.get("summary", "").strip()
+                    return summary if summary else default_summary
+            except (json.JSONDecodeError, ValueError):
+                # JSON 파싱 실패 시 원본 문자열의 일부를 요약으로 사용
+                if len(analysis_result) > 100:
+                    return analysis_result[:97] + "..."
+                return analysis_result
+
+        # 기타 타입인 경우 문자열로 변환 시도
+        summary_str = str(analysis_result).strip()
+        if len(summary_str) > 100:
+            return summary_str[:97] + "..."
+        return summary_str if summary_str else default_summary
+
+    except Exception as e:
+        logger.warning(f"Error extracting summary from analysis result: {e}")
+        return default_summary
 
 
 @router.get("/health", response_model=HealthCheckResponse)
@@ -136,43 +165,62 @@ async def health_check():
     """
     
     try:
-        ai_service = AIAnalysisService()
-        model_manager = get_model_manager()
-        
         # Ollama 상태 확인
-        from app.services.analysis.ollama_client import get_ollama_client
-        ollama_client = await get_ollama_client()
-        ollama_health = await ollama_client.health_check()
-        
-        # 모델 성능 통계
-        performance_stats = model_manager.get_performance_stats()
-        
-        # 사용 가능한 모델 목록
-        available_models_data = await model_manager.get_available_models()
-        available_models = [m["name"] for m in available_models_data if m["is_available"]]
-        
+        ollama_health = {"status": "unknown"}
+        available_models = []
+
+        try:
+            from app.services.analysis.ollama_client import get_ollama_client, OllamaConfig
+            config = OllamaConfig.from_settings()
+            ollama_client = await get_ollama_client(config)
+            ollama_health = await ollama_client.health_check()
+
+            # 사용 가능한 모델 목록 확인
+            if ollama_health.get("status") == "healthy":
+                try:
+                    from app.core.config import settings
+                    if settings.validate_ai_config():
+                        ai_config = settings.get_ai_config()
+                        model_name = ai_config.get('model_name')
+                        if model_name:
+                            available_models = [model_name]
+                except Exception as model_error:
+                    logger.warning(f"Failed to get model configuration: {model_error}")
+                    ollama_health["model_config_error"] = str(model_error)
+
+        except Exception as ollama_error:
+            logger.error(f"Ollama health check failed: {ollama_error}")
+            ollama_health = {"status": "error", "error": str(ollama_error)}
+
+        # 데이터베이스 상태 확인 (기본값)
+        database_status = {"status": "healthy"}  # TODO: 실제 DB 상태 체크 구현
+
         # 전체 서비스 상태 결정
         overall_status = "healthy"
-        if ollama_health["status"] != "healthy":
-            overall_status = "degraded" if available_models else "unhealthy"
-        
+
+        if ollama_health.get("status") != "healthy":
+            if available_models:
+                overall_status = "degraded"
+            else:
+                overall_status = "unhealthy"
+
+        if database_status.get("status") != "healthy":
+            overall_status = "unhealthy"
+
         return HealthCheckResponse(
             status=overall_status,
             timestamp=datetime.now(),
             ollama_status=ollama_health,
-            database_status={"status": "healthy"},  # TODO: DB 상태 체크 구현
-            available_models=available_models,
-            active_analyses=len([s for s in analysis_status_store.values() if s["status"] == "running"]),
-            total_analyses_today=performance_stats.get("total_analyses", 0)
+            database_status=database_status,
+            available_models=available_models
         )
-        
+
     except Exception as e:
+        logger.error(f"Health check failed with unexpected error: {e}")
         return HealthCheckResponse(
             status="unhealthy",
             timestamp=datetime.now(),
             ollama_status={"status": "error", "error": str(e)},
             database_status={"status": "unknown"},
-            available_models=[],
-            active_analyses=0,
-            total_analyses_today=0
+            available_models=[]
         )
