@@ -624,11 +624,11 @@ def get_pod_cpu_usage_millicores(pod_name: str) -> Optional[float]:
     """
     try:
         query = f'''
-            SELECT non_negative_derivative(last("container_cpu_usage_seconds_total"), 1s) * 1000 as cpu_millicores
+            SELECT non_negative_derivative(mean("container_cpu_usage_seconds_total"), 1s) * 1000 as cpu_millicores
             FROM "cadvisor_metrics"
             WHERE "pod" = '{pod_name}' AND "container" = '' AND "image" = ''
             AND time > now() - 30s
-            GROUP BY time(5s) fill(null)
+            GROUP BY time(5s) fill(linear)
         '''
         result = client.query(query)
         points = list(result.get_points())
