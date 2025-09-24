@@ -198,7 +198,9 @@ class AIAnalysisService:
             else:
                 logger.error("No JSON cleaning needed")
 
-            parsed_output = self._json_parser.parse(cleaned_response)
+            parsed_dict = self._json_parser.parse(cleaned_response)
+            # dict를 Pydantic 모델로 변환
+            parsed_output = UnifiedAnalysisOutput(**parsed_dict)
             return self._convert_langchain_output_to_responses(parsed_output, model_name, datetime.now())
         except Exception as e:
             logger.error(f"LangChain parsing failed: {e}")
