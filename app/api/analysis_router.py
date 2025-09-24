@@ -1,27 +1,21 @@
+import logging
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import Optional, Dict, Any
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 
-from app.models import get_db, get_async_db
-from app.services.analysis.ai_analysis_service import AIAnalysisService
-from app.services.analysis.model_manager import get_model_manager
+from app.models import get_async_db
 from app.schemas.analysis import (
-    AnalysisType, SingleAnalysisResponse, ComprehensiveAnalysisResponse,
-    ComparisonAnalysisResponse, ModelInfoResponse, AnalysisStatusResponse,
-    HealthCheckResponse, SingleAnalysisRequest, ComprehensiveAnalysisRequest,
-    ComparisonAnalysisRequest, AnalysisHistoryResponse
+    HealthCheckResponse,
+    AnalysisHistoryResponse
 )
-from app.services.testing.test_history_service import get_test_history_by_id
 
 
 router = APIRouter(prefix="/analysis", tags=["AI Analysis"])
 
+logger = logging.getLogger(__name__)
 
-# 백그라운드 작업 상태 저장소 (향후 Redis로 대체)
-analysis_status_store: Dict[str, Dict[str, Any]] = {}
 
 # AI 분석은 k6 Job 완료 시 자동으로 실행
 # 분석 결과는 GET /history/{test_history_id} 엔드포인트에서 조회
@@ -88,7 +82,7 @@ async def get_analysis_history(
                 if analysis.analysis_type in [at.value for at in AnalysisType]:
                     analysis_type_enum = AnalysisType(analysis.analysis_type)
                 else:
-                    # comparison 등 enum에 없는 경우 기본값 사용
+                    # enum에 없는 경우 기본값 사용
                     analysis_type_enum = AnalysisType.comprehensive
             except:
                 analysis_type_enum = AnalysisType.comprehensive
@@ -120,8 +114,6 @@ def _extract_summary_from_result(analysis_result: dict) -> str:
     """분석 결과에서 요약 텍스트 추출"""
     if "summary" in analysis_result:
         return analysis_result["summary"]
-    elif "comparison_summary" in analysis_result:
-        return analysis_result["comparison_summary"]
     else:
         return "분석 요약 정보 없음"
 
@@ -136,34 +128,34 @@ async def health_check():
     """
     
     try:
-        ai_service = AIAnalysisService()
-        model_manager = get_model_manager()
-        
         # Ollama 상태 확인
-        from app.services.analysis.ollama_client import get_ollama_client
-        ollama_client = await get_ollama_client()
+        from app.services.analysis.ollama_client import get_ollama_client, OllamaConfig
+        config = OllamaConfig.from_settings()
+        ollama_client = await get_ollama_client(config)
         ollama_health = await ollama_client.health_check()
-        
-        # 모델 성능 통계
-        performance_stats = model_manager.get_performance_stats()
-        
-        # 사용 가능한 모델 목록
-        available_models_data = await model_manager.get_available_models()
-        available_models = [m["name"] for m in available_models_data if m["is_available"]]
-        
+
+        # 사용 가능한 모델 목록 (config에서 가져오기)
+        available_models = []
+        if ollama_health.get("status") == "healthy":
+            try:
+                from app.core.config import settings
+                if settings.validate_ai_config():
+                    ai_config = settings.get_ai_config()
+                    available_models = [ai_config.get('model_name', 'unknown')]
+            except Exception as e:
+                logger.warning(f"Failed to get model configuration: {e}")
+
         # 전체 서비스 상태 결정
         overall_status = "healthy"
         if ollama_health["status"] != "healthy":
             overall_status = "degraded" if available_models else "unhealthy"
-        
+
         return HealthCheckResponse(
             status=overall_status,
             timestamp=datetime.now(),
             ollama_status=ollama_health,
             database_status={"status": "healthy"},  # TODO: DB 상태 체크 구현
-            available_models=available_models,
-            active_analyses=len([s for s in analysis_status_store.values() if s["status"] == "running"]),
-            total_analyses_today=performance_stats.get("total_analyses", 0)
+            available_models=available_models
         )
         
     except Exception as e:
@@ -172,7 +164,5 @@ async def health_check():
             timestamp=datetime.now(),
             ollama_status={"status": "error", "error": str(e)},
             database_status={"status": "unknown"},
-            available_models=[],
-            active_analyses=0,
-            total_analyses_today=0
+            available_models=[]
         )

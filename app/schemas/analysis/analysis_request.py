@@ -25,18 +25,6 @@ class ComprehensiveAnalysisRequest(BaseModel):
         None,
         description="수행할 분석 유형 목록 (미지정시 전체 분석)"
     )
-    comparison_test_ids: Optional[List[int]] = Field(
-        None,
-        description="비교 분석용 이전 테스트 ID 목록"
-    )
     run_in_background: bool = Field(False, description="백그라운드 실행 여부")
 
 
-class ComparisonAnalysisRequest(BaseModel):
-    """비교 분석 요청"""
-    current_test_id: int = Field(..., description="현재 테스트 ID")
-    previous_test_id: int = Field(..., description="비교할 이전 테스트 ID")
-    focus_areas: Optional[List[str]] = Field(
-        None,
-        description="집중 분석 영역 (tps, response_time, error_rate, resource_usage)"
-    )

@@ -112,9 +112,12 @@ class LLMAnalysisInput(BaseModel):
     
     # 서버 리소스 사용량
     resource_usage: List[ServerResourceUsage] = []
+
+    # 시계열 데이터 (통합 분석용)
+    k6_timeseries_data: List[Dict[str, Any]] = []
+    k6_analysis_context: str = ""
+    processed_resource_context: str = ""
     
-    # 이전 테스트와의 비교 데이터 (선택사항)
-    previous_test_comparison: Optional[Dict[str, Any]] = None
 
 
 class AnalysisInsight(BaseModel):
@@ -132,7 +135,6 @@ class AnalysisResult(BaseModel):
     detailed_analysis: str = Field(..., description="상세 분석 내용")
     insights: List[AnalysisInsight] = []
     performance_score: Optional[float] = Field(None, ge=0, le=100, description="성능 점수 (0-100)")
-    confidence_score: Optional[float] = Field(None, ge=0, le=1, description="분석 신뢰도 (0-1)")
 
 
 def convert_test_history_to_llm_input(

@@ -1,7 +1,6 @@
-import json
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
+from datetime import datetime
+from typing import List, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
@@ -9,22 +8,24 @@ from sqlalchemy.orm import Session
 from app.schemas.analysis import (
     LLMAnalysisInput, convert_test_history_to_llm_input,
     AnalysisType, SingleAnalysisResponse, ComprehensiveAnalysisResponse,
-    ComparisonAnalysisResponse, AnalysisInsight
+    AnalysisInsight, AnalysisResult
 )
 from .prompt_manager import PromptManager
 from .ollama_client import get_ollama_client, OllamaConfig
-# 모델 매니저 제거됨 - 간단한 설정 사용
+from .unified_analysis_parser import get_unified_analysis_parser
+from .timeseries_data_processor import get_timeseries_data_processor
 from app.services.testing.test_history_service import (
     get_test_history_by_id, build_test_history_detail_response,
     build_test_history_timeseries_resources_response
 )
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 
 class AIAnalysisService:
-    """개선된 AI 기반 부하테스트 결과 분석 서비스"""
-    
+    """AI 기반 부하테스트 결과 분석 서비스"""
+
     def __init__(self):
         self.prompt_manager = PromptManager()
     
@@ -35,133 +36,47 @@ class AIAnalysisService:
         test_history_id: int,
         analysis_type: AnalysisType
     ) -> SingleAnalysisResponse:
-        """
-        개별 분석 수행
-        
-        Args:
-            db_sync: 동기 데이터베이스 세션
-            db_async: 비동기 데이터베이스 세션
-            test_history_id: 분석할 테스트 히스토리 ID
-            analysis_type: 분석 유형
-            
-        Returns:
-            개별 분석 결과
-        """
+        """개별 분석 수행"""
         start_time = datetime.now()
 
         try:
             logger.info(f"Starting {analysis_type.value} analysis for test_history_id: {test_history_id}")
 
-            # 1. 실제 테스트 데이터 수집
-            logger.debug("Step 1: Collecting actual test data from database")
-            from app.schemas.analysis import LLMAnalysisInput
-            from app.schemas.analysis.analysis_models import convert_test_history_to_llm_input
-            from app.services.testing.test_history_service import build_test_history_detail_response
+            # 1. 테스트 데이터 수집
+            llm_input_data = await self._collect_test_data(db_sync, db_async, test_history_id)
 
-            # 실제 테스트 데이터 조회
-            from app.services.testing.test_history_service import get_test_history_by_id
-
-            test_history = get_test_history_by_id(db_sync, test_history_id)
-            if not test_history:
-                raise ValueError(f"Test history not found for ID: {test_history_id}")
-
-            test_detail_response = build_test_history_detail_response(test_history)
-            test_history_detail = test_detail_response.dict()  # Pydantic 객체를 dict로 변환
-
-            # 리소스 사용량 데이터 수집
-            resource_usage_data = None
-            try:
-                # build_test_history_timeseries_resources_response returns the raw data directly
-                resource_usage_data = await build_test_history_timeseries_resources_response(db_async, test_history_id)
-                logger.debug(f"Resource usage data type: {type(resource_usage_data)}")
-                logger.debug(f"Resource usage data: {resource_usage_data}")
-
-                if resource_usage_data and isinstance(resource_usage_data, list):
-                    logger.debug(f"Resource usage data collected: {len(resource_usage_data)} servers")
-                    if resource_usage_data:
-                        logger.debug(f"First server keys: {resource_usage_data[0].keys()}")
-                        if "resource_data" in resource_usage_data[0]:
-                            logger.debug(f"First server has {len(resource_usage_data[0]['resource_data'])} resource data points")
-                else:
-                    logger.warning(f"Resource usage data is empty or invalid: {resource_usage_data}")
-                    resource_usage_data = None
-            except Exception as e:
-                logger.warning(f"Failed to get resource usage data: {e}")
-                import traceback
-                logger.debug(f"Full traceback: {traceback.format_exc()}")
-                resource_usage_data = None
-
-            # LLMAnalysisInput으로 변환
-            llm_input_data = convert_test_history_to_llm_input(
-                test_history_detail=test_history_detail,
-                resource_usage_data=resource_usage_data
-            )
-            logger.debug("Step 1: Real test data collected and converted successfully")
-
-            # 2. 모델 설정 (환경변수에서 직접 가져오기)
-            logger.debug("Step 2: Setting up model configuration")
-            from app.core.config import settings
-
-            # 간단한 모델 설정
-            model_config = {
-                'model_name': settings.AI_MODEL_NAME,
-                'temperature': 0.1,
-                'max_tokens': 3000,
-                'timeout_seconds': 120
-            }
-            logger.debug(f"Step 2: Model config created: {model_config}")
+            # 2. AI 설정 로드 및 검증
+            if not settings.validate_ai_config():
+                raise Exception("Invalid AI configuration. Please check environment variables.")
+            ai_config = settings.get_ai_config()
 
             # 3. Ollama 클라이언트 설정
-            logger.debug("Step 3: Setting up Ollama client")
-            ollama_client = await get_ollama_client()
-            config = OllamaConfig()
-            config.base_url = settings.OLLAMA_HOST  # 환경변수에서 Ollama 호스트 설정
-            config.model_name = model_config['model_name']
-            config.temperature = model_config['temperature']
-            config.max_tokens = model_config['max_tokens']
-            config.timeout_seconds = model_config['timeout_seconds']
-            ollama_client.config = config
-            logger.debug(f"Step 3: Ollama client configured with host: {settings.OLLAMA_HOST}")
-
-            if not await ollama_client.is_available():
-                raise Exception("Ollama server is not available")
+            ollama_client = await self._setup_ollama_client(ai_config)
 
             # 4. 분석 실행
             analysis_result = await self._perform_analysis_with_model(
                 llm_input_data, analysis_type, ollama_client
             )
 
-            # 5. 성능 기록 (간단한 로그)
-            duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
-            logger.info(f"Analysis completed in {duration_ms}ms using {model_config['model_name']}")
-
-            # 6. 응답 구성
+            # 5. 응답 구성
             response = SingleAnalysisResponse(
                 analysis_type=analysis_type,
                 summary=analysis_result.summary,
                 detailed_analysis=analysis_result.detailed_analysis,
                 insights=analysis_result.insights,
                 performance_score=analysis_result.performance_score,
-                confidence_score=analysis_result.confidence_score,
                 analyzed_at=datetime.now(),
-                model_name=model_config['model_name'],
-                analysis_duration_ms=duration_ms
+                model_name=ai_config['model_name']
             )
 
-            # 7. 분석 결과 이력 저장
-            try:
-                from app.repositories.analysis_history_repository import get_analysis_history_repository
-                history_repo = get_analysis_history_repository()
-                await history_repo.save_single_analysis(db_async, test_history_id, response)
-                logger.debug(f"Analysis result saved to history for test_history_id: {test_history_id}")
-            except Exception as e:
-                logger.warning(f"Failed to save analysis history: {e}")
-                # 이력 저장 실패해도 분석 결과는 반환
+            # 6. 분석 결과 이력 저장
+            await self._save_analysis_history(db_async, test_history_id, response)
 
+            duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
+            logger.info(f"Analysis completed in {duration_ms}ms using {ai_config['model_name']}")
             return response
 
         except Exception as e:
-            # 실패 로그
             duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
             logger.error(f"Single analysis failed for test_history_id {test_history_id} after {duration_ms}ms: {e}")
             raise
@@ -172,7 +87,6 @@ class AIAnalysisService:
         db_async: AsyncSession,
         test_history_id: int,
         analysis_types: List[AnalysisType] = None,
-        comparison_test_ids: Optional[List[int]] = None
     ) -> ComprehensiveAnalysisResponse:
         """
         종합 분석 수행
@@ -182,7 +96,6 @@ class AIAnalysisService:
             db_async: 비동기 데이터베이스 세션
             test_history_id: 분석할 테스트 히스토리 ID
             analysis_types: 수행할 분석 유형 목록 (기본값: 전체)
-            comparison_test_ids: 비교 분석용 테스트 ID 목록
 
         Returns:
             종합 분석 결과
@@ -221,12 +134,8 @@ class AIAnalysisService:
             executive_summary = self._generate_executive_summary(analyses)
             top_recommendations = self._extract_top_recommendations(analyses)
 
-            # 3. 비교 분석 (선택사항)
+            # 3. 추세 분석 (제거됨 - 비교 분석 기능 제거)
             trend_analysis = None
-            if comparison_test_ids:
-                trend_analysis = await self._perform_trend_analysis(
-                    db_sync, db_async, test_history_id, comparison_test_ids
-                )
 
             # 4. 사용된 모델명 (첫 번째 성공한 분석의 모델 사용)
             used_model = next(
@@ -244,105 +153,240 @@ class AIAnalysisService:
                 executive_summary=executive_summary,
                 analyses=analyses,
                 top_recommendations=top_recommendations,
-                trend_analysis=trend_analysis,
-                total_analysis_duration_ms=duration_ms
+                trend_analysis=trend_analysis
             )
 
         except Exception as e:
             logger.error(f"Comprehensive analysis failed for test_history_id {test_history_id}: {e}")
             raise
 
-    async def perform_comparison_analysis(
+    async def perform_unified_comprehensive_analysis(
         self,
         db_sync: Session,
         db_async: AsyncSession,
-        current_test_id: int,
-        previous_test_id: int,
-        focus_areas: Optional[List[str]] = None
-    ) -> ComparisonAnalysisResponse:
+        test_history_id: int,
+    ) -> ComprehensiveAnalysisResponse:
         """
-        비교 분석 수행
+        통합 AI 분석 수행 (새로운 방식)
+
+        5개 영역을 하나의 AI 호출로 처리하며, 시계열 데이터를 포함한
+        상관관계 기반 분석을 수행합니다.
 
         Args:
             db_sync: 동기 데이터베이스 세션
             db_async: 비동기 데이터베이스 세션
-            current_test_id: 현재 테스트 ID
-            previous_test_id: 이전 테스트 ID
-            focus_areas: 집중 분석 영역
+            test_history_id: 분석할 테스트 히스토리 ID
 
         Returns:
-            비교 분석 결과
+            종합 분석 결과
         """
         start_time = datetime.now()
 
-        logger.info(f"Starting comparison analysis: {current_test_id} vs {previous_test_id}")
+        logger.info(f"Starting unified comprehensive analysis for test_history_id: {test_history_id}")
 
         try:
-            # 1. 양쪽 테스트 데이터 수집
-            current_data = await self._collect_test_data(db_sync, db_async, current_test_id)
-            previous_data = await self._collect_test_data(db_sync, db_async, previous_test_id)
+            # 1. 테스트 데이터 수집 (시계열 데이터 포함)
+            llm_input_data = await self._collect_unified_test_data(db_sync, db_async, test_history_id)
 
-            # 2. 모델 설정 (환경변수에서 직접 가져오기)
-            from app.core.config import settings
+            # 2. AI 설정 로드 및 검증
+            if not settings.validate_ai_config():
+                raise Exception("Invalid AI configuration. Please check environment variables.")
+            ai_config = settings.get_ai_config()
 
-            model_config = {
-                'model_name': settings.AI_MODEL_NAME,
-                'temperature': 0.05,  # 비교 분석은 일관성이 중요
-                'max_tokens': 3000,
-                'timeout_seconds': 120
-            }
+            # 3. Ollama 클라이언트 설정
+            ollama_client = await self._setup_ollama_client(ai_config)
 
-            # 3. 비교 분석용 프롬프트 생성
-            comparison_prompt = self._generate_comparison_prompt(
-                current_data, previous_data, focus_areas
+            # 4. 통합 분석 실행
+            analyses = await self._perform_unified_analysis_with_model(
+                llm_input_data, ollama_client, ai_config['model_name']
             )
 
-            # 4. Ollama 클라이언트 설정 및 분석 수행
-            ollama_client = await get_ollama_client()
-            config = OllamaConfig()
-            config.model_name = model_config['model_name']
-            config.temperature = model_config['temperature']
-            config.max_tokens = model_config['max_tokens']
-            config.timeout_seconds = model_config['timeout_seconds']
-            ollama_client.config = config
+            # 5. 분석 결과 이력 저장 (각각 개별 저장)
+            for analysis in analyses:
+                await self._save_analysis_history(db_async, test_history_id, analysis)
 
-            result = await ollama_client.analyze_performance(comparison_prompt, "comparison")
+            # 6. 종합 분석 결과 계산
+            overall_score = self._calculate_overall_score(analyses)
+            executive_summary = self._generate_executive_summary(analyses)
+            top_recommendations = self._extract_top_recommendations(analyses)
 
-            if not result["success"]:
-                raise Exception(f"Comparison analysis failed: {result.get('error', 'Unknown error')}")
-
-            # 5. 결과 파싱
-            comparison_result = self._parse_comparison_response(
-                result["response"], current_data, previous_data
-            )
-
-            # 6. 성능 기록 (간단한 로그)
             duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
-            logger.info(f"Comparison analysis completed in {duration_ms}ms using {model_config['model_name']}")
 
-            response = ComparisonAnalysisResponse(
-                current_test_id=current_test_id,
-                previous_test_id=previous_test_id,
+            logger.info(f"Unified comprehensive analysis completed in {duration_ms}ms using {ai_config['model_name']}")
+
+            return ComprehensiveAnalysisResponse(
+                test_history_id=test_history_id,
                 analyzed_at=datetime.now(),
-                model_name=model_config['model_name'],
-                **comparison_result
+                model_name=ai_config['model_name'],
+                overall_performance_score=overall_score,
+                executive_summary=executive_summary,
+                analyses=analyses,
+                top_recommendations=top_recommendations,
+                trend_analysis=None
             )
-
-            # 비교 분석 결과 이력 저장
-            try:
-                from app.repositories.analysis_history_repository import get_analysis_history_repository
-                history_repo = get_analysis_history_repository()
-                await history_repo.save_comparison_analysis(db_async, current_test_id, previous_test_id, response)
-                logger.debug(f"Comparison analysis result saved to history: {current_test_id} vs {previous_test_id}")
-            except Exception as e:
-                logger.warning(f"Failed to save comparison analysis history: {e}")
-                # 이력 저장 실패해도 분석 결과는 반환
-
-            return response
 
         except Exception as e:
-            logger.error(f"Comparison analysis failed: {e}")
+            duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
+            logger.error(f"Unified comprehensive analysis failed for test_history_id {test_history_id} after {duration_ms}ms: {e}")
             raise
+
+    async def _collect_unified_test_data(
+        self,
+        db_sync: Session,
+        db_async: AsyncSession,
+        test_history_id: int
+    ) -> LLMAnalysisInput:
+        """시계열 데이터를 포함한 테스트 데이터 수집"""
+
+        # 기본 테스트 데이터 수집
+        llm_input_data = await self._collect_test_data(db_sync, db_async, test_history_id)
+
+        # k6 시계열 데이터 수집 및 전처리
+        try:
+            from app.services.monitoring.influxdb_service import InfluxDBService
+
+            # 실제 job_name 조회 (test_history에서 가져오기)
+            test_history = get_test_history_by_id(db_sync, test_history_id)
+            if not test_history or not test_history.job_name:
+                raise Exception(f"Test history or job_name not found for test_history_id: {test_history_id}")
+
+            # InfluxDB에서 k6 시계열 데이터 조회
+            influxdb_service = InfluxDBService()
+            job_name = test_history.job_name  # 실제 job_name 사용
+            k6_timeseries_data = influxdb_service.get_test_timeseries_data(job_name)
+
+            if k6_timeseries_data:
+                # 시계열 데이터 전처리 (노이즈 제거)
+                processor = get_timeseries_data_processor()
+                processed_k6_data, k6_context = processor.process_k6_timeseries(k6_timeseries_data)
+
+                logger.info(f"Processed k6 timeseries: {len(processed_k6_data)} points for unified analysis")
+
+                # LLMAnalysisInput에 시계열 데이터 정보 추가
+                # (현재 스키마에 직접 필드가 없으므로 메타데이터로 저장)
+                llm_input_data.k6_timeseries_data = processed_k6_data
+                llm_input_data.k6_analysis_context = k6_context
+            else:
+                logger.warning(f"No k6 timeseries data found for job: {job_name}")
+                llm_input_data.k6_timeseries_data = []
+                llm_input_data.k6_analysis_context = "k6 시계열 데이터를 찾을 수 없습니다."
+
+        except Exception as e:
+            logger.error(f"Error collecting k6 timeseries data: {e}")
+            llm_input_data.k6_timeseries_data = []
+            llm_input_data.k6_analysis_context = f"k6 시계열 데이터 수집 중 오류 발생: {str(e)}"
+
+        # 리소스 시계열 데이터 전처리
+        if hasattr(llm_input_data, 'resource_usage') and llm_input_data.resource_usage:
+            try:
+                processor = get_timeseries_data_processor()
+
+                # 리소스 데이터를 적절한 형식으로 변환
+                resource_data_for_processing = []
+                for resource in llm_input_data.resource_usage:
+                    if hasattr(resource, 'usage_data') and resource.usage_data:
+                        usage_points = []
+                        for point in resource.usage_data:
+                            usage_points.append({
+                                'timestamp': point.timestamp.isoformat() if hasattr(point.timestamp, 'isoformat') else str(point.timestamp),
+                                'usage': {
+                                    'cpu_percent': point.cpu_usage_percent,
+                                    'memory_percent': point.memory_usage_percent
+                                },
+                                'actual_usage': {
+                                    'cpu_millicores': point.cpu_usage_millicores,
+                                    'memory_mb': point.memory_usage_mb
+                                }
+                            })
+
+                        resource_data_for_processing.append({
+                            'pod_name': resource.pod_name,
+                            'service_type': resource.service_type,
+                            'resource_data': usage_points
+                        })
+
+                # 리소스 데이터 전처리
+                processed_resource_data, resource_context = processor.process_resource_timeseries(resource_data_for_processing)
+                llm_input_data.processed_resource_context = resource_context
+
+                logger.info(f"Processed resource timeseries: {len(processed_resource_data)} pods for unified analysis")
+
+            except Exception as e:
+                logger.error(f"Error processing resource timeseries data: {e}")
+                llm_input_data.processed_resource_context = f"리소스 시계열 데이터 처리 중 오류 발생: {str(e)}"
+
+        return llm_input_data
+
+    async def _perform_unified_analysis_with_model(
+        self,
+        data: LLMAnalysisInput,
+        ollama_client,
+        model_name: str
+    ) -> List[SingleAnalysisResponse]:
+        """통합 모델 분석 수행"""
+
+        try:
+            # 1. 통합 프롬프트 생성
+            unified_prompt = self.prompt_manager.get_unified_analysis_prompt(data)
+
+            # 2. 성능 병목 탐지 결과 추가
+            bottleneck_context = await self._detect_performance_bottlenecks(data)
+            if bottleneck_context:
+                unified_prompt = f"{unified_prompt}\n\n**자동 탐지된 성능 병목점:**\n{bottleneck_context}"
+
+            # 3. Ollama API 호출 (통합 분석)
+            result = await ollama_client.analyze_performance(unified_prompt, "unified_comprehensive")
+
+            if not result["success"]:
+                raise Exception(f"Unified model analysis failed: {result.get('error', 'Unknown error')}")
+
+            # 4. JSON 응답 파싱
+            parser = get_unified_analysis_parser()
+            analyses = parser.parse_unified_response(
+                result["response"],
+                model_name,
+                datetime.now()
+            )
+
+            logger.info(f"Successfully parsed unified analysis into {len(analyses)} individual analyses")
+            return analyses
+
+        except Exception as e:
+            logger.error(f"Error in unified analysis: {e}")
+            # 실패 시 기본 분석 결과 생성
+            return self._create_unified_fallback_analyses(model_name)
+
+    def _create_unified_fallback_analyses(self, model_name: str) -> List[SingleAnalysisResponse]:
+        """통합 분석 실패 시 대체 분석 결과 생성"""
+
+        analysis_types = [
+            AnalysisType.COMPREHENSIVE,
+            AnalysisType.RESPONSE_TIME,
+            AnalysisType.TPS,
+            AnalysisType.ERROR_RATE,
+            AnalysisType.RESOURCE_USAGE
+        ]
+
+        fallback_analyses = []
+        analyzed_at = datetime.now()
+
+        for analysis_type in analysis_types:
+            fallback = SingleAnalysisResponse(
+                analysis_type=analysis_type,
+                summary=f"통합 {analysis_type.value} 분석을 수행할 수 없었습니다.",
+                detailed_analysis=f"AI 응답 파싱 오류 또는 모델 분석 실패로 인해 {analysis_type.value} 분석 결과를 생성할 수 없었습니다.",
+                insights=[AnalysisInsight(
+                    category="system",
+                    message="통합 분석 시스템 오류로 인해 이 항목은 분석되지 않았습니다.",
+                    severity="warning"
+                )],
+                performance_score=None,
+                analyzed_at=analyzed_at,
+                model_name=model_name
+            )
+            fallback_analyses.append(fallback)
+
+        return fallback_analyses
 
     async def _collect_test_data(
         self,
@@ -351,12 +395,11 @@ class AIAnalysisService:
         test_history_id: int
     ) -> LLMAnalysisInput:
         """테스트 데이터 수집"""
-
         test_history = get_test_history_by_id(db_sync, test_history_id)
         if not test_history:
             raise Exception(f"Test history not found: {test_history_id}")
 
-        # 응답 형식으로 변환
+        # 테스트 상세 정보 구성
         test_detail = build_test_history_detail_response(test_history)
         test_detail_dict = test_detail.dict()
 
@@ -364,10 +407,33 @@ class AIAnalysisService:
         resource_usage_data = None
         try:
             resource_usage_data = await build_test_history_timeseries_resources_response(db_async, test_history_id)
+            if resource_usage_data and isinstance(resource_usage_data, list):
+                logger.debug(f"Resource usage data collected: {len(resource_usage_data)} servers")
         except Exception as e:
             logger.warning(f"Failed to get resource usage data: {e}")
 
         return convert_test_history_to_llm_input(test_detail_dict, resource_usage_data)
+
+    async def _setup_ollama_client(self, ai_config: dict):
+        """Ollama 클라이언트 설정"""
+        config = OllamaConfig.from_settings()
+        ollama_client = await get_ollama_client(config)
+
+        if not await ollama_client.is_available():
+            raise Exception("Ollama server is not available")
+
+        return ollama_client
+
+    async def _save_analysis_history(self, db_async: AsyncSession, test_history_id: int, response: SingleAnalysisResponse):
+        """분석 결과 이력 저장"""
+        try:
+            from app.repositories.analysis_history_repository import get_analysis_history_repository
+            history_repo = get_analysis_history_repository()
+            await history_repo.save_single_analysis(db_async, test_history_id, response)
+            logger.debug(f"Analysis result saved to history for test_history_id: {test_history_id}")
+        except Exception as e:
+            logger.warning(f"Failed to save analysis history: {e}")
+            # 이력 저장 실패해도 분석 결과는 반환
 
     async def _detect_performance_bottlenecks(self, data: LLMAnalysisInput) -> str:
         """
@@ -448,52 +514,14 @@ class AIAnalysisService:
 
     # _get_model_config_by_name 메서드 제거됨 - 더 이상 필요 없음
 
-    def _estimate_data_complexity(self, data: LLMAnalysisInput) -> str:
-        """데이터 복잡도 추정"""
-
-        complexity_score = 0
-
-        # 시나리오 수에 따른 복잡도
-        scenario_count = len(data.scenarios)
-        if scenario_count > 5:
-            complexity_score += 2
-        elif scenario_count > 2:
-            complexity_score += 1
-
-        # 리소스 데이터 존재 여부
-        if data.resource_usage:
-            complexity_score += 1
-
-            # 리소스 데이터 포인트 수
-            total_points = sum(len(r.usage_data) for r in data.resource_usage)
-            if total_points > 1000:
-                complexity_score += 2
-            elif total_points > 100:
-                complexity_score += 1
-
-        # 테스트 지속 시간
-        if data.configuration.test_duration and data.configuration.test_duration > 300:  # 5분 이상
-            complexity_score += 1
-
-        # 복잡도 분류
-        if complexity_score >= 4:
-            return "high"
-        elif complexity_score >= 2:
-            return "medium"
-        else:
-            return "low"
 
     async def _perform_analysis_with_model(
         self,
         data: LLMAnalysisInput,
         analysis_type: AnalysisType,
         ollama_client
-    ) -> 'AnalysisResult':
+    ) -> AnalysisResult:
         """모델을 사용한 분석 수행"""
-
-        # schemas의 AnalysisResult를 사용
-        from app.schemas.analysis import AnalysisResult
-
         # 성능 병목 자동 탐지 수행
         bottleneck_context = await self._detect_performance_bottlenecks(data)
 
@@ -505,32 +533,29 @@ class AIAnalysisService:
             prompt = f"{base_prompt}\n\n{bottleneck_context}"
         else:
             prompt = base_prompt
-        
+
         # Ollama API 호출
         result = await ollama_client.analyze_performance(prompt, analysis_type.value)
-        
+
         if not result["success"]:
             raise Exception(f"Model analysis failed: {result.get('error', 'Unknown error')}")
-        
-        # 응답 파싱
+
+        # 응답 파싱 (성능 평가 제거)
         analysis_text = result["response"]
         performance_score = result.get("performance_score")
-        
+
         return self._parse_analysis_response(analysis_type, analysis_text, performance_score)
     
     def _parse_analysis_response(
-        self, 
-        analysis_type: AnalysisType, 
-        analysis_text: str, 
+        self,
+        analysis_type: AnalysisType,
+        analysis_text: str,
         performance_score: Optional[float] = None
-    ) -> 'AnalysisResult':
-        """AI 응답 파싱 (기존 로직 재사용)"""
-        
-        from app.schemas.analysis import AnalysisResult, AnalysisInsight
-        
+    ) -> AnalysisResult:
+        """AI 응답 파싱 (단순화)"""
         lines = analysis_text.strip().split('\n')
-        
-        # 요약 추출
+
+        # 요약 추출 (첫 3줄에서 추출)
         summary = ""
         if len(lines) > 0:
             summary_lines = []
@@ -540,20 +565,16 @@ class AIAnalysisService:
                     if len(summary_lines) >= 3:
                         break
             summary = ' '.join(summary_lines)
-        
+
         # 인사이트 추출
         insights = self._extract_insights(analysis_text)
-        
-        # 신뢰도 점수 계산
-        confidence_score = self._calculate_confidence_score(analysis_text)
-        
+
         return AnalysisResult(
             analysis_type=analysis_type.value,
             summary=summary or "분석 요약이 생성되지 않았습니다.",
             detailed_analysis=analysis_text,
             insights=insights,
-            performance_score=performance_score,
-            confidence_score=confidence_score
+            performance_score=performance_score
         )
     
     def _extract_insights(self, analysis_text: str) -> List[AnalysisInsight]:
@@ -596,32 +617,6 @@ class AIAnalysisService:
         
         return insights[:5]
     
-    def _calculate_confidence_score(self, analysis_text: str) -> float:
-        """신뢰도 점수 계산 (기존 로직)"""
-        
-        score = 0.5
-        text_length = len(analysis_text)
-        
-        if text_length > 1000:
-            score += 0.2
-        elif text_length > 500:
-            score += 0.1
-        
-        import re
-        numbers_count = len(re.findall(r'\d+(?:\.\d+)?', analysis_text))
-        if numbers_count > 10:
-            score += 0.1
-        elif numbers_count > 5:
-            score += 0.05
-        
-        technical_terms = ["TPS", "응답시간", "CPU", "메모리", "P95", "P99", "에러율"]
-        term_count = sum(1 for term in technical_terms if term in analysis_text)
-        score += min(term_count * 0.02, 0.1)
-        
-        if "권장" in analysis_text or "개선" in analysis_text or "최적화" in analysis_text:
-            score += 0.1
-        
-        return min(score, 1.0)
     
     def _calculate_overall_score(self, analyses: List[SingleAnalysisResponse]) -> float:
         """전체 성능 점수 계산"""
@@ -677,236 +672,7 @@ class AIAnalysisService:
         unique_recommendations = list(dict.fromkeys(recommendations))
         return unique_recommendations[:5]
     
-    async def _perform_trend_analysis(
-        self,
-        db_sync: Session,
-        db_async: AsyncSession,
-        current_test_id: int,
-        comparison_test_ids: List[int]
-    ) -> Optional[str]:
-        """추세 분석"""
-        
-        try:
-            current_test = get_test_history_by_id(db_sync, current_test_id)
-            if not current_test:
-                return None
-            
-            comparison_results = []
-            
-            for test_id in comparison_test_ids:
-                prev_test = get_test_history_by_id(db_sync, test_id)
-                if prev_test:
-                    tps_change = self._calculate_percentage_change(
-                        prev_test.avg_tps, current_test.avg_tps
-                    )
-                    response_time_change = self._calculate_percentage_change(
-                        prev_test.avg_response_time, current_test.avg_response_time
-                    )
-                    error_rate_change = self._calculate_percentage_change(
-                        prev_test.avg_error_rate, current_test.avg_error_rate
-                    )
-                    
-                    comparison_results.append({
-                        "test_id": test_id,
-                        "tps_change": tps_change,
-                        "response_time_change": response_time_change,
-                        "error_rate_change": error_rate_change
-                    })
-            
-            if comparison_results:
-                return self._generate_trend_summary(comparison_results)
-            
-        except Exception as e:
-            logger.warning(f"Trend analysis failed: {e}")
-        
-        return None
     
-    def _calculate_percentage_change(self, old_value: Optional[float], new_value: Optional[float]) -> Optional[float]:
-        """퍼센트 변화율 계산"""
-        if old_value is None or new_value is None or old_value == 0:
-            return None
-        
-        return round(((new_value - old_value) / old_value) * 100, 1)
-    
-    def _generate_trend_summary(self, comparison_results: List[Dict[str, Any]]) -> str:
-        """추세 요약 생성"""
-        
-        if not comparison_results:
-            return "비교할 이전 테스트 데이터가 없습니다."
-        
-        avg_tps_change = self._calculate_average_change([r["tps_change"] for r in comparison_results])
-        avg_rt_change = self._calculate_average_change([r["response_time_change"] for r in comparison_results])
-        avg_error_change = self._calculate_average_change([r["error_rate_change"] for r in comparison_results])
-        
-        summary_parts = []
-        
-        if avg_tps_change is not None:
-            direction = "향상" if avg_tps_change > 0 else "저하"
-            summary_parts.append(f"TPS가 평균 {abs(avg_tps_change):.1f}% {direction}")
-        
-        if avg_rt_change is not None:
-            direction = "증가" if avg_rt_change > 0 else "개선"
-            summary_parts.append(f"응답시간이 평균 {abs(avg_rt_change):.1f}% {direction}")
-        
-        if avg_error_change is not None:
-            direction = "증가" if avg_error_change > 0 else "감소"
-            summary_parts.append(f"에러율이 평균 {abs(avg_error_change):.1f}% {direction}")
-        
-        return "이전 테스트 대비 " + ", ".join(summary_parts) + "했습니다."
-    
-    def _calculate_average_change(self, changes: List[Optional[float]]) -> Optional[float]:
-        """변화율 평균 계산"""
-        valid_changes = [c for c in changes if c is not None]
-        return sum(valid_changes) / len(valid_changes) if valid_changes else None
-    
-    def _generate_comparison_prompt(
-        self,
-        current_data: LLMAnalysisInput,
-        previous_data: LLMAnalysisInput,
-        focus_areas: Optional[List[str]] = None
-    ) -> str:
-        """비교 분석용 프롬프트 생성"""
-        
-        focus_text = ""
-        if focus_areas:
-            focus_mapping = {
-                "tps": "처리량(TPS)",
-                "response_time": "응답시간", 
-                "error_rate": "에러율",
-                "resource_usage": "리소스 사용량"
-            }
-            focused_areas = [focus_mapping.get(area, area) for area in focus_areas]
-            focus_text = f"\n특히 다음 영역에 집중하여 분석해주세요: {', '.join(focused_areas)}"
-        
-        prompt = f"""
-부하테스트 결과를 비교 분석해주세요.
-
-=== 이전 테스트 결과 ===
-- 테스트명: {previous_data.configuration.title}
-- 총 요청 수: {previous_data.configuration.total_requests or 'N/A'}
-- 실패 요청 수: {previous_data.configuration.failed_requests or 0}
-- 테스트 시간: {previous_data.configuration.test_duration or 'N/A'}초
-- 평균 TPS: {previous_data.overall_tps.avg_value if previous_data.overall_tps else 'N/A'}
-- 평균 응답시간: {previous_data.overall_response_time.avg_value if previous_data.overall_response_time else 'N/A'}ms
-- P95 응답시간: {previous_data.overall_response_time.p95 if previous_data.overall_response_time else 'N/A'}ms
-
-=== 현재 테스트 결과 ===
-- 테스트명: {current_data.configuration.title}
-- 총 요청 수: {current_data.configuration.total_requests or 'N/A'}
-- 실패 요청 수: {current_data.configuration.failed_requests or 0}
-- 테스트 시간: {current_data.configuration.test_duration or 'N/A'}초
-- 평균 TPS: {current_data.overall_tps.avg_value if current_data.overall_tps else 'N/A'}
-- 평균 응답시간: {current_data.overall_response_time.avg_value if current_data.overall_response_time else 'N/A'}ms
-- P95 응답시간: {current_data.overall_response_time.p95 if current_data.overall_response_time else 'N/A'}ms
-{focus_text}
-
-다음 형식으로 비교 분석해주세요:
-
-1. **변화 요약** (2-3문장으로 전반적인 변화 상황 요약)
-
-2. **지표별 상세 비교**
-   - TPS 변화: 수치와 변화율, 원인 분석
-   - 응답시간 변화: 수치와 변화율, 원인 분석  
-   - 에러율 변화: 수치와 변화율, 원인 분석
-
-3. **주요 개선사항** (3개 이내)
-
-4. **성능 저하 사항** (있는 경우, 3개 이내)
-
-5. **종합 평가 및 권장사항**
-
-구체적인 수치와 변화율을 포함하여 객관적으로 분석해주세요.
-"""
-        return prompt
-    
-    def _parse_comparison_response(
-        self,
-        response_text: str,
-        current_data: LLMAnalysisInput,
-        previous_data: LLMAnalysisInput
-    ) -> Dict[str, Any]:
-        """비교 분석 응답 파싱"""
-        
-        # 수치 비교 계산
-        tps_comparison = None
-        if current_data.overall_tps and previous_data.overall_tps:
-            current_tps = current_data.overall_tps.avg_value or 0
-            previous_tps = previous_data.overall_tps.avg_value or 0
-            change_pct = self._calculate_percentage_change(previous_tps, current_tps) or 0
-            
-            tps_comparison = {
-                "previous": previous_tps,
-                "current": current_tps,
-                "change_percent": change_pct
-            }
-        
-        response_time_comparison = None
-        if current_data.overall_response_time and previous_data.overall_response_time:
-            current_rt = current_data.overall_response_time.avg_value or 0
-            previous_rt = previous_data.overall_response_time.avg_value or 0
-            change_pct = self._calculate_percentage_change(previous_rt, current_rt) or 0
-            
-            response_time_comparison = {
-                "previous": previous_rt,
-                "current": current_rt,
-                "change_percent": change_pct
-            }
-        
-        # 전반적 개선도 계산
-        improvement_percentage = None
-        if tps_comparison and response_time_comparison:
-            tps_improvement = tps_comparison["change_percent"]
-            rt_improvement = -response_time_comparison["change_percent"]  # 응답시간 감소가 개선
-            improvement_percentage = (tps_improvement + rt_improvement) / 2
-        
-        # 텍스트에서 개선사항과 저하사항 추출
-        improvements = []
-        regressions = []
-        
-        lines = response_text.split('\n')
-        current_section = None
-        
-        for line in lines:
-            line = line.strip()
-            if "개선" in line and any(word in line for word in ["사항", "점"]):
-                current_section = "improvements"
-                continue
-            elif "저하" in line or "퇴보" in line:
-                current_section = "regressions"
-                continue
-            elif line.startswith(('-', '•', '*')) and current_section:
-                item = line.lstrip('-•* ').strip()
-                if item:
-                    if current_section == "improvements":
-                        improvements.append(item)
-                    elif current_section == "regressions":
-                        regressions.append(item)
-        
-        # 요약 추출 (첫 번째 단락)
-        summary_lines = []
-        for line in lines:
-            if line.strip() and not line.startswith('#'):
-                summary_lines.append(line.strip())
-                if len(summary_lines) >= 3:
-                    break
-        
-        comparison_summary = ' '.join(summary_lines) if summary_lines else "비교 분석이 완료되었습니다."
-        
-        # 인사이트 추출
-        insights = self._extract_insights(response_text)
-        
-        return {
-            "comparison_summary": comparison_summary,
-            "improvement_percentage": improvement_percentage,
-            "tps_comparison": tps_comparison,
-            "response_time_comparison": response_time_comparison,
-            "error_rate_comparison": None,  # TODO: 에러율 비교 구현
-            "resource_usage_comparison": None,  # TODO: 리소스 비교 구현
-            "improvements": improvements[:3],
-            "regressions": regressions[:3],
-            "detailed_comparison": response_text,
-            "insights": insights
-        }
     
     def _create_fallback_analysis(self, analysis_type: AnalysisType, error_message: str) -> SingleAnalysisResponse:
         """분석 실패 시 대체 분석 결과 생성"""
@@ -921,8 +687,6 @@ class AIAnalysisService:
                 severity="warning"
             )],
             performance_score=None,
-            confidence_score=0.0,
             analyzed_at=datetime.now(),
-            model_name="fallback",
-            analysis_duration_ms=0
+            model_name="fallback"
         )
