@@ -430,7 +430,7 @@ useEffect(() => {
                           )
                           .join(", ")} 동시 호출 기준으로 테스트`
                       : "테스트 시나리오 정보를 확인할 수 없습니다.",
-                    `가상사용자 : 고정 사용자 수 ${
+                    `가상사용자 : 사용자 수 ${
                       reportData.overall?.vus?.max
                         ? `${reportData.overall.vus.max}명`
                         : "정보 없음"
