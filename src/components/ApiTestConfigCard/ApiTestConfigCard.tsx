@@ -94,10 +94,40 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
     let shouldUpdate = false;
     const updates: Partial<ApiTestConfig> = {};
 
-    // 헤더 초기화 - 모든 메서드에 기본 헤더 하나 추가
+    // 헤더 초기화 - 시연용 기본값 설정 (Authorization: Bearer 12345)
     const headers = config.headers || [];
     if (headers.length === 0) {
-      updates.headers = [{header_key: "", header_value: ""}];
+      updates.headers = [{header_key: "Authorization", header_value: "Bearer 12345"}];
+      shouldUpdate = true;
+    }
+
+    // 시연용 기본값 설정
+    if (config.think_time === 0 || config.think_time === undefined) {
+      updates.think_time = 1;
+      shouldUpdate = true;
+    }
+
+    if (!config.response_time_target) {
+      updates.response_time_target = 1000;
+      shouldUpdate = true;
+    }
+
+    if (config.error_rate_target === undefined) {
+      updates.error_rate_target = 0;
+      shouldUpdate = true;
+    }
+
+    if (!config.executor) {
+      updates.executor = "constant-vus";
+      shouldUpdate = true;
+    }
+
+    if (!config.stages || config.stages.length === 0) {
+      updates.stages = [{duration: "60s", target: 400}];
+      shouldUpdate = true;
+    } else if (config.stages.length === 1 && (config.stages[0].duration === "10s" && config.stages[0].target === 10)) {
+      // 기존 기본값을 시연용 값으로 교체
+      updates.stages = [{duration: "60s", target: 400}];
       shouldUpdate = true;
     }
 
@@ -166,7 +196,7 @@ const ApiTestConfigCard: React.FC<ApiTestConfigCardProps> = ({
   };
 
   const addStage = () => {
-    const newStages = [...config.stages, {duration: "10s", target: 10}];
+    const newStages = [...config.stages, {duration: "60s", target: 400}];
     updateConfig({stages: newStages});
   };
 
