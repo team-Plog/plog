@@ -20,11 +20,6 @@ data:
       metric_version = 2
       name_override = "cadvisor_metrics"
       interval = "10s"  
-    
-    [[inputs.prometheus]]
-      urls = ["http://cadvisor.monitoring.svc.cluster.local:8080/metrics"]
-      name_override = "cadvisor_daemonset"
-      interval = "5s"
   
     [inputs.prometheus.tags]
     source = "cadvisor"
