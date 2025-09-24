@@ -464,39 +464,7 @@ useEffect(() => {
 
             <div className={styles.tableContainer}>
               <div className={`${styles.tableTitle} CaptionLight`}>
-                표 3-1. 비기능 테스트 시나리오
-              </div>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>테스트 시나리오</th>
-                    <th>결과</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.scenarios && reportData.scenarios.length > 0 ? (
-                    reportData.scenarios.map((scenario, index) => (
-                      <tr key={index}>
-                        <td>{scenario.name}</td>
-                        <td>
-                          {scenario.endpoint.description ||
-                            scenario.endpoint.summary}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td>데이터 없음</td>
-                      <td>정보 없음</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className={styles.tableContainer}>
-              <div className={`${styles.tableTitle} CaptionLight`}>
-                표 3-2. 비기능 테스트 목표
+                표 3-1. 비기능 테스트 목표
               </div>
               <table className={styles.table}>
                 <thead>

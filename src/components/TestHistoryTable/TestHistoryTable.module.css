@@ -120,6 +120,7 @@
   border: none;
   background-color: transparent;
   color: var(--color-black);
+  cursor: pointer;
 }
 
 /* 반응형 디자인 - TestHistoryTable 전용 */
