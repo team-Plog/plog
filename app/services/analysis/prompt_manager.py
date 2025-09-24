@@ -245,15 +245,15 @@ TPS 상세결과요약 - 테스트 시나리오별 TPS는 참고값으로만 사
 **반드시 한국어로 2-3개 문단으로 간결하게 작성하고, 이모지 사용하지 마세요.**"""
 
 
-    def get_unified_analysis_prompt(self, data: LLMAnalysisInput) -> str:
+    def get_analysis_prompt(self, data: LLMAnalysisInput) -> str:
         """
-        통합 분석 프롬프트 생성 (5개 영역을 모두 포함)
+        분석 프롬프트 생성 (5개 영역을 모두 포함)
 
         Args:
             data: 분석 데이터 (시계열 데이터 포함)
 
         Returns:
-            통합 분석용 프롬프트 문자열
+            분석용 프롬프트 문자열
         """
 
         # 기본 프롬프트 변수 준비
@@ -262,10 +262,20 @@ TPS 상세결과요약 - 테스트 시나리오별 TPS는 참고값으로만 사
         # 시계열 데이터 문자열 생성
         timeseries_context = self._prepare_timeseries_context(data)
 
-        template = self._get_unified_analysis_prompt_template()
+        template = self._get_analysis_prompt_template()
 
         # 시계열 컨텍스트를 프롬프트 변수에 추가
         prompt_vars["timeseries_context"] = timeseries_context
+
+        # JSON 템플릿을 단계별로 구성 (인코딩 문제 방지)
+        comprehensive_part = '{"summary": "종합 분석 요약", "detailed_analysis": "상세 분석 내용", "insights": [{"category": "performance", "message": "인사이트 메시지", "severity": "info"}], "performance_score": 85.5}'
+        response_time_part = '{"summary": "응답시간 분석 요약", "detailed_analysis": "상세 분석 내용", "insights": [{"category": "performance", "message": "인사이트 메시지", "severity": "warning"}], "performance_score": 78.2}'
+        tps_part = '{"summary": "TPS 분석 요약", "detailed_analysis": "상세 분석 내용", "insights": [{"category": "optimization", "message": "인사이트 메시지", "severity": "info"}], "performance_score": 82.1}'
+        error_rate_part = '{"summary": "에러율 분석 요약", "detailed_analysis": "상세 분석 내용", "insights": [{"category": "reliability", "message": "인사이트 메시지", "severity": "critical"}], "performance_score": 92.3}'
+        resource_usage_part = '{"summary": "리소스 분석 요약", "detailed_analysis": "상세 분석 내용", "insights": [{"category": "resource", "message": "인사이트 메시지", "severity": "info"}], "performance_score": 88.7}'
+
+        json_template = '{\n  "comprehensive": ' + comprehensive_part + ',\n  "response_time": ' + response_time_part + ',\n  "tps": ' + tps_part + ',\n  "error_rate": ' + error_rate_part + ',\n  "resource_usage": ' + resource_usage_part + '\n}'
+        prompt_vars["json_template"] = json_template
 
         try:
             return template.format(**prompt_vars)
@@ -340,10 +350,14 @@ TPS 상세결과요약 - 테스트 시나리오별 TPS는 참고값으로만 사
 
         return "\n".join(context_parts)
 
-    def _get_unified_analysis_prompt_template(self) -> str:
-        """통합 분석 프롬프트 템플릿"""
+    def _get_analysis_prompt_template(self) -> str:
+        return """부하테스트 결과를 종합적으로 분석하여 5개 영역의 상세한 해석을 제공해주세요.
 
-        return """부하테스트 결과를 종합적으로 분석하여 5개 영역의 상세한 해석을 제공해주세요. 단순한 수치 나열이 아닌 **해석과 인사이트**에 집중해주세요.
+**중요 출력 규칙**
+1) 유효한 JSON만 출력합니다.
+2) JSON 앞뒤를 &lt;BEGIN_ANALYSIS_JSON&gt; 와 &lt;END_ANALYSIS_JSON&gt; 토큰으로 감쌉니다.
+3) JSON 외의 설명/마크다운/코드펜스, 추가 텍스트를 절대 출력하지 않습니다.
+4) 각 영역별 performance_score는 0~100 범위의 숫자 또는 null로만 표기합니다.
 
 **테스트 정보**
 - 테스트명: {test_title}
@@ -360,62 +374,24 @@ TPS 상세결과요약 - 테스트 시나리오별 TPS는 참고값으로만 사
 
 {timeseries_context}
 
-**반드시 다음 JSON 형식으로 응답해주세요. 각 영역마다 해석과 인사이트를 제공하되, 한국어로 작성하고 이모지는 사용하지 마세요:**
+**분석 영역별 요구사항**
+- comprehensive: 전체 성능과 안정성 평가, 목표 달성 여부
+- response_time: P95 기준 사용자 경험, 지연 원인 분석
+- tps: TPS 목표 대비 달성도, 처리량 제한 요인
+- error_rate: 안정성 평가, 에러 원인 분석
+- resource_usage: CPU/Memory 효율성, 스케일링 가능성
 
-```json
-{{
-  "comprehensive": {{
-    "summary": "전체적인 테스트 결과에 대한 해석 (3-4문장)",
-    "detailed_analysis": "종합적인 성능 분석 및 시스템 안정성 평가",
-    "insights": [
-      {{"category": "performance|optimization|resource|reliability", "message": "구체적인 인사이트", "severity": "info|warning|critical"}},
-      {{"category": "performance|optimization|resource|reliability", "message": "구체적인 인사이트", "severity": "info|warning|critical"}}
-    ],
-    "performance_score": 85.5
-  }},
-  "response_time": {{
-    "summary": "응답시간 성능에 대한 해석 (2-3문장)",
-    "detailed_analysis": "응답시간 패턴 분석 및 지연 원인 진단",
-    "insights": [
-      {{"category": "performance|optimization|resource|reliability", "message": "응답시간 관련 인사이트", "severity": "info|warning|critical"}}
-    ],
-    "performance_score": 78.2
-  }},
-  "tps": {{
-    "summary": "처리량(TPS) 성능에 대한 해석 (2-3문장)",
-    "detailed_analysis": "TPS 목표 달성도 및 처리량 제한 요인 분석",
-    "insights": [
-      {{"category": "performance|optimization|resource|reliability", "message": "TPS 관련 인사이트", "severity": "info|warning|critical"}}
-    ],
-    "performance_score": 82.1
-  }},
-  "error_rate": {{
-    "summary": "에러율 및 안정성에 대한 해석 (2-3문장)",
-    "detailed_analysis": "에러 패턴 분석 및 시스템 안정성 평가",
-    "insights": [
-      {{"category": "performance|optimization|resource|reliability", "message": "에러율 관련 인사이트", "severity": "info|warning|critical"}}
-    ],
-    "performance_score": 92.3
-  }},
-  "resource_usage": {{
-    "summary": "리소스 사용량에 대한 해석 (2-3문장)",
-    "detailed_analysis": "CPU/Memory 사용 패턴 및 효율성 분석",
-    "insights": [
-      {{"category": "performance|optimization|resource|reliability", "message": "리소스 관련 인사이트", "severity": "info|warning|critical"}}
-    ],
-    "performance_score": 88.7
-  }}
-}}
-```
+각 영역은 summary, detailed_analysis, insights, performance_score를 포함해야 합니다.
+insights는 다음 중 하나의 category를 가져야 합니다: performance, optimization, resource, reliability
+severity는 다음 중 하나여야 합니다: info, warning, critical
+반드시 한국어로 작성하고 이모지는 사용하지 마세요.
 
-**중요 분석 가이드라인:**
-1. **상관관계 중심**: 시계열 데이터에서 TPS-리소스, 응답시간-CPU 등의 상관관계 분석
-2. **패턴 해석**: 단순 평균값이 아닌 시간에 따른 성능 변화 패턴 해석
-3. **병목 식별**: 성능 제한 요인과 리소스 병목 구간을 구체적으로 식별
-4. **실무적 조언**: 개발팀이 실제로 활용할 수 있는 구체적인 개선 방안 제시
-5. **성능 점수**: 각 영역별로 0-100점 범위에서 객관적 평가
 
-반드시 JSON 형식을 정확히 지켜서 응답해주세요."""
+지금 바로 다음 형식으로만 출력하세요:
+
+<BEGIN_ANALYSIS_JSON>
+{json_template}
+<END_ANALYSIS_JSON>"""
 
 
 def get_prompt_manager() -> PromptManager:

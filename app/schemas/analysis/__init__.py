@@ -2,6 +2,7 @@ from .analysis_models import (
     LLMAnalysisInput,
     AnalysisResult,
     AnalysisInsight,
+    UnifiedAnalysisOutput,
     convert_test_history_to_llm_input
 )
 from .analysis_request import (
@@ -20,14 +21,15 @@ from .analysis_response import (
 __all__ = [
     # Core models
     'LLMAnalysisInput',
-    'AnalysisResult', 
+    'AnalysisResult',
     'AnalysisInsight',
+    'UnifiedAnalysisOutput',
     'convert_test_history_to_llm_input',
-    
+
     # Request models
     'SingleAnalysisRequest',
     'ComprehensiveAnalysisRequest',
-    
+
     # Response models
     'AnalysisType',
     'SingleAnalysisResponse',

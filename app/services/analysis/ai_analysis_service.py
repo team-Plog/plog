@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import List
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
@@ -8,11 +8,11 @@ from sqlalchemy.orm import Session
 from app.schemas.analysis import (
     LLMAnalysisInput, convert_test_history_to_llm_input,
     AnalysisType, SingleAnalysisResponse, ComprehensiveAnalysisResponse,
-    AnalysisInsight, AnalysisResult
+    AnalysisInsight, UnifiedAnalysisOutput
 )
 from .prompt_manager import PromptManager
 from .ollama_client import get_ollama_client, OllamaConfig
-from .unified_analysis_parser import get_unified_analysis_parser
+from .analysis_parser import get_analysis_parser
 from .timeseries_data_processor import get_timeseries_data_processor
 from app.services.testing.test_history_service import (
     get_test_history_by_id, build_test_history_detail_response,
@@ -28,146 +28,15 @@ class AIAnalysisService:
 
     def __init__(self):
         self.prompt_manager = PromptManager()
-    
-    async def perform_single_analysis(
-        self,
-        db_sync: Session,
-        db_async: AsyncSession,
-        test_history_id: int,
-        analysis_type: AnalysisType
-    ) -> SingleAnalysisResponse:
-        """개별 분석 수행"""
-        start_time = datetime.now()
-
-        try:
-            logger.info(f"Starting {analysis_type.value} analysis for test_history_id: {test_history_id}")
-
-            # 1. 테스트 데이터 수집
-            llm_input_data = await self._collect_test_data(db_sync, db_async, test_history_id)
-
-            # 2. AI 설정 로드 및 검증
-            if not settings.validate_ai_config():
-                raise Exception("Invalid AI configuration. Please check environment variables.")
-            ai_config = settings.get_ai_config()
-
-            # 3. Ollama 클라이언트 설정
-            ollama_client = await self._setup_ollama_client(ai_config)
-
-            # 4. 분석 실행
-            analysis_result = await self._perform_analysis_with_model(
-                llm_input_data, analysis_type, ollama_client
-            )
-
-            # 5. 응답 구성
-            response = SingleAnalysisResponse(
-                analysis_type=analysis_type,
-                summary=analysis_result.summary,
-                detailed_analysis=analysis_result.detailed_analysis,
-                insights=analysis_result.insights,
-                performance_score=analysis_result.performance_score,
-                analyzed_at=datetime.now(),
-                model_name=ai_config['model_name']
-            )
-
-            # 6. 분석 결과 이력 저장
-            await self._save_analysis_history(db_async, test_history_id, response)
-
-            duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
-            logger.info(f"Analysis completed in {duration_ms}ms using {ai_config['model_name']}")
-            return response
-
-        except Exception as e:
-            duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
-            logger.error(f"Single analysis failed for test_history_id {test_history_id} after {duration_ms}ms: {e}")
-            raise
 
     async def perform_comprehensive_analysis(
         self,
         db_sync: Session,
         db_async: AsyncSession,
         test_history_id: int,
-        analysis_types: List[AnalysisType] = None,
     ) -> ComprehensiveAnalysisResponse:
         """
-        종합 분석 수행
-
-        Args:
-            db_sync: 동기 데이터베이스 세션
-            db_async: 비동기 데이터베이스 세션
-            test_history_id: 분석할 테스트 히스토리 ID
-            analysis_types: 수행할 분석 유형 목록 (기본값: 전체)
-
-        Returns:
-            종합 분석 결과
-        """
-        start_time = datetime.now()
-
-        # 기본 분석 유형 설정
-        if analysis_types is None:
-            analysis_types = [
-                AnalysisType.COMPREHENSIVE,
-                AnalysisType.RESPONSE_TIME,
-                AnalysisType.TPS,
-                AnalysisType.ERROR_RATE,
-                AnalysisType.RESOURCE_USAGE
-            ]
-
-        logger.info(f"Starting comprehensive analysis for test_history_id: {test_history_id}")
-
-        try:
-            # 1. 각 분석 유형별 실행
-            analyses = []
-            for analysis_type in analysis_types:
-                try:
-                    single_result = await self.perform_single_analysis(
-                        db_sync, db_async, test_history_id, analysis_type
-                    )
-                    analyses.append(single_result)
-                    logger.info(f"Completed {analysis_type.value} analysis")
-                except Exception as e:
-                    logger.error(f"Failed {analysis_type.value} analysis: {e}")
-                    # 실패한 분석은 기본값으로 대체
-                    analyses.append(self._create_fallback_analysis(analysis_type, str(e)))
-
-            # 2. 종합 분석 결과 계산
-            overall_score = self._calculate_overall_score(analyses)
-            executive_summary = self._generate_executive_summary(analyses)
-            top_recommendations = self._extract_top_recommendations(analyses)
-
-            # 3. 추세 분석 (제거됨 - 비교 분석 기능 제거)
-            trend_analysis = None
-
-            # 4. 사용된 모델명 (첫 번째 성공한 분석의 모델 사용)
-            used_model = next(
-                (a.model_name for a in analyses if a.model_name != "fallback"),
-                "unknown"
-            )
-
-            duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
-
-            return ComprehensiveAnalysisResponse(
-                test_history_id=test_history_id,
-                analyzed_at=datetime.now(),
-                model_name=used_model,
-                overall_performance_score=overall_score,
-                executive_summary=executive_summary,
-                analyses=analyses,
-                top_recommendations=top_recommendations,
-                trend_analysis=trend_analysis
-            )
-
-        except Exception as e:
-            logger.error(f"Comprehensive analysis failed for test_history_id {test_history_id}: {e}")
-            raise
-
-    async def perform_unified_comprehensive_analysis(
-        self,
-        db_sync: Session,
-        db_async: AsyncSession,
-        test_history_id: int,
-    ) -> ComprehensiveAnalysisResponse:
-        """
-        통합 AI 분석 수행 (새로운 방식)
+        통합 AI 분석 수행
 
         5개 영역을 하나의 AI 호출로 처리하며, 시계열 데이터를 포함한
         상관관계 기반 분석을 수행합니다.
@@ -182,11 +51,11 @@ class AIAnalysisService:
         """
         start_time = datetime.now()
 
-        logger.info(f"Starting unified comprehensive analysis for test_history_id: {test_history_id}")
+        logger.info(f"Starting comprehensive analysis for test_history_id: {test_history_id}")
 
         try:
             # 1. 테스트 데이터 수집 (시계열 데이터 포함)
-            llm_input_data = await self._collect_unified_test_data(db_sync, db_async, test_history_id)
+            llm_input_data = await self._collect_test_data(db_sync, db_async, test_history_id)
 
             # 2. AI 설정 로드 및 검증
             if not settings.validate_ai_config():
@@ -196,8 +65,8 @@ class AIAnalysisService:
             # 3. Ollama 클라이언트 설정
             ollama_client = await self._setup_ollama_client(ai_config)
 
-            # 4. 통합 분석 실행
-            analyses = await self._perform_unified_analysis_with_model(
+            # 4. 통합 분석 실행 (LangChain 적용)
+            analyses = await self._perform_analysis_with_langchain(
                 llm_input_data, ollama_client, ai_config['model_name']
             )
 
@@ -212,7 +81,7 @@ class AIAnalysisService:
 
             duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
 
-            logger.info(f"Unified comprehensive analysis completed in {duration_ms}ms using {ai_config['model_name']}")
+            logger.info(f"Comprehensive analysis completed in {duration_ms}ms using {ai_config['model_name']}")
 
             return ComprehensiveAnalysisResponse(
                 test_history_id=test_history_id,
@@ -227,49 +96,348 @@ class AIAnalysisService:
 
         except Exception as e:
             duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
-            logger.error(f"Unified comprehensive analysis failed for test_history_id {test_history_id} after {duration_ms}ms: {e}")
+            logger.error(f"Comprehensive analysis failed for test_history_id {test_history_id} after {duration_ms}ms: {e}")
             raise
 
-    async def _collect_unified_test_data(
+    async def _perform_analysis_with_langchain(
+        self,
+        data: LLMAnalysisInput,
+        ollama_client,
+        model_name: str
+    ) -> List[SingleAnalysisResponse]:
+        """LangChain JsonOutputParser를 사용한 구조화된 분석 수행"""
+
+        try:
+            # LangChain 사용 가능 여부 확인
+            if not hasattr(self, '_langchain_available'):
+                try:
+                    from langchain_core.output_parsers import JsonOutputParser
+                    from langchain_core.prompts import PromptTemplate
+                    self._langchain_available = True
+                    self._json_parser = JsonOutputParser(pydantic_object=UnifiedAnalysisOutput)
+                    logger.info("LangChain JsonOutputParser initialized successfully")
+                except ImportError:
+                    logger.warning("LangChain not available, falling back to legacy parser")
+                    self._langchain_available = False
+
+            # LangChain에서 템플릿 변수 오류가 발생하므로 임시로 legacy 방식 사용
+            if self._langchain_available:
+                 return await self._perform_langchain_analysis(data, ollama_client, model_name)
+            else:
+                return await self._perform_legacy_analysis(data, ollama_client, model_name)
+
+        except Exception as e:
+            logger.error(f"Error in analysis: {e}")
+            logger.error(f"Error type: {type(e)}")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return self._create_fallback_analyses(model_name)
+
+    async def _perform_langchain_analysis(
+        self,
+        data: LLMAnalysisInput,
+        ollama_client,
+        model_name: str
+    ) -> List[SingleAnalysisResponse]:
+        """LangChain을 사용한 구조화된 분석"""
+
+        try:
+            from langchain_core.prompts import PromptTemplate
+
+            logger.error("DEBUG: Starting LangChain analysis")
+
+            # 구조화된 프롬프트 생성
+            logger.error("DEBUG: Getting format instructions")
+            format_instructions = self._json_parser.get_format_instructions()
+            logger.error(f"DEBUG: Format instructions: {format_instructions[:200]}...")
+
+            logger.error("DEBUG: Creating prompt template")
+            base_template = self.prompt_manager.get_analysis_prompt(data)
+
+            # base_template already contains literal JSON with curly braces.
+            # Do NOT pass it through PromptTemplate.format() to avoid KeyError from `{...}` inside JSON.
+            formatted_prompt = base_template
+
+            # Append format instructions as plain text
+            prompt_text = f"{formatted_prompt}\n\n**JSON 스키마 정보:**\n{format_instructions}"
+
+        except Exception as e:
+            logger.error(f"DEBUG: Exception in LangChain setup: {e}")
+            raise
+
+        logger.error("DEBUG: Getting bottleneck context")
+        # 성능 병목 탐지 결과 추가
+        bottleneck_context = await self._detect_performance_bottlenecks(data)
+        logger.error(f"DEBUG: Bottleneck context length: {len(bottleneck_context) if bottleneck_context else 0}")
+
+        logger.error("DEBUG: Formatting prompt (skipped PromptTemplate; using plain string)")
+        # prompt_text already built above
+        logger.error(f"DEBUG: Prompt length: {len(prompt_text)}")
+
+        if bottleneck_context:
+            prompt_text = f"{prompt_text}\n\n**자동 탐지된 성능 병목점:**\n{bottleneck_context}"
+            logger.error("DEBUG: Added bottleneck context to prompt")
+
+        logger.error("DEBUG: Calling Ollama API")
+        # Ollama API 호출
+        result = await ollama_client.analyze_performance(prompt_text, "langchain_analysis")
+        logger.error(f"DEBUG: Ollama API result success: {result.get('success', False)}")
+
+        if not result["success"]:
+            raise Exception(f"AI analysis failed: {result.get('error', 'Unknown error')}")
+
+        # LangChain으로 구조화된 파싱
+        try:
+            raw_response = result["response"]
+            logger.error(f"Raw AI response (for debugging): {raw_response}")  # 전체 응답 로깅
+
+            # JSON 응답 정리 시도
+            cleaned_response = self._clean_json_response(raw_response)
+            if cleaned_response != raw_response:
+                logger.error(f"Applied JSON cleaning. Original: {raw_response[:200]}... Cleaned: {cleaned_response[:200]}...")
+            else:
+                logger.error("No JSON cleaning needed")
+
+            parsed_output = self._json_parser.parse(cleaned_response)
+            return self._convert_langchain_output_to_responses(parsed_output, model_name, datetime.now())
+        except Exception as e:
+            logger.error(f"LangChain parsing failed: {e}")
+            logger.error(f"Raw response causing error: {result['response'][:200]}...")
+            try:
+                cleaned_response = self._clean_json_response(result["response"])
+                logger.error(f"Cleaned response was: {cleaned_response[:200]}...")
+            except Exception as clean_error:
+                logger.error(f"Cleaning response failed: {clean_error}")
+                logger.error("Cleaned response was not available (cleaning failed)")
+            return await self._perform_legacy_analysis(data, ollama_client, model_name)
+
+    async def _perform_legacy_analysis(
+        self,
+        data: LLMAnalysisInput,
+        ollama_client,
+        model_name: str
+    ) -> List[SingleAnalysisResponse]:
+        """기존 파서를 사용한 분석 (LangChain 실패 시 fallback)"""
+
+        # 프롬프트 생성
+        analysis_prompt = self.prompt_manager.get_analysis_prompt(data)
+
+        # 성능 병목 탐지 결과 추가
+        bottleneck_context = await self._detect_performance_bottlenecks(data)
+        if bottleneck_context:
+            analysis_prompt = f"{analysis_prompt}\n\n**자동 탐지된 성능 병목점:**\n{bottleneck_context}"
+
+        # Ollama API 호출
+        result = await ollama_client.analyze_performance(analysis_prompt, "legacy_analysis")
+
+        if not result["success"]:
+            raise Exception(f"AI analysis failed: {result.get('error', 'Unknown error')}")
+
+        # 기존 파서 사용
+        parser = get_analysis_parser()
+        analyses = parser.parse_response(
+            result["response"],
+            model_name,
+            datetime.now()
+        )
+
+        return analyses
+
+    def _convert_langchain_output_to_responses(
+        self,
+        parsed_output: UnifiedAnalysisOutput,
+        model_name: str,
+        analyzed_at: datetime
+    ) -> List[SingleAnalysisResponse]:
+        """LangChain 파싱 결과를 SingleAnalysisResponse로 변환"""
+
+        responses = []
+
+        # 각 분석 유형별 변환
+        analysis_mapping = {
+            'comprehensive': AnalysisType.COMPREHENSIVE,
+            'response_time': AnalysisType.RESPONSE_TIME,
+            'tps': AnalysisType.TPS,
+            'error_rate': AnalysisType.ERROR_RATE,
+            'resource_usage': AnalysisType.RESOURCE_USAGE
+        }
+
+        for field_name, analysis_type in analysis_mapping.items():
+            structured_result = getattr(parsed_output, field_name)
+
+            # StructuredAnalysisInsight를 AnalysisInsight로 변환
+            insights = []
+            for struct_insight in structured_result.insights:
+                insight = AnalysisInsight(
+                    category=struct_insight.category,
+                    message=struct_insight.message,
+                    severity=struct_insight.severity,
+                    recommendation=struct_insight.recommendation
+                )
+                insights.append(insight)
+
+            response = SingleAnalysisResponse(
+                analysis_type=analysis_type,
+                summary=structured_result.summary,
+                detailed_analysis=structured_result.detailed_analysis,
+                insights=insights,
+                performance_score=structured_result.performance_score,
+                analyzed_at=analyzed_at,
+                model_name=model_name
+            )
+            responses.append(response)
+
+        return responses
+
+    def _create_fallback_analyses(self, model_name: str) -> List[SingleAnalysisResponse]:
+        """분석 실패 시 대체 분석 결과 생성"""
+
+        analysis_types = [
+            AnalysisType.COMPREHENSIVE,
+            AnalysisType.RESPONSE_TIME,
+            AnalysisType.TPS,
+            AnalysisType.ERROR_RATE,
+            AnalysisType.RESOURCE_USAGE
+        ]
+
+        fallback_analyses = []
+        analyzed_at = datetime.now()
+
+        for analysis_type in analysis_types:
+            fallback = SingleAnalysisResponse(
+                analysis_type=analysis_type,
+                summary=f"{analysis_type.value} 분석을 수행할 수 없었습니다.",
+                detailed_analysis=f"AI 응답 파싱 오류 또는 모델 분석 실패로 인해 {analysis_type.value} 분석 결과를 생성할 수 없었습니다.",
+                insights=[AnalysisInsight(
+                    category="system",
+                    message="분석 시스템 오류로 인해 이 항목은 분석되지 않았습니다.",
+                    severity="warning"
+                )],
+                performance_score=None,
+                analyzed_at=analyzed_at,
+                model_name=model_name
+            )
+            fallback_analyses.append(fallback)
+
+        return fallback_analyses
+
+    def _clean_json_response(self, response: str) -> str:
+        """AI 응답에서 불완전한 JSON을 정리"""
+        import re
+        import json
+
+        try:
+            # 1. 기본 JSON 파싱 시도
+            json.loads(response)
+            return response
+        except json.JSONDecodeError:
+            pass
+
+        # 2. 앞뒤 불필요한 텍스트 제거
+        cleaned = response.strip()
+
+        # 3. JSON 블록 추출 시도 (```json ... ``` 또는 { ... })
+        json_patterns = [
+            r'```json\s*(.*?)\s*```',  # ```json {} ``` 형식
+            r'```\s*(.*?)\s*```',      # ``` {} ``` 형식
+            r'(\{.*\})',               # { } 형식
+        ]
+
+        for pattern in json_patterns:
+            match = re.search(pattern, cleaned, re.DOTALL)
+            if match:
+                candidate = match.group(1).strip()
+                try:
+                    json.loads(candidate)
+                    return candidate
+                except json.JSONDecodeError:
+                    continue
+
+        # 4. 부분 JSON 복구 시도
+        cleaned = self._fix_partial_json(cleaned)
+
+        return cleaned
+
+    def _fix_partial_json(self, partial_json: str) -> str:
+        """부분적으로 손상된 JSON 복구"""
+        import re
+        try:
+            # 불완전한 키-값 쌍 제거
+            lines = partial_json.split('\n')
+            cleaned_lines = []
+
+            for line in lines:
+                line = line.strip()
+                # 불완전한 키만 있는 라인 건너뛰기 (예: '"comprehensive"')
+                if re.match(r'^\s*"[^"]*"\s*$', line):
+                    continue
+                cleaned_lines.append(line)
+
+            result = '\n'.join(cleaned_lines)
+
+            # JSON 구조 검증 및 자동 완성
+            if result.strip().startswith('{') and not result.strip().endswith('}'):
+                result += '}'
+
+            return result
+
+        except Exception:
+            return partial_json
+
+    async def _collect_test_data(
         self,
         db_sync: Session,
         db_async: AsyncSession,
         test_history_id: int
     ) -> LLMAnalysisInput:
-        """시계열 데이터를 포함한 테스트 데이터 수집"""
+        """테스트 데이터 수집 (시계열 데이터 포함)"""
+        test_history = get_test_history_by_id(db_sync, test_history_id)
+        if not test_history:
+            raise Exception(f"Test history not found: {test_history_id}")
 
-        # 기본 테스트 데이터 수집
-        llm_input_data = await self._collect_test_data(db_sync, db_async, test_history_id)
+        # 테스트 상세 정보 구성
+        test_detail = build_test_history_detail_response(test_history)
+        test_detail_dict = test_detail.dict()
+
+        # 리소스 사용량 데이터 조회
+        resource_usage_data = None
+        try:
+            resource_usage_data = await build_test_history_timeseries_resources_response(db_async, test_history_id)
+            if resource_usage_data and isinstance(resource_usage_data, list):
+                logger.debug(f"Resource usage data collected: {len(resource_usage_data)} servers")
+        except Exception as e:
+            logger.warning(f"Failed to get resource usage data: {e}")
+
+        # 기본 LLM 입력 데이터 생성
+        llm_input_data = convert_test_history_to_llm_input(test_detail_dict, resource_usage_data)
 
         # k6 시계열 데이터 수집 및 전처리
         try:
             from app.services.monitoring.influxdb_service import InfluxDBService
 
-            # 실제 job_name 조회 (test_history에서 가져오기)
-            test_history = get_test_history_by_id(db_sync, test_history_id)
-            if not test_history or not test_history.job_name:
-                raise Exception(f"Test history or job_name not found for test_history_id: {test_history_id}")
+            if test_history.job_name:
+                # InfluxDB에서 k6 시계열 데이터 조회
+                influxdb_service = InfluxDBService()
+                k6_timeseries_data = influxdb_service.get_test_timeseries_data(test_history.job_name)
 
-            # InfluxDB에서 k6 시계열 데이터 조회
-            influxdb_service = InfluxDBService()
-            job_name = test_history.job_name  # 실제 job_name 사용
-            k6_timeseries_data = influxdb_service.get_test_timeseries_data(job_name)
+                if k6_timeseries_data:
+                    # 시계열 데이터 전처리
+                    processor = get_timeseries_data_processor()
+                    processed_k6_data, k6_context = processor.process_k6_timeseries(k6_timeseries_data)
 
-            if k6_timeseries_data:
-                # 시계열 데이터 전처리 (노이즈 제거)
-                processor = get_timeseries_data_processor()
-                processed_k6_data, k6_context = processor.process_k6_timeseries(k6_timeseries_data)
+                    logger.info(f"Processed k6 timeseries: {len(processed_k6_data)} points")
 
-                logger.info(f"Processed k6 timeseries: {len(processed_k6_data)} points for unified analysis")
-
-                # LLMAnalysisInput에 시계열 데이터 정보 추가
-                # (현재 스키마에 직접 필드가 없으므로 메타데이터로 저장)
-                llm_input_data.k6_timeseries_data = processed_k6_data
-                llm_input_data.k6_analysis_context = k6_context
+                    # 시계열 데이터 추가
+                    llm_input_data.k6_timeseries_data = processed_k6_data
+                    llm_input_data.k6_analysis_context = k6_context
+                else:
+                    logger.warning(f"No k6 timeseries data found for job: {test_history.job_name}")
+                    llm_input_data.k6_timeseries_data = []
+                    llm_input_data.k6_analysis_context = "k6 시계열 데이터를 찾을 수 없습니다."
             else:
-                logger.warning(f"No k6 timeseries data found for job: {job_name}")
+                logger.warning(f"No job_name found for test_history_id: {test_history_id}")
                 llm_input_data.k6_timeseries_data = []
-                llm_input_data.k6_analysis_context = "k6 시계열 데이터를 찾을 수 없습니다."
+                llm_input_data.k6_analysis_context = "job_name이 없어 시계열 데이터를 수집할 수 없습니다."
 
         except Exception as e:
             logger.error(f"Error collecting k6 timeseries data: {e}")
@@ -281,7 +449,7 @@ class AIAnalysisService:
             try:
                 processor = get_timeseries_data_processor()
 
-                # 리소스 데이터를 적절한 형식으로 변환
+                # 리소스 데이터 변환
                 resource_data_for_processing = []
                 for resource in llm_input_data.resource_usage:
                     if hasattr(resource, 'usage_data') and resource.usage_data:
@@ -309,110 +477,13 @@ class AIAnalysisService:
                 processed_resource_data, resource_context = processor.process_resource_timeseries(resource_data_for_processing)
                 llm_input_data.processed_resource_context = resource_context
 
-                logger.info(f"Processed resource timeseries: {len(processed_resource_data)} pods for unified analysis")
+                logger.info(f"Processed resource timeseries: {len(processed_resource_data)} pods")
 
             except Exception as e:
                 logger.error(f"Error processing resource timeseries data: {e}")
                 llm_input_data.processed_resource_context = f"리소스 시계열 데이터 처리 중 오류 발생: {str(e)}"
 
         return llm_input_data
-
-    async def _perform_unified_analysis_with_model(
-        self,
-        data: LLMAnalysisInput,
-        ollama_client,
-        model_name: str
-    ) -> List[SingleAnalysisResponse]:
-        """통합 모델 분석 수행"""
-
-        try:
-            # 1. 통합 프롬프트 생성
-            unified_prompt = self.prompt_manager.get_unified_analysis_prompt(data)
-
-            # 2. 성능 병목 탐지 결과 추가
-            bottleneck_context = await self._detect_performance_bottlenecks(data)
-            if bottleneck_context:
-                unified_prompt = f"{unified_prompt}\n\n**자동 탐지된 성능 병목점:**\n{bottleneck_context}"
-
-            # 3. Ollama API 호출 (통합 분석)
-            result = await ollama_client.analyze_performance(unified_prompt, "unified_comprehensive")
-
-            if not result["success"]:
-                raise Exception(f"Unified model analysis failed: {result.get('error', 'Unknown error')}")
-
-            # 4. JSON 응답 파싱
-            parser = get_unified_analysis_parser()
-            analyses = parser.parse_unified_response(
-                result["response"],
-                model_name,
-                datetime.now()
-            )
-
-            logger.info(f"Successfully parsed unified analysis into {len(analyses)} individual analyses")
-            return analyses
-
-        except Exception as e:
-            logger.error(f"Error in unified analysis: {e}")
-            # 실패 시 기본 분석 결과 생성
-            return self._create_unified_fallback_analyses(model_name)
-
-    def _create_unified_fallback_analyses(self, model_name: str) -> List[SingleAnalysisResponse]:
-        """통합 분석 실패 시 대체 분석 결과 생성"""
-
-        analysis_types = [
-            AnalysisType.COMPREHENSIVE,
-            AnalysisType.RESPONSE_TIME,
-            AnalysisType.TPS,
-            AnalysisType.ERROR_RATE,
-            AnalysisType.RESOURCE_USAGE
-        ]
-
-        fallback_analyses = []
-        analyzed_at = datetime.now()
-
-        for analysis_type in analysis_types:
-            fallback = SingleAnalysisResponse(
-                analysis_type=analysis_type,
-                summary=f"통합 {analysis_type.value} 분석을 수행할 수 없었습니다.",
-                detailed_analysis=f"AI 응답 파싱 오류 또는 모델 분석 실패로 인해 {analysis_type.value} 분석 결과를 생성할 수 없었습니다.",
-                insights=[AnalysisInsight(
-                    category="system",
-                    message="통합 분석 시스템 오류로 인해 이 항목은 분석되지 않았습니다.",
-                    severity="warning"
-                )],
-                performance_score=None,
-                analyzed_at=analyzed_at,
-                model_name=model_name
-            )
-            fallback_analyses.append(fallback)
-
-        return fallback_analyses
-
-    async def _collect_test_data(
-        self,
-        db_sync: Session,
-        db_async: AsyncSession,
-        test_history_id: int
-    ) -> LLMAnalysisInput:
-        """테스트 데이터 수집"""
-        test_history = get_test_history_by_id(db_sync, test_history_id)
-        if not test_history:
-            raise Exception(f"Test history not found: {test_history_id}")
-
-        # 테스트 상세 정보 구성
-        test_detail = build_test_history_detail_response(test_history)
-        test_detail_dict = test_detail.dict()
-
-        # 리소스 사용량 데이터 조회
-        resource_usage_data = None
-        try:
-            resource_usage_data = await build_test_history_timeseries_resources_response(db_async, test_history_id)
-            if resource_usage_data and isinstance(resource_usage_data, list):
-                logger.debug(f"Resource usage data collected: {len(resource_usage_data)} servers")
-        except Exception as e:
-            logger.warning(f"Failed to get resource usage data: {e}")
-
-        return convert_test_history_to_llm_input(test_detail_dict, resource_usage_data)
 
     async def _setup_ollama_client(self, ai_config: dict):
         """Ollama 클라이언트 설정"""
@@ -514,108 +585,6 @@ class AIAnalysisService:
 
     # _get_model_config_by_name 메서드 제거됨 - 더 이상 필요 없음
 
-
-    async def _perform_analysis_with_model(
-        self,
-        data: LLMAnalysisInput,
-        analysis_type: AnalysisType,
-        ollama_client
-    ) -> AnalysisResult:
-        """모델을 사용한 분석 수행"""
-        # 성능 병목 자동 탐지 수행
-        bottleneck_context = await self._detect_performance_bottlenecks(data)
-
-        # 기본 프롬프트 생성
-        base_prompt = self.prompt_manager.get_prompt(analysis_type, data)
-
-        # 병목 분석 결과를 프롬프트에 추가
-        if bottleneck_context:
-            prompt = f"{base_prompt}\n\n{bottleneck_context}"
-        else:
-            prompt = base_prompt
-
-        # Ollama API 호출
-        result = await ollama_client.analyze_performance(prompt, analysis_type.value)
-
-        if not result["success"]:
-            raise Exception(f"Model analysis failed: {result.get('error', 'Unknown error')}")
-
-        # 응답 파싱 (성능 평가 제거)
-        analysis_text = result["response"]
-        performance_score = result.get("performance_score")
-
-        return self._parse_analysis_response(analysis_type, analysis_text, performance_score)
-    
-    def _parse_analysis_response(
-        self,
-        analysis_type: AnalysisType,
-        analysis_text: str,
-        performance_score: Optional[float] = None
-    ) -> AnalysisResult:
-        """AI 응답 파싱 (단순화)"""
-        lines = analysis_text.strip().split('\n')
-
-        # 요약 추출 (첫 3줄에서 추출)
-        summary = ""
-        if len(lines) > 0:
-            summary_lines = []
-            for line in lines[:5]:
-                if line.strip() and not line.startswith('#'):
-                    summary_lines.append(line.strip())
-                    if len(summary_lines) >= 3:
-                        break
-            summary = ' '.join(summary_lines)
-
-        # 인사이트 추출
-        insights = self._extract_insights(analysis_text)
-
-        return AnalysisResult(
-            analysis_type=analysis_type.value,
-            summary=summary or "분석 요약이 생성되지 않았습니다.",
-            detailed_analysis=analysis_text,
-            insights=insights,
-            performance_score=performance_score
-        )
-    
-    def _extract_insights(self, analysis_text: str) -> List[AnalysisInsight]:
-        """인사이트 추출 (기존 로직)"""
-        
-        insights = []
-        warning_keywords = ["위험", "문제", "병목", "제한", "초과", "높음", "지연"]
-        critical_keywords = ["심각", "실패", "오류", "중단", "불안정"]
-        optimization_keywords = ["개선", "최적화", "권장", "제안", "향상"]
-        
-        sentences = analysis_text.split('.')
-        
-        for sentence in sentences:
-            sentence = sentence.strip()
-            if len(sentence) < 10:
-                continue
-            
-            severity = "info"
-            category = "performance"
-            
-            if any(keyword in sentence for keyword in critical_keywords):
-                severity = "critical"
-            elif any(keyword in sentence for keyword in warning_keywords):
-                severity = "warning"
-            
-            if any(keyword in sentence for keyword in optimization_keywords):
-                category = "optimization"
-            elif "리소스" in sentence or "CPU" in sentence or "메모리" in sentence:
-                category = "resource"
-            elif "에러" in sentence or "오류" in sentence:
-                category = "reliability"
-            
-            if severity in ["warning", "critical"] or category == "optimization":
-                insights.append(AnalysisInsight(
-                    category=category,
-                    message=sentence,
-                    severity=severity,
-                    recommendation=None
-                ))
-        
-        return insights[:5]
     
     
     def _calculate_overall_score(self, analyses: List[SingleAnalysisResponse]) -> float:

@@ -175,6 +175,7 @@ class OllamaClient:
                 performance_score = self._extract_performance_score(response_text)
 
                 logger.info(f"Analysis completed for {analysis_type}, response length: {len(response_text)}")
+                logger.error(f"Ollama response (debugging): {response_text}")  # 디버깅용
 
                 return {
                     "success": True,

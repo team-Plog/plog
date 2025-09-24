@@ -290,8 +290,8 @@ class K6JobScheduler:
                 async def run_unified_analysis():
                     async_db = AsyncSessionLocal()
                     try:
-                        # 새로운 통합 분석 메서드 사용
-                        comprehensive_result = await ai_service.perform_unified_comprehensive_analysis(
+                        # 통합 분석 메서드 사용
+                        comprehensive_result = await ai_service.perform_comprehensive_analysis(
                             sync_db, async_db, test_history_id
                         )
 
@@ -306,29 +306,7 @@ class K6JobScheduler:
                         return comprehensive_result
 
                     except Exception as e:
-                        logger.error(f"Unified analysis failed, falling back to individual analyses: {e}")
-
-                        # 통합 분석 실패 시 기존 방식으로 fallback
-                        analysis_types = [
-                            AnalysisType.TPS,
-                            AnalysisType.RESPONSE_TIME,
-                            AnalysisType.ERROR_RATE,
-                            AnalysisType.RESOURCE_USAGE,
-                            AnalysisType.COMPREHENSIVE
-                        ]
-
-                        logger.info("Falling back to individual analysis method")
-                        for analysis_type in analysis_types:
-                            try:
-                                logger.info(f"Running fallback {analysis_type.value} analysis for test_history_id: {test_history_id}")
-                                await ai_service.perform_single_analysis(
-                                    sync_db, async_db, test_history_id, analysis_type
-                                )
-                                logger.info(f"Completed fallback {analysis_type.value} analysis for test_history_id: {test_history_id}")
-                            except Exception as fallback_error:
-                                logger.error(f"Failed fallback {analysis_type.value} analysis for test_history_id {test_history_id}: {fallback_error}")
-                                # 개별 분석 실패해도 다른 분석은 계속 진행
-
+                        logger.error(f"Comprehensive analysis failed for test_history_id {test_history_id}: {e}")
                         return None
 
                     finally:

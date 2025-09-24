@@ -18,8 +18,8 @@ from app.schemas.analysis import (
 logger = logging.getLogger(__name__)
 
 
-class UnifiedAnalysisParser:
-    """통합 AI 분석 응답 파싱 클래스"""
+class AnalysisParser:
+    """AI 분석 응답 파싱 클래스"""
 
     def __init__(self):
         self.analysis_type_mapping = {
@@ -30,14 +30,14 @@ class UnifiedAnalysisParser:
             "resource_usage": AnalysisType.RESOURCE_USAGE
         }
 
-    def parse_unified_response(
+    def parse_response(
         self,
         ai_response: str,
         model_name: str,
         analyzed_at: datetime = None
     ) -> List[SingleAnalysisResponse]:
         """
-        통합 AI 응답을 파싱하여 SingleAnalysisResponse 리스트로 변환
+        AI 응답을 파싱하여 SingleAnalysisResponse 리스트로 변환
 
         Args:
             ai_response: AI로부터 받은 JSON 형식 응답
@@ -87,34 +87,59 @@ class UnifiedAnalysisParser:
             return self._create_fallback_responses(model_name, analyzed_at)
 
     def _extract_json_from_response(self, response: str) -> Optional[Dict[str, Any]]:
-        """AI 응답에서 JSON 부분을 추출하여 파싱"""
+        """AI 응답에서 JSON 부분을 추출/정정하여 파싱"""
+        begin_tok = "<BEGIN_ANALYSIS_JSON>"
+        end_tok = "<END_ANALYSIS_JSON>"
 
         try:
-            # JSON 코드 블록 찾기 (```json...``` 형태)
-            json_pattern = r'```json\s*\n(.*?)\n```'
-            json_match = re.search(json_pattern, response, re.DOTALL)
+            raw = None
 
-            if json_match:
-                json_str = json_match.group(1).strip()
-            else:
-                # 코드 블록이 없다면 중괄호로 시작하는 JSON 찾기
-                json_pattern = r'\{.*\}'
-                json_match = re.search(json_pattern, response, re.DOTALL)
-                if json_match:
-                    json_str = json_match.group(0).strip()
-                else:
-                    logger.error("No JSON pattern found in AI response")
-                    return None
+            # 1) 새 가드 토큰 우선
+            if begin_tok in response and end_tok in response:
+                start = response.index(begin_tok) + len(begin_tok)
+                end = response.rindex(end_tok)
+                raw = response[start:end].strip()
 
-            # JSON 파싱
-            return json.loads(json_str)
+            # 2) 기존 ```json ... ``` 코드블록
+            if raw is None:
+                json_block = re.search(r"```json\s*\n(.*?)\n```", response, re.DOTALL)
+                if json_block:
+                    raw = json_block.group(1).strip()
 
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON decode error: {e}")
-            return None
+            # 3) 중괄호로 감싼 가장 바깥 JSON 덩어리
+            if raw is None:
+                brace_match = re.search(r"\{.*\}", response, re.DOTALL)
+                if brace_match:
+                    raw = brace_match.group(0).strip()
+
+            if raw is None or not raw:
+                logger.error("No JSON pattern found in AI response")
+                return None
+
+            # 4) 정리 & 파싱 시도
+            cleaned = self._clean_json_str(raw)
+            try:
+                return json.loads(cleaned)
+            except json.JSONDecodeError:
+                # 5) 후행 쉼표 제거 등 2차 정리 후 재시도
+                cleaned2 = re.sub(r",\s*(\]|\})", r"\1", cleaned)
+                return json.loads(cleaned2)
+
         except Exception as e:
             logger.error(f"Error extracting JSON: {e}")
             return None
+
+    def _clean_json_str(self, s: str) -> str:
+        """경미한 JSON 오류 정정: 코드펜스/주석/BOM/제어문자 제거"""
+        # 코드펜스 제거
+        s = re.sub(r"^```json\s*|```$", "", s.strip(), flags=re.IGNORECASE | re.MULTILINE)
+        # BOM 제거
+        s = s.lstrip("\ufeff")
+        # // 주석 제거
+        s = re.sub(r"(?m)^\s*//.*$", "", s)
+        # /* */ 주석 제거
+        s = re.sub(r"/\*.*?\*/", "", s, flags=re.DOTALL)
+        return s.strip()
 
     def _parse_single_analysis(
         self,
@@ -202,10 +227,10 @@ class UnifiedAnalysisParser:
         )
 
 
-def get_unified_analysis_parser() -> UnifiedAnalysisParser:
-    """UnifiedAnalysisParser 인스턴스 반환 (싱글톤)"""
+def get_analysis_parser() -> AnalysisParser:
+    """AnalysisParser 인스턴스 반환 (싱글톤)"""
 
-    if not hasattr(get_unified_analysis_parser, "_instance"):
-        get_unified_analysis_parser._instance = UnifiedAnalysisParser()
+    if not hasattr(get_analysis_parser, "_instance"):
+        get_analysis_parser._instance = AnalysisParser()
 
-    return get_unified_analysis_parser._instance
+    return get_analysis_parser._instance
