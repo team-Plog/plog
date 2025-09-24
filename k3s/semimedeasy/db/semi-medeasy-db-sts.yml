@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 
 metadata:
-  name: semi-medeasy-db-sts
+  name: semi-medeasy-db-sts-local
   namespace: test
 
 # statuefulset의 경우 테스트 서버와 동시 실행 주의 - 자원 사용량 정보 중복 저장 문제 발생
@@ -48,12 +48,11 @@ spec:
                   key: db_name
                   name: semi-medeasy-db-secret
 
-  volumeClaimTemplates:
-    - metadata:
-        name: semi-medeasy-db-pvc
-      spec:
-        accessModes: ["ReadWriteOnce"]
-        resources:
-          requests:
-            storage: 2Gi
-        storageClassName: semi-medeasy-db
+          volumeMounts:
+            - name: db-storage
+              mountPath: /var/lib/postgresql/data
+
+      volumes:
+        - name: db-storage
+          persistentVolumeClaim:
+            claimName: semi-medeasy-db-pvc-semi-medeasy-db-sts-0
