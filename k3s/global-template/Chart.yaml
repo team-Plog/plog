@@ -1,7 +1,0 @@
-# charts/plog-apps/Chart.yaml
-apiVersion: v2
-name: plog-test-apps
-description: Multi-App Helm Chart
-type: application
-version: 0.1.0
-appVersion: "1.0"
