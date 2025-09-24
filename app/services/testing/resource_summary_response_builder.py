@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict, List
 from app.services.testing.resource_response_builder import TestHistoryResourcesResponseBuilder, \
     ResourceProcessingContext
@@ -6,6 +7,8 @@ from app.repositories.scenario_history_repository import ScenarioHistoryReposito
 from app.repositories.test_history_repository import TestHistoryRepository
 from app.repositories.test_resource_timeseries_repository import TestResourceTimeseriesRepository
 from k8s.resource_service import ResourceService
+
+logger = logging.getLogger(__name__)
 
 
 class SummaryResourcesResponseBuilder(TestHistoryResourcesResponseBuilder):
