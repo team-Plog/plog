@@ -209,22 +209,27 @@ class K6JobScheduler:
                 logger.info(f"Extended collection range: {extended_start} ~ {extended_end}")
 
                 # server infra 정보 알고, 시나리오 루프 돌고 있으니 차례대로 저장
+                logger.info(f"Processing {len(server_infras)} server infras for scenario {scenario_history.id}")
                 for server_infra in server_infras:
                     pod_name = server_infra.name
-                    
+                    service_type = server_infra.service_type
+                    logger.info(f"Processing server_infra: {pod_name} (service_type: {service_type})")
+
                     # Pod의 resource spec 조회
                     resource_specs = self.resource_service.get_pod_aggregated_resources(pod_name)
-                    logger.info(f"debug k6 job scheduler resource_sepcs: {resource_specs}")
+                    logger.info(f"debug k6 job scheduler resource_sepcs for {pod_name}: {resource_specs}")
                     
                     # CPU 메트릭 수집 및 스마트 보정
                     cpu_metrics = self.influxdb_service.get_cpu_metrics(pod_name, extended_start, extended_end)
-                    logger.info(f"debug k6 job scheduler cpu_metrics: {cpu_metrics}")
-                    
+                    logger.info(f"debug k6 job scheduler cpu_metrics count for {pod_name}: {len(cpu_metrics) if cpu_metrics else 0}")
+
                     # SmartMetricsBuffer를 사용한 빈 값 보정 적용
                     if cpu_metrics:
                         cpu_metrics = self.influxdb_service.apply_smart_interpolation(cpu_metrics, 'cpu', pod_name)
                         logger.info(f"Applied smart interpolation to CPU metrics for {pod_name}")
-                    
+                    else:
+                        logger.warning(f"No CPU metrics found for pod: {pod_name}")
+
                     if cpu_metrics and resource_specs:
                         # CPU 메트릭에 resource spec 정보 추가
                         for metric in cpu_metrics:
@@ -232,18 +237,22 @@ class K6JobScheduler:
                             metric['cpu_limit_millicores'] = resource_specs['cpu_limit_millicores']
                             metric['memory_request_mb'] = resource_specs['memory_request_mb']
                             metric['memory_limit_mb'] = resource_specs['memory_limit_mb']
-                    save_success = save_test_resource_metrics(db, scenario_history, server_infra.id, cpu_metrics)
-                    logger.info(f"debug k6 job scheduler save_success: {save_success}")
+                        save_success = save_test_resource_metrics(db, scenario_history, server_infra.id, cpu_metrics)
+                        logger.info(f"CPU metrics save success for {pod_name}: {save_success}")
+                    else:
+                        logger.warning(f"Skipping CPU metrics save for {pod_name}: metrics={bool(cpu_metrics)}, specs={bool(resource_specs)}")
 
                     # Memory 메트릭 수집 및 스마트 보정
                     memory_metrics = self.influxdb_service.get_memory_metrics(pod_name, extended_start, extended_end)
-                    logger.info(f"debug k6 job scheduler memory_metrics: {memory_metrics}")
-                    
+                    logger.info(f"debug k6 job scheduler memory_metrics count for {pod_name}: {len(memory_metrics) if memory_metrics else 0}")
+
                     # SmartMetricsBuffer를 사용한 빈 값 보정 적용
                     if memory_metrics:
                         memory_metrics = self.influxdb_service.apply_smart_interpolation(memory_metrics, 'memory', pod_name)
                         logger.info(f"Applied smart interpolation to Memory metrics for {pod_name}")
-                    
+                    else:
+                        logger.warning(f"No Memory metrics found for pod: {pod_name}")
+
                     if memory_metrics and resource_specs:
                         # Memory 메트릭에 resource spec 정보 추가
                         for metric in memory_metrics:
@@ -251,8 +260,10 @@ class K6JobScheduler:
                             metric['cpu_limit_millicores'] = resource_specs['cpu_limit_millicores']
                             metric['memory_request_mb'] = resource_specs['memory_request_mb']
                             metric['memory_limit_mb'] = resource_specs['memory_limit_mb']
-                    save_success = save_test_resource_metrics(db, scenario_history, server_infra.id, memory_metrics)
-                    logger.info(f"debug k6 job scheduler save_success: {save_success}")
+                        save_success = save_test_resource_metrics(db, scenario_history, server_infra.id, memory_metrics)
+                        logger.info(f"Memory metrics save success for {pod_name}: {save_success}")
+                    else:
+                        logger.warning(f"Skipping Memory metrics save for {pod_name}: metrics={bool(memory_metrics)}, specs={bool(resource_specs)}")
 
         except Exception as e:
             logger.error(f"Error collecting and saving resource metrics for test_history {test_history.id}: {e}")
