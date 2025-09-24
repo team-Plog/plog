@@ -209,22 +209,27 @@ class K6JobScheduler:
                 logger.info(f"Extended collection range: {extended_start} ~ {extended_end}")
 
                 # server infra 정보 알고, 시나리오 루프 돌고 있으니 차례대로 저장
+                logger.info(f"Processing {len(server_infras)} server infras for scenario {scenario_history.id}")
                 for server_infra in server_infras:
                     pod_name = server_infra.name
-                    
+                    service_type = server_infra.service_type
+                    logger.info(f"Processing server_infra: {pod_name} (service_type: {service_type})")
+
                     # Pod의 resource spec 조회
                     resource_specs = self.resource_service.get_pod_aggregated_resources(pod_name)
-                    logger.info(f"debug k6 job scheduler resource_sepcs: {resource_specs}")
+                    logger.info(f"debug k6 job scheduler resource_sepcs for {pod_name}: {resource_specs}")
                     
                     # CPU 메트릭 수집 및 스마트 보정
                     cpu_metrics = self.influxdb_service.get_cpu_metrics(pod_name, extended_start, extended_end)
-                    logger.info(f"debug k6 job scheduler cpu_metrics: {cpu_metrics}")
-                    
+                    logger.info(f"debug k6 job scheduler cpu_metrics count for {pod_name}: {len(cpu_metrics) if cpu_metrics else 0}")
+
                     # SmartMetricsBuffer를 사용한 빈 값 보정 적용
                     if cpu_metrics:
                         cpu_metrics = self.influxdb_service.apply_smart_interpolation(cpu_metrics, 'cpu', pod_name)
                         logger.info(f"Applied smart interpolation to CPU metrics for {pod_name}")
-                    
+                    else:
+                        logger.warning(f"No CPU metrics found for pod: {pod_name}")
+
                     if cpu_metrics and resource_specs:
                         # CPU 메트릭에 resource spec 정보 추가
                         for metric in cpu_metrics:
@@ -232,18 +237,22 @@ class K6JobScheduler:
                             metric['cpu_limit_millicores'] = resource_specs['cpu_limit_millicores']
                             metric['memory_request_mb'] = resource_specs['memory_request_mb']
                             metric['memory_limit_mb'] = resource_specs['memory_limit_mb']
-                    save_success = save_test_resource_metrics(db, scenario_history, server_infra.id, cpu_metrics)
-                    logger.info(f"debug k6 job scheduler save_success: {save_success}")
+                        save_success = save_test_resource_metrics(db, scenario_history, server_infra.id, cpu_metrics)
+                        logger.info(f"CPU metrics save success for {pod_name}: {save_success}")
+                    else:
+                        logger.warning(f"Skipping CPU metrics save for {pod_name}: metrics={bool(cpu_metrics)}, specs={bool(resource_specs)}")
 
                     # Memory 메트릭 수집 및 스마트 보정
                     memory_metrics = self.influxdb_service.get_memory_metrics(pod_name, extended_start, extended_end)
-                    logger.info(f"debug k6 job scheduler memory_metrics: {memory_metrics}")
-                    
+                    logger.info(f"debug k6 job scheduler memory_metrics count for {pod_name}: {len(memory_metrics) if memory_metrics else 0}")
+
                     # SmartMetricsBuffer를 사용한 빈 값 보정 적용
                     if memory_metrics:
                         memory_metrics = self.influxdb_service.apply_smart_interpolation(memory_metrics, 'memory', pod_name)
                         logger.info(f"Applied smart interpolation to Memory metrics for {pod_name}")
-                    
+                    else:
+                        logger.warning(f"No Memory metrics found for pod: {pod_name}")
+
                     if memory_metrics and resource_specs:
                         # Memory 메트릭에 resource spec 정보 추가
                         for metric in memory_metrics:
@@ -251,8 +260,10 @@ class K6JobScheduler:
                             metric['cpu_limit_millicores'] = resource_specs['cpu_limit_millicores']
                             metric['memory_request_mb'] = resource_specs['memory_request_mb']
                             metric['memory_limit_mb'] = resource_specs['memory_limit_mb']
-                    save_success = save_test_resource_metrics(db, scenario_history, server_infra.id, memory_metrics)
-                    logger.info(f"debug k6 job scheduler save_success: {save_success}")
+                        save_success = save_test_resource_metrics(db, scenario_history, server_infra.id, memory_metrics)
+                        logger.info(f"Memory metrics save success for {pod_name}: {save_success}")
+                    else:
+                        logger.warning(f"Skipping Memory metrics save for {pod_name}: metrics={bool(memory_metrics)}, specs={bool(resource_specs)}")
 
         except Exception as e:
             logger.error(f"Error collecting and saving resource metrics for test_history {test_history.id}: {e}")
@@ -275,51 +286,58 @@ class K6JobScheduler:
             logger.error(f"Error triggering AI analysis for test_history_id {test_history_id}: {e}")
 
     def _run_ai_analysis(self, test_history_id: int):
-        """모든 유형의 AI 분석 수행 (별도 스레드에서 실행)"""
+        """통합 AI 분석 수행 (별도 스레드에서 실행)"""
         try:
-            logger.info(f"Starting comprehensive AI analysis for test_history_id: {test_history_id}")
+            logger.info(f"Starting unified comprehensive AI analysis for test_history_id: {test_history_id}")
 
             # AI 분석 서비스 초기화
             ai_service = AIAnalysisService()
-            analysis_types = [
-                AnalysisType.TPS,
-                AnalysisType.RESPONSE_TIME,
-                AnalysisType.ERROR_RATE,
-                AnalysisType.RESOURCE_USAGE,
-                AnalysisType.COMPREHENSIVE
-            ]
 
             # 동기/비동기 DB 세션 생성
             sync_db = SessionLocal()
 
             try:
-                # 각 분석 유형별로 순차 실행
-                async def run_analyses():
+                # 통합 분석 실행 (기존 5개 개별 분석을 1개로 통합)
+                async def run_unified_analysis():
                     async_db = AsyncSessionLocal()
                     try:
-                        for analysis_type in analysis_types:
-                            try:
-                                logger.info(f"Running {analysis_type.value} analysis for test_history_id: {test_history_id}")
-                                await ai_service.perform_single_analysis(
-                                    sync_db, async_db, test_history_id, analysis_type
-                                )
-                                logger.info(f"Completed {analysis_type.value} analysis for test_history_id: {test_history_id}")
-                            except Exception as e:
-                                logger.error(f"Failed {analysis_type.value} analysis for test_history_id {test_history_id}: {e}")
-                                # 개별 분석 실패해도 다른 분석은 계속 진행
+                        # 통합 분석 메서드 사용
+                        comprehensive_result = await ai_service.perform_comprehensive_analysis(
+                            sync_db, async_db, test_history_id
+                        )
+
+                        logger.info(f"Unified comprehensive analysis completed for test_history_id: {test_history_id}")
+                        logger.info(f"Analysis included {len(comprehensive_result.analyses)} individual analysis results")
+
+                        # 각 분석 영역의 성능 점수 로깅
+                        for analysis in comprehensive_result.analyses:
+                            score_info = f" (score: {analysis.performance_score})" if analysis.performance_score else ""
+                            logger.info(f"  - {analysis.analysis_type.value}: {analysis.summary[:50]}...{score_info}")
+
+                        return comprehensive_result
+
+                    except Exception as e:
+                        logger.error(f"Comprehensive analysis failed for test_history_id {test_history_id}: {e}")
+                        return None
+
                     finally:
                         await async_db.close()
 
                 # 비동기 분석 실행
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                loop.run_until_complete(run_analyses())
+                analysis_result = loop.run_until_complete(run_unified_analysis())
 
-                # 모든 분석 완료 후 상태 업데이트 (기존 패턴과 동일)
+                # 분석 완료 후 상태 업데이트
                 test_history = get_test_history_by_id(sync_db, test_history_id)
                 if test_history:
                     mark_analysis_as_completed(sync_db, test_history)
-                    logger.info(f"All AI analyses completed and marked for test_history_id: {test_history_id}")
+
+                    if analysis_result:
+                        logger.info(f"Unified AI analysis completed and marked for test_history_id: {test_history_id}")
+                        logger.info(f"Overall performance score: {analysis_result.overall_performance_score}")
+                    else:
+                        logger.info(f"Fallback AI analysis completed and marked for test_history_id: {test_history_id}")
                 else:
                     logger.error(f"Test history not found for id: {test_history_id}")
 

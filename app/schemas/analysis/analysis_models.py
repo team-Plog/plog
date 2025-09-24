@@ -112,9 +112,12 @@ class LLMAnalysisInput(BaseModel):
     
     # 서버 리소스 사용량
     resource_usage: List[ServerResourceUsage] = []
+
+    # 시계열 데이터 (통합 분석용)
+    k6_timeseries_data: List[Dict[str, Any]] = []
+    k6_analysis_context: str = ""
+    processed_resource_context: str = ""
     
-    # 이전 테스트와의 비교 데이터 (선택사항)
-    previous_test_comparison: Optional[Dict[str, Any]] = None
 
 
 class AnalysisInsight(BaseModel):
@@ -132,7 +135,32 @@ class AnalysisResult(BaseModel):
     detailed_analysis: str = Field(..., description="상세 분석 내용")
     insights: List[AnalysisInsight] = []
     performance_score: Optional[float] = Field(None, ge=0, le=100, description="성능 점수 (0-100)")
-    confidence_score: Optional[float] = Field(None, ge=0, le=1, description="분석 신뢰도 (0-1)")
+
+
+# LangChain JsonOutputParser용 구조화된 스키마
+class StructuredAnalysisInsight(BaseModel):
+    """LangChain용 분석 인사이트 스키마"""
+    category: str = Field(description="인사이트 카테고리: performance, optimization, resource, reliability")
+    message: str = Field(description="인사이트 메시지")
+    severity: str = Field(description="심각도: info, warning, critical")
+    recommendation: Optional[str] = Field(default=None, description="개선 권장사항")
+
+
+class StructuredAnalysisResult(BaseModel):
+    """LangChain용 개별 분석 결과 스키마"""
+    summary: str = Field(description="분석 요약 (2-3문장)")
+    detailed_analysis: str = Field(description="상세 분석 내용 (2-3단락)")
+    insights: List[StructuredAnalysisInsight] = Field(description="분석 인사이트 목록")
+    performance_score: Optional[float] = Field(default=None, description="성능 점수 (0-100)")
+
+
+class UnifiedAnalysisOutput(BaseModel):
+    """LangChain용 통합 분석 출력 스키마"""
+    comprehensive: StructuredAnalysisResult = Field(description="종합 분석 결과")
+    response_time: StructuredAnalysisResult = Field(description="응답시간 분석 결과")
+    tps: StructuredAnalysisResult = Field(description="처리량(TPS) 분석 결과")
+    error_rate: StructuredAnalysisResult = Field(description="에러율 분석 결과")
+    resource_usage: StructuredAnalysisResult = Field(description="리소스 사용량 분석 결과")
 
 
 def convert_test_history_to_llm_input(

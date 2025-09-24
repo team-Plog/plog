@@ -245,10 +245,159 @@ TPS 상세결과요약 - 테스트 시나리오별 TPS는 참고값으로만 사
 **반드시 한국어로 2-3개 문단으로 간결하게 작성하고, 이모지 사용하지 마세요.**"""
 
 
+    def get_analysis_prompt(self, data: LLMAnalysisInput) -> str:
+        """
+        분석 프롬프트 생성 (5개 영역을 모두 포함)
+
+        Args:
+            data: 분석 데이터 (시계열 데이터 포함)
+
+        Returns:
+            분석용 프롬프트 문자열
+        """
+
+        # 기본 프롬프트 변수 준비
+        prompt_vars = self._prepare_prompt_variables(data)
+
+        # 시계열 데이터 문자열 생성
+        timeseries_context = self._prepare_timeseries_context(data)
+
+        template = self._get_analysis_prompt_template()
+
+        # 시계열 컨텍스트를 프롬프트 변수에 추가
+        prompt_vars["timeseries_context"] = timeseries_context
+
+        # JSON 템플릿을 단계별로 구성 (인코딩 문제 방지)
+        comprehensive_part = '{"summary": "종합 분석 요약", "detailed_analysis": "상세 분석 내용", "insights": [{"category": "performance", "message": "인사이트 메시지", "severity": "info"}], "performance_score": 85.5}'
+        response_time_part = '{"summary": "응답시간 분석 요약", "detailed_analysis": "상세 분석 내용", "insights": [{"category": "performance", "message": "인사이트 메시지", "severity": "warning"}], "performance_score": 78.2}'
+        tps_part = '{"summary": "TPS 분석 요약", "detailed_analysis": "상세 분석 내용", "insights": [{"category": "optimization", "message": "인사이트 메시지", "severity": "info"}], "performance_score": 82.1}'
+        error_rate_part = '{"summary": "에러율 분석 요약", "detailed_analysis": "상세 분석 내용", "insights": [{"category": "reliability", "message": "인사이트 메시지", "severity": "critical"}], "performance_score": 92.3}'
+        resource_usage_part = '{"summary": "리소스 분석 요약", "detailed_analysis": "상세 분석 내용", "insights": [{"category": "resource", "message": "인사이트 메시지", "severity": "info"}], "performance_score": 88.7}'
+
+        json_template = '{\n  "comprehensive": ' + comprehensive_part + ',\n  "response_time": ' + response_time_part + ',\n  "tps": ' + tps_part + ',\n  "error_rate": ' + error_rate_part + ',\n  "resource_usage": ' + resource_usage_part + '\n}'
+        prompt_vars["json_template"] = json_template
+
+        try:
+            return template.format(**prompt_vars)
+        except KeyError as e:
+            raise ValueError(f"Missing template variable: {e}")
+
+    def _prepare_timeseries_context(self, data: LLMAnalysisInput) -> str:
+        """시계열 데이터를 AI 분석용 컨텍스트로 변환"""
+
+        context_parts = []
+
+        # k6 성능 시계열 데이터
+        if hasattr(data, 'k6_timeseries_data') and data.k6_timeseries_data:
+            # 전체 데이터와 시나리오별 데이터 분리
+            overall_data = [d for d in data.k6_timeseries_data if d.get('scenario_name') is None]
+            scenario_data = [d for d in data.k6_timeseries_data if d.get('scenario_name') is not None]
+
+            context_parts.append("**k6 성능 시계열 데이터** (노이즈 제거 후, 5초 간격):")
+
+            if overall_data:
+                # 전체 성능 패턴 요약
+                tps_values = [d.get('tps', 0) for d in overall_data if d.get('tps') is not None]
+                response_times = [d.get('avg_response_time', 0) for d in overall_data if d.get('avg_response_time') is not None]
+                error_rates = [d.get('error_rate', 0) for d in overall_data if d.get('error_rate') is not None]
+                vus_values = [d.get('vus', 0) for d in overall_data if d.get('vus') is not None]
+
+                if tps_values:
+                    context_parts.append(f"- TPS 변화: {min(tps_values):.1f} → {max(tps_values):.1f} (평균 {sum(tps_values)/len(tps_values):.1f})")
+                if response_times:
+                    context_parts.append(f"- 응답시간 변화: {min(response_times):.1f}ms → {max(response_times):.1f}ms (평균 {sum(response_times)/len(response_times):.1f}ms)")
+                if error_rates:
+                    context_parts.append(f"- 에러율 변화: {min(error_rates):.2f}% → {max(error_rates):.2f}% (평균 {sum(error_rates)/len(error_rates):.2f}%)")
+                if vus_values:
+                    context_parts.append(f"- VUS 변화: {min(vus_values)} → {max(vus_values)} (평균 {sum(vus_values)/len(vus_values):.0f})")
+
+                context_parts.append(f"- 안정 구간 측정 포인트: {len(overall_data)}개")
+
+            if scenario_data:
+                scenarios = set(d.get('scenario_name') for d in scenario_data if d.get('scenario_name'))
+                context_parts.append(f"- 시나리오별 데이터: {len(scenarios)}개 시나리오")
+
+            # k6 분석 컨텍스트 추가 (전처리에서 생성된 것)
+            if hasattr(data, 'k6_analysis_context') and data.k6_analysis_context:
+                context_parts.append(data.k6_analysis_context)
+
+        else:
+            context_parts.append("**k6 성능 시계열 데이터**:")
+            context_parts.append("- 시계열 데이터를 사용할 수 없습니다")
+
+        context_parts.append("")
+
+        # 리소스 사용량 시계열 데이터
+        if data.resource_usage:
+            context_parts.append("**리소스 시계열 데이터**:")
+            for idx, resource in enumerate(data.resource_usage[:3], 1):  # 최대 3개까지
+                context_parts.append(f"{idx}. Pod: {resource.pod_name} ({resource.service_type})")
+                context_parts.append(f"   - CPU 사용량 변화: 평균 {resource.avg_cpu_percent:.1f}% (최대 {resource.max_cpu_percent:.1f}%)")
+                context_parts.append(f"   - Memory 사용량 변화: 평균 {resource.avg_memory_percent:.1f}% (최대 {resource.max_memory_percent:.1f}%)")
+
+                # 시계열 패턴 분석을 위한 힌트
+                if hasattr(resource, 'usage_data') and resource.usage_data:
+                    data_count = len(resource.usage_data)
+                    context_parts.append(f"   - 측정 포인트: {data_count}개 (리소스-성능 상관관계 분석 가능)")
+            context_parts.append("")
+
+        # 상관관계 분석 가이드
+        context_parts.append("**분석 시 고려사항**:")
+        context_parts.append("- TPS 증가와 CPU/Memory 사용량 증가 패턴 분석")
+        context_parts.append("- 응답시간 증가와 리소스 병목 구간 식별")
+        context_parts.append("- 에러 발생 시점과 리소스 한계 도달 시점 비교")
+        context_parts.append("- VUS 증가에 따른 시스템 부하 변화 패턴")
+
+        return "\n".join(context_parts)
+
+    def _get_analysis_prompt_template(self) -> str:
+        return """부하테스트 결과를 종합적으로 분석하여 5개 영역의 상세한 해석을 제공해주세요.
+
+**중요 출력 규칙**
+1) 유효한 JSON만 출력합니다.
+2) JSON 앞뒤를 &lt;BEGIN_ANALYSIS_JSON&gt; 와 &lt;END_ANALYSIS_JSON&gt; 토큰으로 감쌉니다.
+3) JSON 외의 설명/마크다운/코드펜스, 추가 텍스트를 절대 출력하지 않습니다.
+4) 각 영역별 performance_score는 0~100 범위의 숫자 또는 null로만 표기합니다.
+
+**테스트 정보**
+- 테스트명: {test_title}
+- 목표 TPS: {target_tps} | 지속시간: {test_duration}초
+- 총 요청: {total_requests}건, 실패: {failed_requests}건
+
+**성능 결과 요약**
+- TPS: 평균 {overall_tps_avg} (최소 {overall_tps_min} ~ 최대 {overall_tps_max})
+- 응답시간: 평균 {overall_rt_avg}ms, P95 {overall_rt_p95}ms, P99 {overall_rt_p99}ms
+- 에러율: {error_rate}
+
+**리소스 현황** ({resource_count}개 서버)
+{resource_details}
+
+{timeseries_context}
+
+**분석 영역별 요구사항**
+- comprehensive: 전체 성능과 안정성 평가, 목표 달성 여부
+- response_time: P95 기준 사용자 경험, 지연 원인 분석
+- tps: TPS 목표 대비 달성도, 처리량 제한 요인
+- error_rate: 안정성 평가, 에러 원인 분석
+- resource_usage: CPU/Memory 효율성, 스케일링 가능성
+
+각 영역은 summary, detailed_analysis, insights, performance_score를 포함해야 합니다.
+insights는 다음 중 하나의 category를 가져야 합니다: performance, optimization, resource, reliability
+severity는 다음 중 하나여야 합니다: info, warning, critical
+반드시 한국어로 작성하고 이모지는 사용하지 마세요.
+
+
+지금 바로 다음 형식으로만 출력하세요:
+
+<BEGIN_ANALYSIS_JSON>
+{json_template}
+<END_ANALYSIS_JSON>"""
+
+
 def get_prompt_manager() -> PromptManager:
     """PromptManager 인스턴스 반환 (싱글톤)"""
-    
+
     if not hasattr(get_prompt_manager, "_instance"):
         get_prompt_manager._instance = PromptManager()
-    
+
     return get_prompt_manager._instance

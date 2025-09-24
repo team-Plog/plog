@@ -20,11 +20,24 @@ logger = logging.getLogger(__name__)
 @dataclass
 class OllamaConfig:
     """Ollama 클라이언트 설정"""
-    model_name: str = "llama2"
-    base_url: str = "http://localhost:11434"
+    model_name: str = ""
+    base_url: str = ""
     temperature: float = 0.1
     max_tokens: int = 2000
     timeout_seconds: int = 120
+
+    @classmethod
+    def from_settings(cls):
+        """settings에서 설정값을 가져와서 OllamaConfig 생성"""
+        from app.core.config import settings
+        ai_config = settings.get_ai_config()
+        return cls(
+            model_name=ai_config['model_name'],
+            base_url=ai_config['ollama_host'],
+            temperature=ai_config['temperature'],
+            max_tokens=ai_config['max_tokens'],
+            timeout_seconds=ai_config['timeout_seconds']
+        )
 
 
 class OllamaClient:
@@ -158,19 +171,17 @@ class OllamaClient:
                         "analysis_type": analysis_type
                     }
                 
-                # 성능 점수 추출 시도 (응답에서 점수를 찾으려고 시도)
+                # 성능 점수 추출 (단순화)
                 performance_score = self._extract_performance_score(response_text)
-                
+
                 logger.info(f"Analysis completed for {analysis_type}, response length: {len(response_text)}")
-                
+                logger.error(f"Ollama response (debugging): {response_text}")  # 디버깅용
+
                 return {
                     "success": True,
                     "response": response_text,
                     "performance_score": performance_score,
-                    "analysis_type": analysis_type,
-                    "model_used": self.config.model_name,
-                    "tokens_used": result.get("eval_count", 0),
-                    "processing_time": result.get("total_duration", 0) / 1000000  # 나노초를 밀리초로
+                    "analysis_type": analysis_type
                 }
             
             else:
@@ -279,7 +290,6 @@ class OllamaClient:
                 "status": "healthy",
                 "model_name": self.config.model_name,
                 "available_models": [m["name"] for m in models],
-                "response_time_ms": test_response.get("processing_time", 0),
                 "timestamp": datetime.now().isoformat()
             }
             
