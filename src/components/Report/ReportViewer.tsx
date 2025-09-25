@@ -398,7 +398,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
 
             <div className={styles.tableContainer}>
               <div className={`${styles.tableTitle} CaptionLight`}>
-                표 3-1. 비기능 테스트 목표
+                표 2-1. 비기능 테스트 목표
               </div>
               <table className={styles.table}>
                 <thead>
@@ -444,7 +444,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
               </div>
               <div className={styles.tableContainer}>
                 <div className={`${styles.tableTitle} CaptionLight`}>
-                  표 4-1. 비 기능 테스트 수행 결과
+                  표 3-1. 비 기능 테스트 수행 결과
                 </div>
                 <table className={styles.table}>
                   <thead>
@@ -497,7 +497,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
               <div className={`${styles.subTitle} TitleS`}>종합분석</div>
               <div className={styles.tableContainer}>
                 <div className={`${styles.tableTitle} CaptionLight`}>
-                  표 4-2. 가상 사용자 {reportData.overall?.vus?.max || 0}명
+                  표 3-2. 가상 사용자 {reportData.overall?.vus?.max || 0}명
                 </div>
                 <table className={styles.table}>
                   <thead>
@@ -567,7 +567,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                 timeseriesData.overall.data.length > 0 && (
                   <div className={styles.tableContainer}>
                     <div className={`${styles.tableTitle} CaptionLight`}>
-                      그래프 4-1. 전체 테스트 시계열 분석 1 (TPS, Error Rate,
+                      그래프 3-1. 전체 테스트 시계열 분석 1 (TPS, Error Rate,
                       VUS)
                     </div>
                     <MetricChart
@@ -588,7 +588,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                 timeseriesData.overall.data.length > 0 && (
                   <div className={styles.tableContainer}>
                     <div className={`${styles.tableTitle} CaptionLight`}>
-                      그래프 4-2. 전체 테스트 시계열 분석 2 (VUS, Response
+                      그래프 3-2. 전체 테스트 시계열 분석 2 (VUS, Response
                       Times)
                     </div>
                     <MetricChart
@@ -614,7 +614,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                       {/* 그룹 1: TPS, Error Rate, VUS */}
                       <div className={styles.tableContainer}>
                         <div className={`${styles.tableTitle} CaptionLight`}>
-                          그래프 4-{3 + index * 2}. {scenario.scenario_name}{" "}
+                          그래프 3-{3 + index * 2}. {scenario.scenario_name}{" "}
                           시계열 분석 1 (TPS, Error Rate, VUS)
                         </div>
                         <MetricChart
@@ -631,7 +631,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
                       {/* 그룹 2: VUS, Response Times */}
                       <div className={styles.tableContainer}>
                         <div className={`${styles.tableTitle} CaptionLight`}>
-                          그래프 4-{4 + index * 2}. {scenario.scenario_name}{" "}
+                          그래프 3-{4 + index * 2}. {scenario.scenario_name}{" "}
                           시계열 분석 2 (VUS, Response Times)
                         </div>
                         <MetricChart
@@ -656,7 +656,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
               </div>
               <div className={styles.tableContainer}>
                 <div className={`${styles.tableTitle} CaptionLight`}>
-                  표 4-3. 가상 사용자 {reportData.overall?.vus?.max || 0}명
+                  표 3-3. 가상 사용자 {reportData.overall?.vus?.max || 0}명
                 </div>
                 <table className={styles.table}>
                   <thead>
@@ -796,7 +796,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
               <div className={`${styles.subTitle} TitleS`}>TPS 상세 결과</div>
               <div className={styles.tableContainer}>
                 <div className={`${styles.tableTitle} CaptionLight`}>
-                  표 4-4. 가상 사용자 {reportData.overall?.vus?.max || 0}명
+                  표 3-4. 가상 사용자 {reportData.overall?.vus?.max || 0}명
                 </div>
                 <table className={styles.table}>
                   <thead>
@@ -888,7 +888,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
               </div>
               <div className={styles.tableContainer}>
                 <div className={`${styles.tableTitle} CaptionLight`}>
-                  표 4-5. 가상 사용자 {reportData.overall?.vus?.max || 0}명
+                  표 3-5. 가상 사용자 {reportData.overall?.vus?.max || 0}명
                 </div>
                 <table className={styles.table}>
                   <thead>
@@ -1008,7 +1008,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
             {/* CPU 사용량 테이블 */}
             <div className={styles.tableContainer}>
               <div className={`${styles.tableTitle} CaptionLight`}>
-                표 4-6. 서버별 CPU 사용량
+                표 3-6. 서버별 CPU 사용량
               </div>
               <table className={styles.table}>
                 <thead>
@@ -1060,7 +1060,7 @@ const ReportViewer: React.FC<ReportViewerProps> = ({
             {/* Memory 사용량 테이블 */}
             <div className={styles.tableContainer}>
               <div className={`${styles.tableTitle} CaptionLight`}>
-                표 4-7. 서버별 Memory 사용량
+                표 3-7. 서버별 Memory 사용량
               </div>
               <table className={styles.table}>
                 <thead>
