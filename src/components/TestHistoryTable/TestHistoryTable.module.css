@@ -123,6 +123,11 @@
   cursor: pointer;
 }
 
+.icon {
+  width: var(--icon-size-md);
+  color: var(--color-gray-200);
+}
+
 /* 반응형 디자인 - TestHistoryTable 전용 */
 @media (max-width: 768px) {
   /* 모바일에서 테이블을 세로 카드 형태로 변경 */

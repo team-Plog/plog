@@ -108,7 +108,8 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
               <div className={`Body ${styles.headerItem}`}>프로젝트명</div>
             )}
             <div className={`Body ${styles.headerItem}`}>마지막 테스트</div>
-          </div>
+            <div className={`Body ${styles.headerItem}`}>삭제</div>
+            </div>
 
           {/* 테이블 내용 */}
           {paginatedData.map((item, index) => (
@@ -144,7 +145,7 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
                 <button
                   className={styles.deleteButton}
                   onClick={(e) => handleDelete(e, item.test_history_id)}>
-                  <Trash2 size={16} />
+                  <Trash2 className={styles.icon} />
                 </button>
               </div>
             </div>
