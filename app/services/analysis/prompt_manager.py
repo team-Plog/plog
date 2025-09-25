@@ -6,7 +6,7 @@ AI 분석용 프롬프트 관리 모듈
 """
 
 import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime
 
 from app.schemas.analysis import LLMAnalysisInput, AnalysisType
@@ -199,11 +199,15 @@ TPS 상세결과요약 - 테스트 시나리오별 TPS 참고값과 전체 TPS �
 - 변동폭: 최소 {overall_tps_min} ~ 최대 {overall_tps_max}
 - 총 처리: {total_requests}건, {test_duration}초 지속
 
+**중요: VU 패턴에 따른 TPS 평가 방법**
+- constant-vus 패턴: 평균 TPS를 목표와 비교
+- ramping-vus/점진적 증가 패턴: 최대 TPS를 목표와 비교 (평균은 참고용)
+
 **분석 요청:**
 
-TPS 상세결과요약 - 테스트 시나리오별 TPS는 참고값으로만 사용하며, 전체 TPS에 대해서 목표를 비교 분석. 전체 평균 TPS가 목표에 근접하였는지 평가. TPS의 경우 테스트 초반 가상 사용자 수가 부족한 경우도 존재하므로 최소 TPS에 대해서는 참고 값으로만 사용.
+TPS 목표 달성도 평가 - VU 패턴을 고려하여 적절한 TPS 지표로 목표 달성도를 평가. 점진적 증가 패턴의 경우 최대 TPS가 목표 TPS에 얼마나 가까운지(달성률 %)를 중점 분석. 일정 부하 패턴의 경우 평균 TPS로 평가.
 
-처리량 제한 요인 - TPS가 제한되는 주요 병목점(CPU, DB, 네트워크 등) 분석과 현재 대비 처리량 확장 가능성 평가.
+처리량 제한 요인 - 최대 부하 상황에서 TPS 한계를 결정하는 주요 병목점(CPU, DB, 네트워크 등) 분석과 처리량 확장 가능성 평가.
 
 **반드시 한국어로 2-3개 문단으로 간결하게 작성하고, 이모지 사용하지 마세요.**"""
 
@@ -347,8 +351,48 @@ TPS 상세결과요약 - 테스트 시나리오별 TPS는 참고값으로만 사
         context_parts.append("- 응답시간 증가와 리소스 병목 구간 식별")
         context_parts.append("- 에러 발생 시점과 리소스 한계 도달 시점 비교")
         context_parts.append("- VUS 증가에 따른 시스템 부하 변화 패턴")
+        context_parts.append("- **중요**: CPU가 낮은데 TPS 제한되면 스레드 풀이나 동시성 설정 병목 가능성")
+
+        # VU 패턴별 TPS 평가 가이드 추가
+        context_parts.append("")
+        context_parts.append("**VU 패턴별 TPS 평가 가이드**:")
+        context_parts.append("- constant-vus 패턴: 평균 TPS를 목표치와 직접 비교하여 성능 평가")
+        context_parts.append("- ramping-vus/점진적 증가 패턴: **최대 TPS가 목표 TPS에 얼마나 가까운지가 핵심 지표**")
+        context_parts.append("  * 점진적 증가에서 평균 TPS는 초반 낮은 VU로 인해 당연히 낮음 (정상적 현상)")
+        context_parts.append("  * 최대 부하 상황(최대 VU)에서 달성한 최대 TPS를 목표 TPS와 비교 평가")
+        context_parts.append("  * 예: 목표 100TPS, 최대 TPS 95TPS면 95% 달성으로 우수한 성능")
+        context_parts.append("  * 평균 TPS가 목표보다 낮더라도 최대 TPS가 목표 근접하면 성공적")
+
+        # TPS-VU 상관관계 기반 동적 가이드 추가
+        self._add_dynamic_tps_guidance(context_parts, data)
 
         return "\n".join(context_parts)
+
+    def _add_dynamic_tps_guidance(self, context_parts: List[str], data: LLMAnalysisInput):
+        """TPS-VU 상관관계 분석 결과에 따른 동적 가이드 추가"""
+
+        # k6 시계열 데이터에서 TPS-VU 상관관계 정보 추출 시도
+        if hasattr(data, 'k6_analysis_context') and data.k6_analysis_context:
+            k6_context = data.k6_analysis_context
+
+            # TPS-VU 상관관계 정보가 있는지 확인
+            if "TPS-VU 상관관계" in k6_context:
+                context_parts.append("")
+                context_parts.append("**TPS-VU 상관관계 기반 분석 가이드**:")
+
+                if "linear_scaling" in k6_context:
+                    context_parts.append("- **TPS가 VU와 선형적으로 증가**: 정상적인 확장성, CPU가 낮다면 스레드 풀/동시성 병목 가능성")
+                    context_parts.append("- 이 경우 최대 TPS가 목표에 가깝다면 **우수한 성능**으로 평가")
+                    context_parts.append("- CPU 사용량이 낮은데 TPS 제한 = 애플리케이션 레벨 병목 (커넥션 풀, 스레드 풀 등)")
+
+                elif "moderate_scaling" in k6_context:
+                    context_parts.append("- **TPS가 VU를 어느정도 따라감**: 부분적 확장성, 일부 병목 존재 가능성")
+                    context_parts.append("- 최대 TPS를 기준으로 평가하되, 개선 여지가 있음을 언급")
+
+                elif "poor_scaling" in k6_context or "bottlenecked" in k6_context:
+                    context_parts.append("- **TPS가 VU 증가를 잘 따라가지 못함**: 명백한 병목 존재")
+                    context_parts.append("- 시스템 한계에 도달한 것으로 분석하고 병목 원인 식별 필요")
+                    context_parts.append("- 평균/최대 TPS 모두 목표 대비 낮을 가능성이 높음")
 
     def _get_analysis_prompt_template(self) -> str:
         return """부하테스트 결과를 종합적으로 분석하여 5개 영역의 상세한 해석을 제공해주세요.

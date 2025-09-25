@@ -25,7 +25,7 @@ class TimeseriesDataProcessor:
     def process_k6_timeseries(
         self,
         timeseries_data: List[Dict[str, Any]],
-        remove_noise: bool = True
+        remove_noise: bool = False
     ) -> Tuple[List[Dict[str, Any]], str]:
         """
         k6 시계열 데이터 전처리
@@ -69,7 +69,7 @@ class TimeseriesDataProcessor:
     def process_resource_timeseries(
         self,
         resource_usage_data: List[Dict[str, Any]],
-        remove_noise: bool = True
+        remove_noise: bool = False
     ) -> Tuple[List[Dict[str, Any]], str]:
         """
         리소스 사용량 시계열 데이터 전처리
@@ -239,7 +239,19 @@ class TimeseriesDataProcessor:
 
             if vus_values:
                 vus_trend = self._analyze_trend(vus_values)
+                vus_pattern_info = self._analyze_vus_pattern(vus_values)
                 context_parts.append(f"- 가상 사용자 변화: {vus_trend} (최소 {min(vus_values)} → 최대 {max(vus_values)})")
+                context_parts.append(f"  * VU 패턴 분석: {vus_pattern_info}")
+
+                # VU 패턴 정보를 로그로 출력
+                logger.info(f"VU Pattern Analysis - Trend: {vus_trend}, Pattern: {vus_pattern_info}, Range: {min(vus_values)}-{max(vus_values)}")
+
+                # TPS-VU 상관관계 분석 (점진적 증가 패턴인 경우)
+                if "ramping-vus" in vus_pattern_info or "점진적 증가" in vus_pattern_info:
+                    correlation_analysis = self._analyze_tps_vu_correlation(overall_data)
+                    if correlation_analysis["correlation"] != "insufficient_data":
+                        context_parts.append(f"  * TPS-VU 상관관계: {correlation_analysis['pattern']} (상관계수 {correlation_analysis['coefficient']})")
+                        logger.info(f"TPS-VU Correlation Analysis: {correlation_analysis}")
 
             context_parts.append(f"- 안정 구간 데이터 포인트: {len(overall_data)}개 (노이즈 제거 후)")
 
@@ -312,6 +324,134 @@ class TimeseriesDataProcessor:
             return "감소 추세"
         else:
             return "안정적"
+
+    def _analyze_vus_pattern(self, vus_values: List[float]) -> str:
+        """VU 패턴 분석 - executor 유형과 부하 패턴 추론"""
+
+        if len(vus_values) < 5:
+            return "데이터 부족"
+
+        # 패턴 분석을 위한 기본 통계
+        min_vu = min(vus_values)
+        max_vu = max(vus_values)
+        avg_vu = mean(vus_values)
+
+        # VU 변화량 계산
+        vu_range = max_vu - min_vu
+        vu_variance = max_vu / min_vu if min_vu > 0 else float('inf')
+
+        # 점진적 변화 패턴 감지
+        ramping_points = 0
+        stable_points = 0
+
+        for i in range(1, len(vus_values)):
+            diff = abs(vus_values[i] - vus_values[i-1])
+            if diff <= 1:  # VU 차이가 1 이하면 안정적
+                stable_points += 1
+            elif diff > 1:  # VU 차이가 1 초과면 변화
+                ramping_points += 1
+
+        # 패턴 판정
+        if vu_range <= 5:  # VU 변화가 5 이하
+            return f"constant-vus 패턴 (안정적, VU={int(avg_vu)})"
+
+        elif ramping_points > stable_points:  # 변화가 더 많음
+            if vu_variance > 2:  # VU가 2배 이상 변화
+                # 단계적 변화 패턴 확인
+                stages = self._detect_vu_stages(vus_values)
+                if stages > 1:
+                    return f"ramping-vus 패턴 ({stages}단계, {int(min_vu)}→{int(max_vu)} VU)"
+                else:
+                    return f"점진적 증가 패턴 ({int(min_vu)}→{int(max_vu)} VU)"
+            else:
+                return f"미세 조정 패턴 (범위: {int(min_vu)}-{int(max_vu)} VU)"
+
+        else:  # 안정적인 구간이 더 많음
+            return f"준안정 패턴 (평균 VU={int(avg_vu)}, 변동범위 {int(vu_range)})"
+
+    def _detect_vu_stages(self, vus_values: List[float]) -> int:
+        """VU 값에서 단계(stage) 개수 감지"""
+
+        if len(vus_values) < 10:
+            return 1
+
+        # 연속적으로 같은 VU 값이 유지되는 구간 찾기
+        stages = 1
+        current_stage_vu = vus_values[0]
+        same_vu_count = 1
+
+        for i in range(1, len(vus_values)):
+            if abs(vus_values[i] - current_stage_vu) <= 2:  # 허용 오차 2
+                same_vu_count += 1
+            else:
+                # 새로운 단계 시작 (최소 5개 포인트 이상 유지되어야 함)
+                if same_vu_count >= 5:
+                    stages += 1
+                current_stage_vu = vus_values[i]
+                same_vu_count = 1
+
+        return min(stages, 5)  # 최대 5단계까지만
+
+    def _analyze_tps_vu_correlation(self, overall_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """TPS와 VU의 상관관계 분석"""
+
+        if len(overall_data) < 10:
+            return {"correlation": "insufficient_data", "coefficient": 0.0, "pattern": "unknown"}
+
+        # VU와 TPS 데이터 추출
+        valid_pairs = []
+        for point in overall_data:
+            vu = point.get('vus', 0)
+            tps = point.get('tps', 0)
+            if vu > 0 and tps > 0:
+                valid_pairs.append((vu, tps))
+
+        if len(valid_pairs) < 5:
+            return {"correlation": "insufficient_data", "coefficient": 0.0, "pattern": "unknown"}
+
+        # 피어슨 상관계수 계산
+        import numpy as np
+        try:
+            vus = [pair[0] for pair in valid_pairs]
+            tps_values = [pair[1] for pair in valid_pairs]
+
+            correlation_coefficient = np.corrcoef(vus, tps_values)[0, 1]
+
+            # 상관관계 패턴 분석
+            if correlation_coefficient >= 0.8:
+                correlation_type = "strong_positive"
+                pattern = "linear_scaling"  # TPS가 VU를 잘 따라감
+            elif correlation_coefficient >= 0.6:
+                correlation_type = "moderate_positive"
+                pattern = "moderate_scaling"  # TPS가 VU를 어느정도 따라감
+            elif correlation_coefficient >= 0.3:
+                correlation_type = "weak_positive"
+                pattern = "poor_scaling"  # TPS가 VU를 잘 따라가지 못함
+            else:
+                correlation_type = "no_correlation"
+                pattern = "bottlenecked"  # 명백한 병목 존재
+
+            # 선형성 분석 (VU 대비 TPS 기울기)
+            vu_range = max(vus) - min(vus)
+            tps_range = max(tps_values) - min(tps_values)
+
+            if vu_range > 0:
+                scaling_ratio = tps_range / vu_range
+            else:
+                scaling_ratio = 0.0
+
+            return {
+                "correlation": correlation_type,
+                "coefficient": round(correlation_coefficient, 3),
+                "pattern": pattern,
+                "scaling_ratio": round(scaling_ratio, 2),
+                "vu_range": f"{min(vus)}-{max(vus)}",
+                "tps_range": f"{min(tps_values):.1f}-{max(tps_values):.1f}"
+            }
+
+        except Exception as e:
+            logger.error(f"Error calculating TPS-VU correlation: {e}")
+            return {"correlation": "calculation_error", "coefficient": 0.0, "pattern": "unknown"}
 
 
 def get_timeseries_data_processor() -> TimeseriesDataProcessor:
