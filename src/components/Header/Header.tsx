@@ -184,8 +184,7 @@ const Header: React.FC<HeaderProps> = ({ testHistoryId }) => {
       </div>
       <div className={styles.iconWrapper}>
         {isProjectPage && (
-          <div
-            className={styles.icon}
+          <IconButton
             onClick={() =>
               navigate('/testList', {
                 state: {
@@ -195,8 +194,8 @@ const Header: React.FC<HeaderProps> = ({ testHistoryId }) => {
               })
             }
           >
-            <List />
-          </div>
+            <List className={styles.icon} />
+          </IconButton>
         )}
         <IconButton onClick={toggleDarkMode}>
           {isDarkMode ? (

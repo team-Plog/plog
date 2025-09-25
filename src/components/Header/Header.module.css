@@ -33,6 +33,12 @@
   display: block;
   margin-top: 2px;
   color: var(--color-gray-300);
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.logoIcon:hover {
+  color: var(--color-black);
+  opacity: 0.85;
 }
 
 .filledCircle {
