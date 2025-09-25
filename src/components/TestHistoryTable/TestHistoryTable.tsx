@@ -95,9 +95,7 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
         <>
           {/* 헤더 */}
           <div className={styles.leftGroup}>
-            <button onClick={onMenuToggle} className={styles.menuButton}>
-              <History className={styles.menuIcon} />
-            </button>
+            <History className={styles.menuIcon} />
             <h1 className={`HeadingS ${styles.title}`}>{titleText}</h1>
           </div>
           {/* 테이블 헤더 */}
