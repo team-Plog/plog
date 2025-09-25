@@ -124,7 +124,7 @@ class PromptManager:
             variables["resource_count"] = resource_count
             
             resource_details = []
-            for resource in data.resource_usage[:3]:  # 최대 3개까지만 표시
+            for resource in data.resource_usage:  # 최대 3개까지만 표시
                 resource_info = f"- {resource.pod_name} ({resource.service_type}): "
                 if resource.avg_cpu_percent is not None:
                     resource_info += f"CPU {resource.avg_cpu_percent:.1f}% (최대 {resource.max_cpu_percent:.1f}%), "
