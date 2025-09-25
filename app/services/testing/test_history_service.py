@@ -800,6 +800,8 @@ def build_test_history_timeseries_response(db: Session, test_history_id: int) ->
                 p99_response_time=data.p99_response_time
             ) for data in overall_timeseries_data
         ]
+
+        overall_vus_map = {data.timestamp: data.vus for data in overall_data}
         
         # 시나리오별 시계열 데이터 구성
         scenarios = []
@@ -813,7 +815,7 @@ def build_test_history_timeseries_response(db: Session, test_history_id: int) ->
                     timestamp=data.timestamp,
                     tps=data.tps,
                     error_rate=data.error_rate,
-                    vus=data.vus,
+                    vus=overall_vus_map.get(data.timestamp, None),
                     avg_response_time=data.avg_response_time,
                     p95_response_time=data.p95_response_time,
                     p99_response_time=data.p99_response_time
