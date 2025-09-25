@@ -2,7 +2,6 @@ import React, {useState} from "react";
 import styles from "./ReportEditor.module.css";
 import type {TestData, ReportConfig} from "../../pages/Report/Report";
 import ReportViewer from "./ReportViewer";
-import {InputField} from "../Input";
 
 interface ReportEditorProps {
   reportData: TestData;
@@ -19,16 +18,6 @@ const ReportEditor: React.FC<ReportEditorProps> = ({
   const [editableTexts, setEditableTexts] = useState<Record<string, string>>(
     {}
   );
-
-  const handleInputChange = (
-    field: keyof ReportConfig,
-    value: string | boolean
-  ) => {
-    onConfigChange({
-      ...reportConfig,
-      [field]: value,
-    });
-  };
 
   const handleTextSelect = (key: string, text: string) => {
     setSelectedTextKey(key);
@@ -64,31 +53,6 @@ const ReportEditor: React.FC<ReportEditorProps> = ({
 
   return (
     <div className={styles.container}>
-      {/* <div className={styles.editorPanel}>
-        <div className={styles.formGroup}>
-          <InputField
-            title="보고서 제목"
-            value={reportConfig.customTitle}
-            onChange={(value) => handleInputChange("customTitle", value)}
-            placeholder="리포트 제목을 입력하세요"
-            showClearButton={true}
-          />
-        </div>
-
-        {selectedTextKey && (
-          <div className={styles.formGroup}>
-            <InputField
-              title={`선택된 텍스트 편집 (${selectedTextKey})`}
-              value={editableTexts[selectedTextKey] || ""}
-              onChange={(value) => handleEditableTextChange(selectedTextKey, value)}
-              placeholder="텍스트를 수정하세요"
-              multiline
-              showClearButton={true}
-            />
-          </div>
-        )}
-      </div> */}
-
       <div className={styles.previewPanel}>
         <ReportViewer
           reportData={reportData}
