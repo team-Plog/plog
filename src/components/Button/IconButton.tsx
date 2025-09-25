@@ -1,5 +1,3 @@
-// src/components/Button/IconButton.tsx
-
 import React from 'react';
 import styles from './IconButton.module.css';
 

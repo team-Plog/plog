@@ -6,6 +6,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { getProjectDetail } from '../../api';
 import Logo from '../../assets/images/logo.svg?react';
 import IconButton from '../Button/IconButton';
+import TextButton from '../Button/TextButton';
 
 interface HeaderProps {
   testHistoryId?: number | null;
@@ -126,30 +127,30 @@ const Header: React.FC<HeaderProps> = ({ testHistoryId }) => {
         {/* 프로젝트 상세, 테스트, 리포트 페이지일 때 메뉴 표시 */}
         {(isProjectPage || isTestPage || isReportPage) && projectId && (
           <div className={styles.navMenu}>
-            <button
+            <TextButton
               className={`${styles.navButton} Body`}
               onClick={handleNavigateToMain}
             >
               메인
-            </button>
+            </TextButton>
             <div className={`${styles.navButton} Body`}>/</div>
-            <button
+            <TextButton
               className={`${styles.navButton} Body`}
               onClick={handleNavigateToProjectDetail}
             >
               {projectTitle || '프로젝트 타이틀'}
-            </button>
+            </TextButton>
 
             {/* 테스트 페이지 또는 리포트 페이지일 때 시나리오명 추가 */}
             {(isTestPage || isReportPage) && (
               <>
                 <div className={`${styles.navButton} Body`}>/</div>
-                <button
+                <TextButton
                   className={`${styles.navButton} Body`}
                   onClick={handleNavigateToTest}
                 >
                   {testTitle || '시나리오명'}
-                </button>
+                </TextButton>
               </>
             )}
 
@@ -158,12 +159,12 @@ const Header: React.FC<HeaderProps> = ({ testHistoryId }) => {
               effectiveTestHistoryId && (
                 <>
                   <div className={`${styles.navButton} Body`}>/</div>
-                  <button
+                  <TextButton
                     className={`${styles.navButton} Body`}
                     onClick={handleNavigateToReport}
                   >
                     보고서
-                  </button>
+                  </TextButton>
                 </>
               )}
           </div>
@@ -171,14 +172,16 @@ const Header: React.FC<HeaderProps> = ({ testHistoryId }) => {
 
         {isInfraPage && (
           <div className={styles.navMenu}>
-            <button
+            <TextButton
               className={`${styles.navButton} Body`}
               onClick={handleNavigateToMain}
             >
               메인
-            </button>
+            </TextButton>
             <div className={`${styles.navButton} Body`}>/</div>
-            <button className={`${styles.navButton} Body`}>인프라 관리</button>
+            <TextButton className={`${styles.navButton} Body`}>
+              인프라 관리
+            </TextButton>
           </div>
         )}
       </div>
