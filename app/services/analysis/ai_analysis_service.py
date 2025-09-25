@@ -198,10 +198,16 @@ class AIAnalysisService:
             else:
                 logger.error("No JSON cleaning needed")
 
-            parsed_dict = self._json_parser.parse(cleaned_response)
-            # dict를 Pydantic 모델로 변환
-            parsed_output = UnifiedAnalysisOutput(**parsed_dict)
-            return self._convert_langchain_output_to_responses(parsed_output, model_name, datetime.now())
+            parsed_output = self._json_parser.parse(cleaned_response)
+
+            # dict로 반환될 경우 강제 변환
+            if isinstance(parsed_output, dict):
+                parsed_output = UnifiedAnalysisOutput(**parsed_output)
+
+            return self._convert_langchain_output_to_responses(
+                parsed_output, model_name, datetime.now()
+            )
+
         except Exception as e:
             logger.error(f"LangChain parsing failed: {e}")
             logger.error(f"Raw response causing error: {result['response'][:200]}...")
@@ -340,6 +346,7 @@ class AIAnalysisService:
 
         # 3. JSON 블록 추출 시도 (```json ... ``` 또는 { ... })
         json_patterns = [
+            r'<BEGIN_ANALYSIS_JSON>\s*(.*?)\s*<END_ANALYSIS_JSON>',  # <BEGIN_ANALYSIS_JSON> {} <END_ANALYSIS_JSON> 형식
             r'```json\s*(.*?)\s*```',  # ```json {} ``` 형식
             r'```\s*(.*?)\s*```',      # ``` {} ``` 형식
             r'(\{.*\})',               # { } 형식
@@ -350,8 +357,8 @@ class AIAnalysisService:
             if match:
                 candidate = match.group(1).strip()
                 try:
-                    json.loads(candidate)
-                    return candidate
+                    parsed = json.loads(candidate)  # 검증
+                    return json.dumps(parsed, ensure_ascii=False)  # 항상 JSON 문자열로 리턴
                 except json.JSONDecodeError:
                     continue
 
