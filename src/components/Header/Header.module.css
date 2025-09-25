@@ -67,6 +67,7 @@
 
 .navMenu {
   display: flex;
+  align-items: center;
 }
 
 .navButton {
@@ -80,7 +81,7 @@
 
 .iconWrapper {
   display: flex;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-sm);
 }
 
 .icon {
