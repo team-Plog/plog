@@ -38,6 +38,10 @@
   cursor: pointer;
 }
 
+.buttonSecondary:hover {
+  background-color: var(--color-gray-100);
+}
+
 .buttonWarning {
   display: flex;
   padding: var(--spacing-sm) var(--spacing-lg);
