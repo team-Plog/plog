@@ -17,7 +17,7 @@ def create_k6_job_with_dashboard(job_name: str, script_filename: str, pvc_name: 
     # 1. container 설정
     container = client.V1Container(
         name="k6",
-        image="grafana/k6",
+        image="localhost:32000/plog/k6:latest",
         command=["sh", "-c", f"K6_WEB_DASHBOARD=true k6 run {mount_path}/{script_filename}"],
         ports=[client.V1ContainerPort(container_port=5665)],
         volume_mounts=[
@@ -56,7 +56,11 @@ def create_k6_job_with_dashboard(job_name: str, script_filename: str, pvc_name: 
     pod_spec = client.V1PodSpec(
         containers=[container],
         restart_policy="Never",
-        volumes=[volume]
+        volumes=[volume],
+        image_pull_secrets=[
+            client.V1LocalObjectReference(name="gcp-artifact-registry-secret"),
+            client.V1LocalObjectReference(name="harbor-registry-secret")
+        ]
     )
 
     # job template
