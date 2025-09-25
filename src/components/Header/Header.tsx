@@ -198,9 +198,13 @@ const Header: React.FC<HeaderProps> = ({ testHistoryId }) => {
             <List />
           </div>
         )}
-        <div className={styles.icon} onClick={toggleDarkMode}>
-          {isDarkMode ? <Sun /> : <Moon />}
-        </div>
+        <IconButton onClick={toggleDarkMode}>
+          {isDarkMode ? (
+            <Sun className={styles.icon} />
+          ) : (
+            <Moon className={styles.icon} />
+          )}
+        </IconButton>
       </div>
     </div>
   );
