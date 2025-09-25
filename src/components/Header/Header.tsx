@@ -1,19 +1,21 @@
-import React, {useEffect, useState} from "react";
-import styles from "./Header.module.css";
-import "../../assets/styles/typography.css";
-import {ChevronLeft, ChevronRight, List, Moon, Sun} from "lucide-react";
-import {useNavigate, useLocation} from "react-router-dom";
-import {getProjectDetail} from "../../api";
-import Logo from "../../assets/images/logo.svg?react";
+import React, { useEffect, useState } from 'react';
+import styles from './Header.module.css';
+import '../../assets/styles/typography.css';
+import { ChevronLeft, ChevronRight, List, Moon, Sun } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { getProjectDetail } from '../../api';
+import Logo from '../../assets/images/logo.svg?react';
+import IconButton from '../Button/IconButton';
+import TextButton from '../Button/TextButton';
 
 interface HeaderProps {
   testHistoryId?: number | null;
 }
 
-const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
+const Header: React.FC<HeaderProps> = ({ testHistoryId }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [projectTitle, setProjectTitle] = useState<string>("");
+  const [projectTitle, setProjectTitle] = useState<string>('');
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
 
   const goBack = () => window.history.back();
@@ -25,44 +27,44 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
     setIsDarkMode(newDarkMode);
 
     // localStorage에 테마 설정 저장
-    localStorage.setItem("theme", newDarkMode ? "dark" : "light");
+    localStorage.setItem('theme', newDarkMode ? 'dark' : 'light');
 
     // HTML root element에 data-theme 속성 설정
     if (newDarkMode) {
-      document.documentElement.setAttribute("data-theme", "dark");
+      document.documentElement.setAttribute('data-theme', 'dark');
     } else {
-      document.documentElement.removeAttribute("data-theme");
+      document.documentElement.removeAttribute('data-theme');
     }
   };
 
   // 컴포넌트 마운트 시 저장된 테마 설정 불러오기
   useEffect(() => {
     // localStorage에서 저장된 테마 설정 확인
-    const savedTheme = localStorage.getItem("theme");
+    const savedTheme = localStorage.getItem('theme');
 
     // 저장된 테마가 없으면 시스템 기본 설정 확인
     if (!savedTheme) {
       const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)"
+        '(prefers-color-scheme: dark)'
       ).matches;
-      const initialTheme = prefersDark ? "dark" : "light";
-      localStorage.setItem("theme", initialTheme);
+      const initialTheme = prefersDark ? 'dark' : 'light';
+      localStorage.setItem('theme', initialTheme);
 
-      if (initialTheme === "dark") {
+      if (initialTheme === 'dark') {
         setIsDarkMode(true);
-        document.documentElement.setAttribute("data-theme", "dark");
+        document.documentElement.setAttribute('data-theme', 'dark');
       }
-    } else if (savedTheme === "dark") {
+    } else if (savedTheme === 'dark') {
       setIsDarkMode(true);
-      document.documentElement.setAttribute("data-theme", "dark");
+      document.documentElement.setAttribute('data-theme', 'dark');
     }
   }, []);
 
   // 현재 경로 상태
-  const isProjectPage = location.pathname === "/projectDetail";
-  const isTestPage = location.pathname === "/test";
-  const isReportPage = location.pathname === "/report";
-  const isInfraPage = location.pathname === "/infrastructure";
+  const isProjectPage = location.pathname === '/projectDetail';
+  const isTestPage = location.pathname === '/test';
+  const isReportPage = location.pathname === '/report';
+  const isInfraPage = location.pathname === '/infrastructure';
 
   const projectId = location.state?.projectId;
   const testTitle = location.state?.testTitle;
@@ -77,33 +79,33 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
           setProjectTitle(res.data.data.title);
         })
         .catch((err) => {
-          console.error("프로젝트 정보 가져오기 실패:", err);
-          setProjectTitle("프로젝트");
+          console.error('프로젝트 정보 가져오기 실패:', err);
+          setProjectTitle('프로젝트');
         });
     } else {
-      setProjectTitle("");
+      setProjectTitle('');
     }
   }, [isProjectPage, isTestPage, isReportPage, projectId]);
 
   const handleNavigateToMain = () => {
-    navigate("/");
+    navigate('/');
   };
 
   const handleNavigateToProjectDetail = () => {
     if (!projectId) return;
-    navigate("/projectDetail", {state: {projectId, projectTitle}});
+    navigate('/projectDetail', { state: { projectId, projectTitle } });
   };
 
   const handleNavigateToTest = () => {
     if (!projectId || !testTitle) return;
-    navigate("/test", {
-      state: {projectId, testTitle, testHistoryId: effectiveTestHistoryId},
+    navigate('/test', {
+      state: { projectId, testTitle, testHistoryId: effectiveTestHistoryId },
     });
   };
 
   const handleNavigateToReport = () => {
-    navigate("/report", {
-      state: {projectId, testHistoryId, testTitle, projectTitle},
+    navigate('/report', {
+      state: { projectId, testHistoryId, testTitle, projectTitle },
     });
   };
 
@@ -114,34 +116,41 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
           <Logo className={styles.logoIcon} />
         </div>
         <div className={styles.button}>
-          <ChevronLeft onClick={goBack} />
-          <ChevronRight onClick={goForward} />
+          <IconButton onClick={goBack}>
+            <ChevronLeft />
+          </IconButton>
+          <IconButton onClick={goForward}>
+            <ChevronRight />
+          </IconButton>
         </div>
 
         {/* 프로젝트 상세, 테스트, 리포트 페이지일 때 메뉴 표시 */}
         {(isProjectPage || isTestPage || isReportPage) && projectId && (
           <div className={styles.navMenu}>
-            <button
+            <TextButton
               className={`${styles.navButton} Body`}
-              onClick={handleNavigateToMain}>
+              onClick={handleNavigateToMain}
+            >
               메인
-            </button>
+            </TextButton>
             <div className={`${styles.navButton} Body`}>/</div>
-            <button
+            <TextButton
               className={`${styles.navButton} Body`}
-              onClick={handleNavigateToProjectDetail}>
-              {projectTitle || "프로젝트 타이틀"}
-            </button>
+              onClick={handleNavigateToProjectDetail}
+            >
+              {projectTitle || '프로젝트 타이틀'}
+            </TextButton>
 
             {/* 테스트 페이지 또는 리포트 페이지일 때 시나리오명 추가 */}
             {(isTestPage || isReportPage) && (
               <>
                 <div className={`${styles.navButton} Body`}>/</div>
-                <button
+                <TextButton
                   className={`${styles.navButton} Body`}
-                  onClick={handleNavigateToTest}>
-                  {testTitle || "시나리오명"}
-                </button>
+                  onClick={handleNavigateToTest}
+                >
+                  {testTitle || '시나리오명'}
+                </TextButton>
               </>
             )}
 
@@ -150,11 +159,12 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
               effectiveTestHistoryId && (
                 <>
                   <div className={`${styles.navButton} Body`}>/</div>
-                  <button
+                  <TextButton
                     className={`${styles.navButton} Body`}
-                    onClick={handleNavigateToReport}>
+                    onClick={handleNavigateToReport}
+                  >
                     보고서
-                  </button>
+                  </TextButton>
                 </>
               )}
           </div>
@@ -162,34 +172,41 @@ const Header: React.FC<HeaderProps> = ({testHistoryId}) => {
 
         {isInfraPage && (
           <div className={styles.navMenu}>
-            <button
+            <TextButton
               className={`${styles.navButton} Body`}
-              onClick={handleNavigateToMain}>
+              onClick={handleNavigateToMain}
+            >
               메인
-            </button>
+            </TextButton>
             <div className={`${styles.navButton} Body`}>/</div>
-            <button className={`${styles.navButton} Body`}>인프라 관리</button>
+            <TextButton className={`${styles.navButton} Body`}>
+              인프라 관리
+            </TextButton>
           </div>
         )}
       </div>
       <div className={styles.iconWrapper}>
         {isProjectPage && (
-          <div
-            className={styles.icon}
+          <IconButton
             onClick={() =>
-              navigate("/testList", {
+              navigate('/testList', {
                 state: {
                   projectId,
                   projectTitle,
                 },
               })
-            }>
-            <List />
-          </div>
+            }
+          >
+            <List className={styles.icon} />
+          </IconButton>
         )}
-        <div className={styles.icon} onClick={toggleDarkMode}>
-          {isDarkMode ? <Sun /> : <Moon />}
-        </div>
+        <IconButton onClick={toggleDarkMode}>
+          {isDarkMode ? (
+            <Sun className={styles.icon} />
+          ) : (
+            <Moon className={styles.icon} />
+          )}
+        </IconButton>
       </div>
     </div>
   );

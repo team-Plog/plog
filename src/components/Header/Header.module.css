@@ -33,6 +33,12 @@
   display: block;
   margin-top: 2px;
   color: var(--color-gray-300);
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.logoIcon:hover {
+  color: var(--color-black);
+  opacity: 0.85;
 }
 
 .filledCircle {
@@ -49,7 +55,7 @@
   justify-content: center;
   align-items: center;
   padding: 0 var(--spacing-xl);
-  gap: var(--spacing-sm);
+  gap: var(--spacing-xs);
   cursor: pointer;
 }
 
@@ -61,6 +67,7 @@
 
 .navMenu {
   display: flex;
+  align-items: center;
 }
 
 .navButton {
@@ -74,7 +81,7 @@
 
 .iconWrapper {
   display: flex;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-sm);
 }
 
 .icon {

@@ -24,10 +24,6 @@
   padding: var(--spacing-xs);
 }
 
-.menuButton:hover {
-  background-color: var(--color-gray-100);
-}
-
 .menuIcon {
   width: var(--icon-size-md);
   height: var(--icon-size-md);
@@ -121,6 +117,11 @@
   background-color: transparent;
   color: var(--color-black);
   cursor: pointer;
+}
+
+.icon {
+  width: var(--icon-size-md);
+  color: var(--color-gray-200);
 }
 
 /* 반응형 디자인 - TestHistoryTable 전용 */

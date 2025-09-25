@@ -1,5 +1,6 @@
-import React from "react";
+import React from 'react';
 import styles from './BaseInput.module.css';
+import IconButton from '../Button/IconButton';
 
 interface BaseInputProps {
   value: string;
@@ -32,7 +33,8 @@ const BaseInput: React.FC<BaseInputProps> = ({
   leftIconSize = 'normal',
   rightIconSize = 'normal',
 }) => {
-  const shouldShowBoxShadow = showBoxShadow !== undefined ? showBoxShadow : variant === 'white';
+  const shouldShowBoxShadow =
+    showBoxShadow !== undefined ? showBoxShadow : variant === 'white';
   const inputStyle = `
     ${styles.input} 
     ${variant === 'white' ? styles.inputWhite : styles.inputGray}
@@ -44,8 +46,10 @@ const BaseInput: React.FC<BaseInputProps> = ({
   `;
 
   // 아이콘 클래스 선택
-  const leftIconClass = leftIconSize === 'small' ? styles.leftIconSmall : styles.leftIcon;
-  const rightIconClass = rightIconSize === 'small' ? styles.rightIconSmall : styles.rightIcon;
+  const leftIconClass =
+    leftIconSize === 'small' ? styles.leftIconSmall : styles.leftIcon;
+  const rightIconClass =
+    rightIconSize === 'small' ? styles.rightIconSmall : styles.rightIcon;
 
   return (
     <div className={styles.inputContainer}>
@@ -72,9 +76,9 @@ const BaseInput: React.FC<BaseInputProps> = ({
         )}
 
         {rightIcon && (
-          <div className={rightIconClass} onClick={onRightIconClick}>
+          <IconButton onClick={onRightIconClick} className={rightIconClass}>
             {rightIcon}
-          </div>
+          </IconButton>
         )}
       </div>
     </div>

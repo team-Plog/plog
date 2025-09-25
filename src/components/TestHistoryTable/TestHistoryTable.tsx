@@ -1,10 +1,11 @@
-import React, {useState} from "react";
-import {History, Trash2} from "lucide-react";
-import {useNavigate} from "react-router-dom";
-import {StatusBadge, type TestStatus} from "../Tag";
-import EmptyState from "../EmptyState/EmptyState";
-import styles from "./TestHistoryTable.module.css";
-import {deleteTestHistory} from "../../api";
+import React, { useState } from 'react';
+import { History, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { StatusBadge, type TestStatus } from '../Tag';
+import EmptyState from '../EmptyState/EmptyState';
+import styles from './TestHistoryTable.module.css';
+import { deleteTestHistory } from '../../api';
+import IconButton from '../Button/IconButton';
 
 interface TestHistoryItem {
   test_history_id: number;
@@ -28,7 +29,7 @@ interface TestHistoryTableProps {
 const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
   testHistory,
   onMenuToggle,
-  titleText = "최근 실행",
+  titleText = '최근 실행',
   hideProjectTitleColumn = false,
   hideEmptyState = false,
   onDeleteSuccess,
@@ -44,21 +45,21 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
 
   const mapTestStatusToStatusBadge = (status: string): TestStatus => {
     switch (status) {
-      case "실행 중":
-        return "running";
-      case "문서 생성 중":
-        return "analyzing";
-      case "문서 생성 완료":
-        return "completed";
-      case "실패":
-        return "failed";
+      case '실행 중':
+        return 'running';
+      case '문서 생성 중':
+        return 'analyzing';
+      case '문서 생성 완료':
+        return 'completed';
+      case '실패':
+        return 'failed';
       default:
-        return "before";
+        return 'before';
     }
   };
 
   const handleRowClick = (item: TestHistoryItem) => {
-    navigate("/test", {
+    navigate('/test', {
       state: {
         projectId: item.project_id,
         testTitle: item.test_title,
@@ -71,15 +72,15 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
 
   const handleDelete = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
-    if (!window.confirm("정말 삭제하시겠습니까?")) return;
+    if (!window.confirm('정말 삭제하시겠습니까?')) return;
 
     try {
       await deleteTestHistory(id);
-      alert("삭제되었습니다.");
+      alert('삭제되었습니다.');
       window.location.reload();
     } catch (err) {
-      console.error("삭제 실패:", err);
-      alert("삭제에 실패했습니다.");
+      console.error('삭제 실패:', err);
+      alert('삭제에 실패했습니다.');
     }
   };
 
@@ -95,9 +96,7 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
         <>
           {/* 헤더 */}
           <div className={styles.leftGroup}>
-            <button onClick={onMenuToggle} className={styles.menuButton}>
-              <History className={styles.menuIcon} />
-            </button>
+            <History className={styles.menuIcon} />
             <h1 className={`HeadingS ${styles.title}`}>{titleText}</h1>
           </div>
           {/* 테이블 헤더 */}
@@ -108,6 +107,7 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
               <div className={`Body ${styles.headerItem}`}>프로젝트명</div>
             )}
             <div className={`Body ${styles.headerItem}`}>마지막 테스트</div>
+            <div className={`Body ${styles.headerItem}`}>삭제</div>
           </div>
 
           {/* 테이블 내용 */}
@@ -115,7 +115,8 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
             <div
               key={index}
               className={`${styles.tableRow} ${styles.clickableRow}`}
-              onClick={() => handleRowClick(item)}>
+              onClick={() => handleRowClick(item)}
+            >
               <div className={styles.statusCell}>
                 <StatusBadge
                   status={mapTestStatusToStatusBadge(item.test_status)}
@@ -130,22 +131,22 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
                 </div>
               )}
               <div className={`Body ${styles.tableCell}`}>
-                {new Date(item.status_datetime).toLocaleDateString("ko-KR", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  second: "2-digit",
+                {new Date(item.status_datetime).toLocaleDateString('ko-KR', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
                   hour12: false,
                 })}
               </div>
               <div className={`Body ${styles.tableCell}`}>
-                <button
-                  className={styles.deleteButton}
-                  onClick={(e) => handleDelete(e, item.test_history_id)}>
-                  <Trash2 size={16} />
-                </button>
+                <IconButton
+                  onClick={(e) => handleDelete(e, item.test_history_id)}
+                >
+                  <Trash2 className={styles.icon} />
+                </IconButton>
               </div>
             </div>
           ))}
@@ -153,13 +154,14 @@ const TestHistoryTable: React.FC<TestHistoryTableProps> = ({
           {/* 페이지네이션 */}
           {totalPages > 1 && (
             <div className={styles.pagination}>
-              {Array.from({length: totalPages}, (_, i) => (
+              {Array.from({ length: totalPages }, (_, i) => (
                 <button
                   key={i}
                   onClick={() => setCurrentPage(i + 1)}
                   className={`${styles.pageButton} ${
-                    currentPage === i + 1 ? styles.active : ""
-                  }`}>
+                    currentPage === i + 1 ? styles.active : ''
+                  }`}
+                >
                   {i + 1}
                 </button>
               ))}

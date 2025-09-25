@@ -1,16 +1,16 @@
-import React, {useEffect, useState} from "react";
-import {useNavigate} from "react-router-dom";
-import {Plus, Menu, Settings} from "lucide-react";
-import {SearchBar} from "../../components/Input";
-import {Button} from "../../components/Button/Button";
-import ProjectCard from "../../components/ProjectCard/ProjectCard";
-import MainModal from "../../components/MainModal/MainModal";
-import Header from "../../components/Header/Header";
-import EmptyState from "../../components/EmptyState/EmptyState";
-import TestHistoryTable from "../../components/TestHistoryTable/TestHistoryTable";
-import styles from "./Home.module.css";
-import {getProjectList, getTestHistoryList} from "../../api";
-import {type TestStatus} from "../../components/Tag";
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Menu, Settings } from 'lucide-react';
+import { SearchBar } from '../../components/Input';
+import { Button } from '../../components/Button/Button';
+import ProjectCard from '../../components/ProjectCard/ProjectCard';
+import MainModal from '../../components/MainModal/MainModal';
+import Header from '../../components/Header/Header';
+import EmptyState from '../../components/EmptyState/EmptyState';
+import TestHistoryTable from '../../components/TestHistoryTable/TestHistoryTable';
+import styles from './Home.module.css';
+import { getProjectList, getTestHistoryList } from '../../api';
+import { type TestStatus } from '../../components/Tag';
 
 interface Project {
   id: number;
@@ -30,18 +30,18 @@ interface TestHistoryItem {
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [testHistory, setTestHistory] = useState<TestHistoryItem[]>([]);
 
   const handleProjectClick = (projectId: number) => {
-    navigate("/projectDetail", {state: {projectId}});
+    navigate('/projectDetail', { state: { projectId } });
   };
 
   const handleInfraManageClick = () => {
-    navigate("/infrastructure");
+    navigate('/infrastructure');
   };
 
   const handleCreateProject = () => {
@@ -51,22 +51,22 @@ const Home: React.FC = () => {
   useEffect(() => {
     getProjectList()
       .then((res) => {
-        console.log("📦 받아온 프로젝트 리스트:", res.data);
+        console.log('📦 받아온 프로젝트 리스트:', res.data);
         setProjects(res.data.data);
       })
       .catch((err) => {
-        console.error("❌ 프로젝트 리스트 가져오기 실패:", err);
+        console.error('❌ 프로젝트 리스트 가져오기 실패:', err);
       });
   }, []);
 
   useEffect(() => {
     getTestHistoryList(0, 100)
       .then((res) => {
-        console.log("🕒 최근 실행 기록:", res.data);
+        console.log('🕒 최근 실행 기록:', res.data);
         setTestHistory(res.data.data);
       })
       .catch((err) => {
-        console.error("❌ 최근 실행 기록 가져오기 실패:", err);
+        console.error('❌ 최근 실행 기록 가져오기 실패:', err);
       });
   }, []);
 
@@ -87,11 +87,7 @@ const Home: React.FC = () => {
           <div className={styles.headerInner}>
             {/* Left Group - Menu and Title */}
             <div className={styles.leftGroup}>
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className={styles.menuButton}>
-                <Menu className={styles.menuIcon} />
-              </button>
+              <Menu className={styles.menuIcon} />
               <h1 className={`HeadingS ${styles.title}`}>내 프로젝트</h1>
             </div>
             {/* Right Group - Search Bar and Buttons */}
@@ -106,13 +102,15 @@ const Home: React.FC = () => {
               <Button
                 variant="primaryGradient"
                 onClick={handleCreateProject}
-                icon={<Plus />}>
+                icon={<Plus />}
+              >
                 새 프로젝트 추가하기
               </Button>
               <Button
                 variant="secondary"
                 onClick={handleInfraManageClick}
-                icon={<Settings />}>
+                icon={<Settings />}
+              >
                 인프라 관리
               </Button>
             </div>
@@ -132,7 +130,7 @@ const Home: React.FC = () => {
                   id={project.id}
                   title={project.title}
                   summary={project.summary}
-                  status={(project.status ?? "before") as TestStatus}
+                  status={(project.status ?? 'before') as TestStatus}
                   updatedAt={project.updated_at}
                   onClick={handleProjectClick}
                 />

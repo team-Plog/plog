@@ -66,7 +66,7 @@ const ProjectDetail: React.FC = () => {
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [openApiSpecs, setOpenApiSpecs] = useState<OpenApiSpec[]>([]);
   // 시연용 기본값 설정
-  const [scenarioTitle, setScenarioTitle] = useState("복약 관리 애플리케이션 medeasy api 테스트");
+  const [scenarioTitle, setScenarioTitle] = useState("복약 관리 시스템 medeasy api 테스트");
   const [scenarioDescription, setScenarioDescription] = useState("복약 관리 애플리케이션 medeasy의 api 서버 성능을 테스트한다.");
   const [targetTps, setTargetTps] = useState("500");
   const [isModalOpen, setIsModalOpen] = useState(false);
