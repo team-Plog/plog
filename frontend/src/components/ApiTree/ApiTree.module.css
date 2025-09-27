@@ -1,0 +1,187 @@
+.apiTree {
+  font-size: 14px;
+  color: var(--color-black);
+  padding: var(--spacing-lg);
+}
+
+.serverHeader {
+  padding: var(--spacing-xs);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: background-color 0.15s ease;
+  user-select: none;
+}
+
+.serverHeader:hover {
+  background-color: var(--color-gray-100);
+}
+
+.serverContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-xs);
+  min-width: 0;
+}
+
+.database {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  color: var(--color-gray-200);
+  flex-shrink: 0;
+}
+
+/* 그룹 컨테이너 */
+.groupsContainer {
+  padding-left: 20px;
+}
+
+.groupHeader {
+  padding: var(--spacing-xs);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: background-color 0.15s ease;
+  user-select: none;
+}
+
+.groupHeader:hover {
+  background-color: var(--color-gray-100);
+}
+
+.groupContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-xs);
+  min-width: 0;
+}
+
+.groupIcon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  color: var(--color-gray-200);
+  flex-shrink: 0;
+}
+
+/* 엔드포인트 컨테이너 */
+.endpointsContainer {
+  padding-left: 16px;
+}
+
+.endpointNode:hover {
+  background-color: var(--color-gray-100);
+}
+
+.endpointContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-xs);
+  cursor: pointer;
+  user-select: none;
+  min-width: 0;
+}
+
+.endpointIcon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  flex-shrink: 0;
+}
+
+/* 공통 chevron 스타일 */
+.chevron {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  color: var(--color-gray-200);
+  flex-shrink: 0;
+}
+
+/* HTTP 메서드별 색상 */
+.methodGet {
+  color: var(--color-http-get);
+}
+
+.methodGet.methodBadge {
+  color: var(--color-http-get);
+}
+
+.methodPost {
+  color: var(--color-http-post);
+}
+
+.methodPost.methodBadge {
+  color: var(--color-http-post);
+}
+
+.methodPut {
+  color: var(--color-http-put);
+}
+
+.methodPut.methodBadge {
+  color: var(--color-http-put);
+}
+
+.methodDelete {
+  color: var(--color-http-delete);
+}
+
+.methodDelete.methodBadge {
+  color: var(--color-http-delete);
+}
+
+.methodPatch {
+  color: var(--color-http-patch);
+}
+
+.methodPatch.methodBadge {
+  color: var(--color-http-patch);
+}
+
+.methodDefault {
+  color: var(--color-gray-500, #6b7280);
+}
+
+.methodDefault.methodBadge {
+  background-color: var(--color-gray-100, #f3f4f6);
+  color: var(--color-gray-700, #374151);
+}
+
+.itemWrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-width: 0;
+  flex: 1;
+}
+
+/* 텍스트 오버플로우 처리 */
+.textContent {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* HTTP 메서드 텍스트는 항상 보이도록 */
+.methodText {
+  flex-shrink: 0;
+  white-space: nowrap;
+  min-width: fit-content;
+}
+
+/* 엔드포인트 경로와 HTTP 메서드 사이의 간격 조정 */
+.endpointWrapper {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+  gap: var(--spacing-xs);
+}
+
+.endpointPath {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}

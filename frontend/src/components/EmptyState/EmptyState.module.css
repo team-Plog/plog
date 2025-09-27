@@ -1,0 +1,99 @@
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 64px;
+}
+
+/* project 타입일 때 카드 스타일 */
+.emptyState.projectType {
+  min-height: 400px;
+  background-color: var(--color-gray-100);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+}
+
+.emptyIconContainer {
+  width: 200px;
+  height: 160px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.07) 0%, rgba(0, 0, 0, 0.03) 100%);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:var(--shadow-primary) inset;
+  transition: all 0.2s ease;
+}
+
+/* 클릭 가능한 상태 */
+.emptyIconContainer.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.emptyIconContainer.clickable:hover {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.06) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.08) inset, 0 4px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.emptyIconContainer.clickable:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-primary) inset;
+}
+
+.emptyIconContainer.clickable:focus {
+  outline: 2px solid var(--color-gray-200);
+  outline-offset: 2px;
+}
+
+.emptyIconContainer.clickable:hover .emptyIcon {
+  color: var(--color-gray-200);
+}
+
+.emptyIcon {
+  width: 48px;
+  height: 48px;
+  color: rgba(0, 0, 0, 0.1);
+}
+
+.emptyTextContent {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.emptyTitle {
+  color: var(--color-black);
+  margin: 0;
+}
+
+.emptyDescription {
+  color: var(--color-gray-300);
+  margin: 0;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .emptyState {
+    gap: 32px;
+    padding: var(--spacing-lg);
+  }
+
+  .emptyIconContainer {
+    width: 160px;
+    height: 120px;
+  }
+
+  .emptyIcon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .emptyTextContent {
+    gap: var(--spacing-xs);
+  }
+}

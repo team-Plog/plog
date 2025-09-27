@@ -1,0 +1,61 @@
+.container {
+  display: flex;
+  background-color: var(--color-gray-100);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xs);
+  gap: 2px;
+  min-width: 0;
+}
+
+.option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) ;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-gray-200);
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.option.selected {
+  background-color: var(--color-white);
+  color: var(--color-black);
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  text-align: center;
+}
+
+/* 매우 작은 화면에서는 텍스트 숨기고 아이콘만 표시 */
+@media (max-width: 400px) {
+  .label {
+    display: none;
+  }
+  
+  .option {
+    gap: 0;
+    padding: var(--spacing-sm);
+  }
+}

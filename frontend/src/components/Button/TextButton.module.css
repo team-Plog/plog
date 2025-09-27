@@ -1,0 +1,16 @@
+.textButton {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.textButton:hover {
+  background-color: var(--color-gray-100);
+}

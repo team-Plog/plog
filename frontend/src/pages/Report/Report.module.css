@@ -1,0 +1,132 @@
+.container {
+  min-height: 100vh;
+  background-color: var(--color-background-secondary);
+  padding-top: 40px;
+  width: 100vw;
+}
+
+.content {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.reportContainer {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.headerAndContentContainer {
+  width: 100%;
+  max-width: fit-content;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between; 
+  align-items: center;
+  margin-top: var(--spacing-xxl);
+  margin-bottom: var(--spacing-xl);
+  width: 100%;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px; 
+}
+
+.headerLeft > h1 {
+  margin: 0;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md); 
+}
+
+/* 콘텐츠 컨테이너 */
+.contentContainer {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.emptyStateContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+}
+
+/* ---------- 인쇄 전용 스타일 ---------- */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  [data-pdf-capture],
+  [data-pdf-capture] * {
+    visibility: visible !important;
+  }
+
+  [data-pdf-capture] {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    right: auto !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    width: 190mm !important; 
+  }
+
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .header,
+  .headerRight,
+  .headerLeft,
+  .ModeToggleDropdown,
+  .buttonPrimaryGradient,
+  .secondary {
+    display: none !important;
+  }
+
+  [data-pdf-capture] .section,
+  [data-pdf-capture] .tableContainer,
+  [data-pdf-capture] .summaryBox,
+  [data-pdf-capture] .subTitleGroup,
+  [data-pdf-capture] .contentGroup,
+  [data-pdf-capture] .textGroup,
+  [data-pdf-capture] table,
+  [data-pdf-capture] h1,
+  [data-pdf-capture] h2,
+  [data-pdf-capture] h3,
+  [data-pdf-capture] h4,
+  [data-pdf-capture] h5,
+  [data-pdf-capture] h6,
+  [data-pdf-capture] p {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  [data-pdf-capture] .section,
+  [data-pdf-capture] .documentHeader,
+  [data-pdf-capture] .tableContainer {
+    box-shadow: none !important;
+    border-color: #ddd !important;
+  }
+}
