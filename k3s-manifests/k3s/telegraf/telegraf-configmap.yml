@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telegraf-config
+  namespace: monitoring
+data:
+  telegraf.conf: |
+    [agent]
+      interval = "10s"
+      round_interval = true 
+      flush_interval = "10s"
+      flush_jitter = "0s"
+      hostname = "$HOSTNAME"
+
+    # Pod / Node 리소스 사용량 (kubelet cadvisor)
+    [[inputs.prometheus]]
+      urls = ["https://$NODE_IP:10250/metrics/cadvisor"]
+      bearer_token = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+      insecure_skip_verify = true
+      metric_version = 2
+      name_override = "cadvisor_metrics"
+      interval = "10s"  
+  
+    [inputs.prometheus.tags]
+    source = "cadvisor"
+
+    [[inputs.prometheus]]
+      urls = ["http://kube-state-metrics.kube-system.svc.cluster.local:8080/metrics"]
+      metric_version = 2
+      name_override = "kube_state_metrics"
+
+    # InfluxDB v1 출력 (token 없음)
+    [[outputs.influxdb]]
+      urls = [""] # 측정 값을 저장할 influxdb url 
+      database = "k6"
+

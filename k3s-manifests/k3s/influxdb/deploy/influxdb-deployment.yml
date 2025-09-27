@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: influxdb-deployment
+  namespace: plog
+
+spec:
+  selector:
+    matchLabels:
+      app: influxdb
+  template:
+    metadata:
+      labels:
+        app: influxdb
+
+    spec:
+      containers:
+        - name: influxdb-container
+          image: influxdb:1.8
+          ports:
+            - containerPort: 8086
+          volumeMounts:
+            - mountPath: /var/lib/influxdb
+              name: influxdb-volume
+
+      volumes:
+        - name: influxdb-volume
+          persistentVolumeClaim:
+            claimName: influxdb-pvc

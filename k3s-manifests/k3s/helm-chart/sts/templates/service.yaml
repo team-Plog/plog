@@ -1,0 +1,27 @@
+# charts/plog-apps/templates/service.yaml
+{{- range $appName, $appConfig := .Values.applications }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $appName }}-service
+  namespace: {{ $.Values.global.namespace }}
+  labels:
+    app: {{ $appName }}
+    chart: {{ $.Chart.Name }}
+    release: {{ $.Release.Name }}
+    component: service
+spec:
+  type: {{ if $appConfig.nodePort }}NodePort{{ else }}ClusterIP{{ end }}
+  ports:
+    - name: http
+      port: {{ $appConfig.port }}
+      targetPort: {{ $appConfig.port }}
+      {{- if $appConfig.nodePort }}
+      nodePort: {{ $appConfig.nodePort }}
+      {{- end }}
+      protocol: TCP
+  selector:
+    app: {{ $appName }}
+    release: {{ $.Release.Name }}
+{{- end }}

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+
+metadata:
+  name: semi-medeasy-db-pvc-semi-medeasy-db-sts-0
+  namespace: test
+
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 2Gi
+  volumeName: semi-medeasy-db-pv
+  storageClassName: semi-medeasy-db

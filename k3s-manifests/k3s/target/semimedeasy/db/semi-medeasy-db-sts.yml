@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: StatefulSet
+
+metadata:
+  name: semi-medeasy-db-sts-local
+  namespace: test
+
+# statuefulset의 경우 테스트 서버와 동시 실행 주의 - 자원 사용량 정보 중복 저장 문제 발생
+spec:
+  serviceName: "semi-medeasy-db-svc-headless"
+  selector:
+    matchLabels:
+      app: semi-medeasy-db
+  template:
+    metadata:
+      labels:
+        app: semi-medeasy-db
+
+    spec:
+      containers:
+        - name: semi-medeasy-db-container
+          image: postgres:17
+          ports:
+            - containerPort: 5432
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "1000Mi"
+            limits:
+              cpu: "1000m"
+              memory: "2000Mi"
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  key: db_user
+                  name: semi-medeasy-db-secret
+
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: db_password
+                  name: semi-medeasy-db-secret
+
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  key: db_name
+                  name: semi-medeasy-db-secret
+
+          volumeMounts:
+            - name: db-storage
+              mountPath: /var/lib/postgresql/data
+
+      volumes:
+        - name: db-storage
+          persistentVolumeClaim:
+            claimName: semi-medeasy-db-pvc-semi-medeasy-db-sts-0

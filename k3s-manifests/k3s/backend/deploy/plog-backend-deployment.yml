@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: plog-backend-deployment
+  namespace: plog
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: plog-backend
+  template:
+    metadata:
+      labels:
+        app: plog-backend
+    spec:
+      containers:
+        - name: plog-backend-container
+          image: localhost:32000/plog/plog-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+
+          env:
+            - name: K6_SCRIPT_FILE_FOLDER
+              valueFrom:
+                secretKeyRef:
+                  key: k6_script_file_folder
+                  name: plog-backend-secret
+
+            - name: PLOG_HELM_CHART_FOLDER
+              valueFrom:
+                secretKeyRef:
+                  key: plog_helm_chart_folder
+                  name: plog-backend-secret
+
+            - name: INFLUXDB_HOST
+              valueFrom:
+                secretKeyRef:
+                  key: influxdb_host
+                  name: plog-backend-secret
+
+            - name: INFLUXDB_PORT
+              valueFrom:
+                secretKeyRef:
+                  key: influxdb_port
+                  name: plog-backend-secret
+
+            - name: INFLUXDB_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  key: influxdb_database
+                  name: plog-backend-secret
+
+            # AI Analysis Settings
+            - name: AI_MODEL_NAME
+              valueFrom:
+                secretKeyRef:
+                  key: ai_model_name
+                  name: plog-backend-secret
+
+            - name: OLLAMA_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  key: ollama_base_url
+                  name: plog-backend-secret
+
+            - name: OLLAMA_TEMPERATURE
+              valueFrom:
+                secretKeyRef:
+                  key: ollama_temperature
+                  name: plog-backend-secret
+
+            - name: OLLAMA_MAX_TOKENS
+              valueFrom:
+                secretKeyRef:
+                  key: ollama_max_tokens
+                  name: plog-backend-secret
+
+            - name: OLLAMA_TIMEOUT_SECONDS
+              valueFrom:
+                secretKeyRef:
+                  key: ollama_timeout_seconds
+                  name: plog-backend-secret
+
+          volumeMounts:
+            - mountPath: /mnt/k6-scripts
+              name: k6-script-volume
+            - mountPath: /app/sqlite-data
+              name: sqlite-data-volume
+            - mountPath: /mnt/helm-chart
+              name: helm-chart-volume
+
+      serviceAccountName: plog-backend-service-account
+
+      imagePullSecrets:
+        - name: gcp-artifact-registry-secret
+        - name: harbor-registry-secret
+
+      volumes:
+        - name: k6-script-volume
+          persistentVolumeClaim:
+            claimName: k6-script-pvc
+
+        - name: sqlite-data-volume
+          hostPath:
+            path: /data/sqlite
+            type: DirectoryOrCreate
+
+        - name: helm-chart-volume
+          persistentVolumeClaim:
+            claimName: helm-chart-pvc
+

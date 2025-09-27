@@ -1,0 +1,16 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+
+metadata:
+  name: plog-backend-role-binding
+  namespace: plog
+
+subjects:
+  - kind: ServiceAccount
+    name: plog-backend-service-account
+    namespace: plog
+
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: plog-backend-role

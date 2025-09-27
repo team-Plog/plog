@@ -1,0 +1,4 @@
+.idea/
+secret/**
+**/values.yaml
+metric-bridge-system.iml

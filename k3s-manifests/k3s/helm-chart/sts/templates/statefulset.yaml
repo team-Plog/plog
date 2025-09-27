@@ -1,0 +1,107 @@
+# charts/plog-apps/templates/statefulset.yaml
+{{- range $appName, $appConfig := .Values.applications }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $appName }}-statefulset
+  namespace: {{ $.Values.global.namespace }}
+  labels:
+    app: {{ $appName }}
+    chart: {{ $.Chart.Name }}
+    release: {{ $.Release.Name }}
+spec:
+  serviceName: {{ $appName }}-service
+  replicas: {{ $appConfig.replicas }}
+  selector:
+    matchLabels:
+      app: {{ $appName }}
+  template:
+    metadata:
+      labels:
+        app: {{ $appName }}
+        release: {{ $.Release.Name }}
+    spec:
+      containers:
+        - name: {{ $appName }}-container
+          image: "{{ $.Values.global.imageRegistry }}/{{ $appConfig.image.repository }}:{{ $appConfig.image.tag }}"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: {{ $appConfig.port }}
+          {{- if $appConfig.envFrom }}
+          envFrom:
+          {{- range $envFromItem := $appConfig.envFrom }}
+          {{- if $envFromItem.secretRef }}
+          - secretRef:
+              name: {{ $envFromItem.secretRef.name }}
+          {{- else if $envFromItem.configMapRef }}
+          - configMapRef:
+              name: {{ $envFromItem.configMapRef.name }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+          {{- if $appConfig.env }}
+          env:
+          {{- range $key, $value := $appConfig.env }}
+          - name: {{ $key }}
+            {{- if typeIs "string" $value }}
+            value: {{ $value | quote }}
+            {{- else if $value.secretKeyRef }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ $value.secretKeyRef.name }}
+                key: {{ $value.secretKeyRef.key }}
+            {{- else if $value.configMapKeyRef }}
+            valueFrom:
+              configMapKeyRef:
+                name: {{ $value.configMapKeyRef.name }}
+                key: {{ $value.configMapKeyRef.key }}
+            {{- end }}
+          {{- end }}
+          {{- end }}
+          resources:
+            requests:
+            {{- if $appConfig.resources.requests.cpu }}
+              cpu: {{ $appConfig.resources.requests.cpu }}
+            {{- end }}
+            {{- if $appConfig.resources.requests.memory }}
+              memory: {{ $appConfig.resources.requests.memory }}
+            {{- end }}
+            limits:
+            {{- if $appConfig.resources.limits.cpu }}
+              cpu: {{ $appConfig.resources.limits.cpu }}
+            {{- end }}
+            {{- if $appConfig.resources.limits.memory }}
+              memory: {{ $appConfig.resources.limits.memory }}
+            {{- end }}
+          {{- if $appConfig.volumeMounts }}
+          volumeMounts:
+          {{- range $volumeMount := $appConfig.volumeMounts }}
+          - name: {{ $volumeMount.name }}
+            mountPath: {{ $volumeMount.mountPath }}
+            {{- if $volumeMount.subPath }}
+            subPath: {{ $volumeMount.subPath }}
+            {{- end }}
+          {{- end }}
+          {{- end }}
+      imagePullSecrets:
+        - name: {{ $.Values.global.imagePullSecret }}
+  {{- if $appConfig.volumeClaimTemplates }}
+  volumeClaimTemplates:
+  {{- range $vct := $appConfig.volumeClaimTemplates }}
+  - metadata:
+      name: {{ $vct.name }}
+    spec:
+      accessModes:
+      {{- range $accessMode := $vct.accessModes }}
+      - {{ $accessMode }}
+      {{- end }}
+      {{- if $vct.storageClass }}
+      storageClassName: {{ $vct.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ $vct.storage }}
+  {{- end }}
+  {{- end }}
+{{- end }}
