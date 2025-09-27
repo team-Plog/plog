@@ -31,6 +31,6 @@ data:
 
     # InfluxDB v1 출력 (token 없음)
     [[outputs.influxdb]]
-      urls = ["http://35.216.24.11:31000"]
+      urls = [""] # 측정 값을 저장할 influxdb url 
       database = "k6"
 
